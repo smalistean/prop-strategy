@@ -34,13 +34,13 @@ public class TradeStatistics {
         BigDecimal totalPnl = BigDecimal.ZERO;
 
         for (Trade trade : trades) {
-            totalPnl = totalPnl.add(trade.pnl(), MC);
-            if (trade.pnl().signum() > 0) {
+            totalPnl = totalPnl.add(trade.netPnl(), MC);
+            if (trade.netPnl().signum() > 0) {
                 wins++;
-                grossProfit = grossProfit.add(trade.pnl(), MC);
-            } else if (trade.pnl().signum() < 0) {
+                grossProfit = grossProfit.add(trade.netPnl(), MC);
+            } else if (trade.netPnl().signum() < 0) {
                 losses++;
-                grossLoss = grossLoss.add(trade.pnl().abs(), MC);
+                grossLoss = grossLoss.add(trade.netPnl().abs(), MC);
             }
         }
 

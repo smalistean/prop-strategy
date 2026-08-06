@@ -140,12 +140,37 @@ feature persistence remain candidates for later strategies.
 
 # Phase 5 -- Backtesting Engine
 
--   Load historical data from PostgreSQL.
--   Execute strategy rules.
--   Simulate trading fees.
--   Simulate slippage.
--   Record every trade.
--   Produce detailed reports.
+## Extensibility and configuration
+
+-   [x] Keep engine settings separate from strategy-specific settings.
+-   [x] Select strategies through a registry/factory by `strategy.type`.
+-   [x] Let each strategy parse and validate its own typed configuration.
+-   [x] Use parameterized feature keys so indicator periods are configurable.
+-   [x] Let each strategy declare its required features.
+-   [x] Use rich enter/exit/hold decisions instead of shared BUY/SELL rules.
+
+## Execution and accounting
+
+-   [x] Load historical BTCUSDT candles from PostgreSQL.
+-   [x] Execute a close-derived signal no earlier than the next candle open.
+-   [x] Support long and short positions with one position at a time.
+-   [x] Size positions by configured equity risk and cap configured leverage.
+-   [x] Execute ATR stops, reward/risk targets, strategy exits, and final exits.
+-   [x] Assume the stop occurs first when stop and target touch in one candle.
+-   [x] Apply adverse slippage and taker fees on both entry and exit.
+-   [x] Apply funding cash flows while a Futures position is open.
+-   [x] Track gross PnL, fees, funding, slippage costs, and net PnL per trade.
+-   [x] Mark equity each candle and enforce configured prop challenge limits.
+
+## Baseline
+
+-   [x] Add a configurable EMA pullback continuation strategy.
+-   [x] Run a database-backed BTCUSDT 15m end-to-end backtest.
+-   [x] Produce a performance report and inspect individual trades.
+
+The baseline validates the engine; it is not considered a profitable strategy.
+New strategy types should add their own factory, typed config, required feature
+keys, and tracked experiment file without changing the execution engine.
 
 ------------------------------------------------------------------------
 

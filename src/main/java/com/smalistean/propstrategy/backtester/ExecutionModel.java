@@ -1,30 +1,36 @@
 package com.smalistean.propstrategy.backtester;
 
-import com.smalistean.propstrategy.database.Kline;
-
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 
-public class ExecutionModel {
+public final class ExecutionModel {
 
-    private static final MathContext MC = new MathContext(12, RoundingMode.HALF_UP);
+    public record Fill(BigDecimal referencePrice, BigDecimal fillPrice,
+                       BigDecimal fee, BigDecimal slippageCost) {
+    }
 
+    private static final MathContext MC = new MathContext(16, RoundingMode.HALF_UP);
+    private static final BigDecimal BPS = BigDecimal.valueOf(10_000);
     private final BigDecimal slippageBps;
-    private final BigDecimal feeBps;
+    private final BigDecimal takerFeeBps;
 
-    public ExecutionModel(BigDecimal slippageBps, BigDecimal feeBps) {
+    public ExecutionModel(BigDecimal slippageBps, BigDecimal takerFeeBps) {
+        if (slippageBps.signum() < 0 || takerFeeBps.signum() < 0) {
+            throw new IllegalArgumentException("Fees and slippage cannot be negative");
+        }
         this.slippageBps = slippageBps;
-        this.feeBps = feeBps;
+        this.takerFeeBps = takerFeeBps;
     }
 
-    public BigDecimal fillPrice(Kline bar, boolean isBuy) {
-        BigDecimal slippage = bar.close().multiply(slippageBps, MC)
-                .divide(BigDecimal.valueOf(10_000), MC);
-        return isBuy ? bar.close().add(slippage, MC) : bar.close().subtract(slippage, MC);
-    }
-
-    public BigDecimal fee(BigDecimal notional) {
-        return notional.multiply(feeBps, MC).divide(BigDecimal.valueOf(10_000), MC);
+    public Fill fill(BigDecimal referencePrice, boolean buy, BigDecimal quantity) {
+        BigDecimal slippage = referencePrice.multiply(slippageBps, MC).divide(BPS, MC);
+        BigDecimal fillPrice = buy
+                ? referencePrice.add(slippage, MC)
+                : referencePrice.subtract(slippage, MC);
+        BigDecimal fee = fillPrice.multiply(quantity, MC)
+                .multiply(takerFeeBps, MC).divide(BPS, MC);
+        BigDecimal slippageCost = slippage.multiply(quantity, MC);
+        return new Fill(referencePrice, fillPrice, fee, slippageCost);
     }
 }

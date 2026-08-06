@@ -9,7 +9,8 @@ The BTCUSDT kline pipeline is complete for the current scope: three years of
 is explicitly deferred. Phase 3 is complete for BTCUSDT: three years of
 funding rates and the full Binance-retained window of 5m supporting statistics
 are stored. The agreed initial Phase 4 BTCUSDT 15m feature slice is complete
-and ready to feed the backtester.
+and ready to feed the backtester. Phase 5 now has a configurable, extensible
+backtesting engine and one deliberately unoptimized EMA-pullback baseline.
 
 ## Completed
 
@@ -62,8 +63,26 @@ and ready to feed the backtester.
   at or before candle close; missing context remains `null`.
 - A live preview generated 151 feature rows from 200 recent 15m candles and
   printed the latest 10 with all Futures context populated.
-- Twenty tests cover downloads, cursors, formulas, warm-up, chronology, and
-  no-look-ahead timestamp alignment.
+- Twenty-five tests cover downloads, cursors, formulas, warm-up, chronology,
+  no-look-ahead alignment, long/short execution, fees, stops, and funding.
+- Engine and strategy configuration live in separate tracked properties files.
+- A strategy registry selects factories by type; each factory owns typed
+  parameters, and each strategy declares parameterized feature requirements.
+- `ParameterizedFeatureGenerator` supports arbitrary EMA, RSI, and ATR periods
+  requested by a strategy without changing `FeatureSnapshot`.
+- Strategy decisions express long/short entries with stop and target distances,
+  explicit exits, or holds.
+- Signals derived at candle close fill no earlier than the next candle open.
+- The execution engine supports long and short positions, risk sizing, leverage
+  caps, conservative same-bar stop/target ordering, adverse slippage, two-sided
+  taker fees, funding cash flows, time/strategy exits, and prop-rule termination.
+- Trade records separate gross PnL, entry/exit fees, funding, slippage costs,
+  net PnL, and exit reason.
+- The first database-backed run used 3,000 BTCUSDT 15m candles and 2,951
+  post-warm-up feature bars. It produced 49 trades and stopped at the configured
+  maximum drawdown: -9.95% return, 36.73% win rate, and 0.477 profit factor.
+  This rejects the default parameters as a strategy candidate while validating
+  the end-to-end engine path.
 
 ## Current database
 
@@ -142,6 +161,13 @@ PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
 mvn exec:java \
   -Dexec.mainClass=com.smalistean.propstrategy.feature.BtcFeaturePreviewApplication
 
+JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
+PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
+mvn exec:java \
+  -Dexec.mainClass=com.smalistean.propstrategy.statistics.BacktestApplication \
+  -DengineConfig=config/backtests/engine.properties \
+  -DstrategyConfig=config/backtests/ema-pullback.properties
+
 PGPASSWORD=$DB_PASSWORD /opt/homebrew/opt/postgresql@17/bin/psql \
   -h localhost -U "$DB_USER" -d "$DB_NAME" \
   -c "SELECT symbol, interval, COUNT(*) FROM futures_kline GROUP BY symbol, interval;"
@@ -149,7 +175,7 @@ PGPASSWORD=$DB_PASSWORD /opt/homebrew/opt/postgresql@17/bin/psql \
 
 ## Next step
 
-Begin Phase 5 by adapting the existing backtester to consume `FeatureRow`,
-execute signals no earlier than `earliestExecutionTime`, and run a small
-BTCUSDT 15m end-to-end backtest. Keep ETHUSDT and additional features deferred
-until a strategy demonstrates that they are needed.
+Review Phase 6 metrics against the richer net trade accounting, then design the
+first strategy comparison: keep EMA pullback as the baseline and add one
+materially different strategy through a new factory/configuration. Do not tune
+the rejected baseline on the same sample before defining train/test periods.

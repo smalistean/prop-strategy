@@ -1,5 +1,8 @@
 package com.smalistean.propstrategy.backtester;
 
+import com.smalistean.propstrategy.strategy.PositionView;
+import com.smalistean.propstrategy.strategy.Side;
+
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -7,24 +10,23 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Account {
+public final class Account {
 
-    private static final MathContext MC = new MathContext(12, RoundingMode.HALF_UP);
-
+    private static final MathContext MC = new MathContext(16, RoundingMode.HALF_UP);
     private final BigDecimal initialBalance;
     private BigDecimal balance;
-    private BigDecimal peakBalance;
-    private BigDecimal positionQty = BigDecimal.ZERO;
-    private BigDecimal entryPrice = BigDecimal.ZERO;
-    private Instant entryTime;
-    private String side;
+    private BigDecimal peakEquity;
+    private Position position;
     private final List<Trade> closedTrades = new ArrayList<>();
     private final List<BigDecimal> equityCurve = new ArrayList<>();
 
     public Account(BigDecimal initialBalance) {
+        if (initialBalance.signum() <= 0) {
+            throw new IllegalArgumentException("Initial balance must be positive");
+        }
         this.initialBalance = initialBalance;
         this.balance = initialBalance;
-        this.peakBalance = initialBalance;
+        this.peakEquity = initialBalance;
         equityCurve.add(initialBalance);
     }
 
@@ -37,11 +39,27 @@ public class Account {
     }
 
     public BigDecimal peakBalance() {
-        return peakBalance;
+        return peakEquity;
     }
 
     public boolean hasOpenPosition() {
-        return positionQty.signum() != 0;
+        return position != null;
+    }
+
+    public BigDecimal stopPrice() {
+        return requirePosition().stopPrice;
+    }
+
+    public BigDecimal targetPrice() {
+        return requirePosition().targetPrice;
+    }
+
+    public Side side() {
+        return requirePosition().side;
+    }
+
+    public BigDecimal quantity() {
+        return requirePosition().quantity;
     }
 
     public List<Trade> closedTrades() {
@@ -52,57 +70,95 @@ public class Account {
         return List.copyOf(equityCurve);
     }
 
-    public void openLong(Instant time, BigDecimal price, BigDecimal quantity) {
+    public PositionView positionView() {
+        return position == null ? PositionView.flat() : new PositionView(
+                position.side, position.entryTime, position.entryPrice,
+                position.quantity, position.barsHeld);
+    }
+
+    public void open(Instant time, Side side, BigDecimal quantity,
+                     BigDecimal stopPrice, BigDecimal targetPrice,
+                     ExecutionModel.Fill fill) {
         if (hasOpenPosition()) {
             throw new IllegalStateException("Position already open");
         }
-        positionQty = quantity;
-        entryPrice = price;
-        entryTime = time;
-        side = "LONG";
+        balance = balance.subtract(fill.fee(), MC);
+        position = new Position(side, time, fill.fillPrice(), quantity,
+                stopPrice, targetPrice, fill.fee(), fill.slippageCost());
     }
 
-    public void openShort(Instant time, BigDecimal price, BigDecimal quantity) {
-        if (hasOpenPosition()) {
-            throw new IllegalStateException("Position already open");
+    public void incrementBarsHeld() {
+        if (position != null) {
+            position.barsHeld++;
         }
-        positionQty = quantity.negate();
-        entryPrice = price;
-        entryTime = time;
-        side = "SHORT";
     }
 
-    public Trade close(Instant time, BigDecimal price) {
-        if (!hasOpenPosition()) {
-            throw new IllegalStateException("No open position");
-        }
-        BigDecimal qty = positionQty.abs();
-        BigDecimal pnl = positionQty.signum() > 0
-                ? price.subtract(entryPrice, MC).multiply(qty, MC)
-                : entryPrice.subtract(price, MC).multiply(qty, MC);
-        balance = balance.add(pnl, MC);
-        peakBalance = balance.max(peakBalance);
-        Trade trade = new Trade(entryTime, time, entryPrice, price, qty, pnl, side);
+    public void applyFunding(BigDecimal cashFlow) {
+        Position current = requirePosition();
+        balance = balance.add(cashFlow, MC);
+        current.fundingPnl = current.fundingPnl.add(cashFlow, MC);
+    }
+
+    public Trade close(Instant time, ExecutionModel.Fill fill, String reason) {
+        Position current = requirePosition();
+        BigDecimal grossPnl = current.side == Side.LONG
+                ? fill.fillPrice().subtract(current.entryPrice, MC).multiply(current.quantity, MC)
+                : current.entryPrice.subtract(fill.fillPrice(), MC).multiply(current.quantity, MC);
+        balance = balance.add(grossPnl, MC).subtract(fill.fee(), MC);
+        BigDecimal netPnl = grossPnl.subtract(current.entryFee, MC)
+                .subtract(fill.fee(), MC).add(current.fundingPnl, MC);
+        Trade trade = new Trade(
+                current.entryTime, time, current.entryPrice, fill.fillPrice(), current.quantity,
+                current.side, grossPnl, current.entryFee, fill.fee(), current.fundingPnl,
+                current.entrySlippageCost, fill.slippageCost(), netPnl, reason);
         closedTrades.add(trade);
-        positionQty = BigDecimal.ZERO;
-        entryPrice = BigDecimal.ZERO;
-        side = null;
+        position = null;
         return trade;
     }
 
-    public void applyFee(BigDecimal fee) {
-        balance = balance.subtract(fee, MC);
-    }
-
-    public void markToMarket(BigDecimal price) {
+    public BigDecimal markToMarket(BigDecimal price) {
         BigDecimal equity = balance;
-        if (hasOpenPosition()) {
-            BigDecimal unrealized = positionQty.signum() > 0
-                    ? price.subtract(entryPrice, MC).multiply(positionQty.abs(), MC)
-                    : entryPrice.subtract(price, MC).multiply(positionQty.abs(), MC);
-            equity = balance.add(unrealized, MC);
+        if (position != null) {
+            BigDecimal unrealized = position.side == Side.LONG
+                    ? price.subtract(position.entryPrice, MC).multiply(position.quantity, MC)
+                    : position.entryPrice.subtract(price, MC).multiply(position.quantity, MC);
+            equity = equity.add(unrealized, MC);
         }
         equityCurve.add(equity);
-        peakBalance = equity.max(peakBalance);
+        peakEquity = peakEquity.max(equity);
+        return equity;
+    }
+
+    private Position requirePosition() {
+        if (position == null) {
+            throw new IllegalStateException("No open position");
+        }
+        return position;
+    }
+
+    private static final class Position {
+        private final Side side;
+        private final Instant entryTime;
+        private final BigDecimal entryPrice;
+        private final BigDecimal quantity;
+        private final BigDecimal stopPrice;
+        private final BigDecimal targetPrice;
+        private final BigDecimal entryFee;
+        private final BigDecimal entrySlippageCost;
+        private BigDecimal fundingPnl = BigDecimal.ZERO;
+        private int barsHeld;
+
+        private Position(Side side, Instant entryTime, BigDecimal entryPrice,
+                         BigDecimal quantity, BigDecimal stopPrice, BigDecimal targetPrice,
+                         BigDecimal entryFee, BigDecimal entrySlippageCost) {
+            this.side = side;
+            this.entryTime = entryTime;
+            this.entryPrice = entryPrice;
+            this.quantity = quantity;
+            this.stopPrice = stopPrice;
+            this.targetPrice = targetPrice;
+            this.entryFee = entryFee;
+            this.entrySlippageCost = entrySlippageCost;
+        }
     }
 }

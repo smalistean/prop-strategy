@@ -43,15 +43,14 @@ public class PropRuleEngine {
         this.rules = rules;
     }
 
-    public RuleCheckResult check(Account account, Instant timestamp) {
+    public RuleCheckResult check(Account account, BigDecimal equity, Instant timestamp) {
         LocalDate day = timestamp.atZone(ZoneOffset.UTC).toLocalDate();
         if (currentDay == null || !currentDay.equals(day)) {
             currentDay = day;
-            dayStartBalance = account.balance();
+            dayStartBalance = equity;
         }
 
         BigDecimal initial = account.initialBalance();
-        BigDecimal equity = account.equityCurve().getLast();
         BigDecimal drawdownPct = account.peakBalance().subtract(equity, MC)
                 .divide(account.peakBalance(), MC)
                 .multiply(BigDecimal.valueOf(100), MC);

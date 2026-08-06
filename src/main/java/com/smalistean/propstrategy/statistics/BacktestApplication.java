@@ -1,60 +1,59 @@
 package com.smalistean.propstrategy.statistics;
 
+import com.smalistean.propstrategy.backtester.BacktestConfigurationLoader;
 import com.smalistean.propstrategy.backtester.BacktestEngine;
-import com.smalistean.propstrategy.backtester.PropRuleEngine;
-import com.smalistean.propstrategy.database.CsvKlineRepository;
+import com.smalistean.propstrategy.database.DatabaseConfig;
+import com.smalistean.propstrategy.database.FundingRate;
 import com.smalistean.propstrategy.database.Kline;
-import com.smalistean.propstrategy.marketdownloader.BinanceKlineClient;
-import com.smalistean.propstrategy.marketdownloader.KlineDownloader;
-import com.smalistean.propstrategy.strategy.TrendPullbackStrategy;
+import com.smalistean.propstrategy.database.PostgresFundingRateRepository;
+import com.smalistean.propstrategy.database.PostgresKlineRepository;
+import com.smalistean.propstrategy.feature.FeatureSnapshot;
+import com.smalistean.propstrategy.feature.ParameterizedFeatureGenerator;
+import com.smalistean.propstrategy.strategy.Strategy;
+import com.smalistean.propstrategy.strategy.StrategyRegistry;
 
-import java.math.BigDecimal;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-public class BacktestApplication {
+public final class BacktestApplication {
 
-    public static void main(String[] args) {
-        String symbol = args.length > 0 ? args[0] : "BTCUSDT";
-        String interval = args.length > 1 ? args[1] : "1h";
-        Path dataFile = Path.of(args.length > 2 ? args[2] : "data/" + symbol + "_" + interval + ".csv");
-
-        CsvKlineRepository repository = new CsvKlineRepository();
-        List<Kline> klines = loadOrDownload(symbol, interval, dataFile, repository);
-
-        BacktestEngine.BacktestConfig config = new BacktestEngine.BacktestConfig(
-                BigDecimal.valueOf(100_000),
-                BigDecimal.valueOf(0.01),
-                BigDecimal.valueOf(0.02),
-                BigDecimal.valueOf(2),
-                BigDecimal.valueOf(4),
-                new PropRuleEngine.PropRules(
-                        BigDecimal.valueOf(10),
-                        BigDecimal.valueOf(5),
-                        BigDecimal.valueOf(10)
-                )
-        );
-
-        BacktestEngine engine = new BacktestEngine(config);
-        BacktestEngine.BacktestResult result = engine.run(new TrendPullbackStrategy(), klines);
-
-        PerformanceReport report = new PerformanceReport();
-        System.out.println(report.generate(result));
+    private BacktestApplication() {
     }
 
-    private static List<Kline> loadOrDownload(String symbol, String interval, Path dataFile,
-                                              CsvKlineRepository repository) {
-        if (Files.exists(dataFile)) {
-            return repository.load(dataFile);
-        }
+    public static void main(String[] args) {
+        Path engineFile = Path.of(System.getProperty(
+                "engineConfig", "config/backtests/engine.properties"));
+        Path strategyFile = Path.of(System.getProperty(
+                "strategyConfig", "config/backtests/ema-pullback.properties"));
+        BacktestConfigurationLoader.LoadedConfiguration loaded =
+                new BacktestConfigurationLoader().load(engineFile, strategyFile);
+        Strategy strategy = StrategyRegistry.defaults().create(
+                loaded.strategyType(), loaded.strategyParameters());
 
-        Instant end = Instant.now();
-        Instant start = end.minus(90, ChronoUnit.DAYS);
-        KlineDownloader downloader = new KlineDownloader(new BinanceKlineClient(), repository);
-        downloader.download(symbol, interval, start, end, dataFile);
-        return repository.load(dataFile);
+        DatabaseConfig database = DatabaseConfig.fromEnvironment();
+        List<Kline> candles = new PostgresKlineRepository(database).findLatest(
+                loaded.symbol(), loaded.interval(), loaded.candleLimit());
+        List<FeatureSnapshot> snapshots = new ParameterizedFeatureGenerator()
+                .generate(candles, strategy.requiredFeatures());
+        Map<java.time.Instant, Kline> candlesByOpenTime = new HashMap<>();
+        candles.forEach(candle -> candlesByOpenTime.put(candle.openTime(), candle));
+        List<BacktestEngine.BacktestBar> bars = snapshots.stream()
+                .map(snapshot -> new BacktestEngine.BacktestBar(
+                        candlesByOpenTime.get(snapshot.candleOpenTime()), snapshot))
+                .toList();
+        List<FundingRate> funding = new PostgresFundingRateRepository(database)
+                .findThrough(loaded.symbol(), candles.getLast().closeTime());
+
+        BacktestEngine.BacktestResult result = new BacktestEngine(loaded.engine())
+                .run(strategy, bars, funding);
+        System.out.printf("Backtest: strategy=%s, symbol=%s, interval=%s, candles=%,d, featureBars=%,d%n",
+                strategy.name(), loaded.symbol(), loaded.interval(), candles.size(), bars.size());
+        System.out.println(new PerformanceReport().generate(result));
+        result.account().closedTrades().stream().limit(5).forEach(trade ->
+                System.out.printf("%s %s -> %s net=%s reason=%s%n",
+                        trade.side(), trade.entryTime(), trade.exitTime(),
+                        trade.netPnl().stripTrailingZeros().toPlainString(), trade.exitReason()));
     }
 }
