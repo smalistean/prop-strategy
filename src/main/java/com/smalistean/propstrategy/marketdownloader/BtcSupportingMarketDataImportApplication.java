@@ -22,6 +22,10 @@ public final class BtcSupportingMarketDataImportApplication {
     }
 
     public static void main(String[] args) {
+        importSymbol(SYMBOL);
+    }
+
+    static void importSymbol(String symbol) {
         String apiKey = requireEnvironment("BINANCE_API_KEY");
         DatabaseConfig config = DatabaseConfig.fromEnvironment();
         DatabaseMigrator.migrate(config);
@@ -33,14 +37,15 @@ public final class BtcSupportingMarketDataImportApplication {
         Instant endInclusive = Instant.now();
         Instant earliestAvailable = endInclusive.minus(AVAILABLE_HISTORY);
 
-        importOpenInterest(client, repository, earliestAvailable, endInclusive);
+        importOpenInterest(symbol, client, repository, earliestAvailable, endInclusive);
         for (RatioType type : RatioType.values()) {
-            importRatio(client, repository, type, earliestAvailable, endInclusive);
+            importRatio(symbol, client, repository, type, earliestAvailable, endInclusive);
         }
-        System.out.println("BTCUSDT Phase 3 supporting-market-data sync completed.");
+        System.out.printf("%s supporting-market-data sync completed.%n", symbol);
     }
 
-    private static void importOpenInterest(BinanceSupportingMarketDataClient client,
+    private static void importOpenInterest(String symbol,
+                                           BinanceSupportingMarketDataClient client,
                                            PostgresSupportingMarketDataRepository repository,
                                            Instant earliestAvailable,
                                            Instant endInclusive) {
@@ -48,7 +53,7 @@ public final class BtcSupportingMarketDataImportApplication {
         long processed = 0;
         while (!cursor.isBefore(earliestAvailable)) {
             List<OpenInterestStatistic> batch = client.fetchOpenInterest(
-                    SYMBOL, PERIOD, earliestAvailable.toEpochMilli(), cursor.toEpochMilli(), BATCH_SIZE);
+                    symbol, PERIOD, earliestAvailable.toEpochMilli(), cursor.toEpochMilli(), BATCH_SIZE);
             if (batch.isEmpty()) {
                 break;
             }
@@ -61,10 +66,11 @@ public final class BtcSupportingMarketDataImportApplication {
             cursor = previousCursor(cursor, firstTime);
         }
         System.out.printf("Open interest: %,d processed, %,d total stored.%n",
-                processed, repository.openInterestCount(SYMBOL, PERIOD));
+                processed, repository.openInterestCount(symbol, PERIOD));
     }
 
-    private static void importRatio(BinanceSupportingMarketDataClient client,
+    private static void importRatio(String symbol,
+                                    BinanceSupportingMarketDataClient client,
                                     PostgresSupportingMarketDataRepository repository,
                                     RatioType type,
                                     Instant earliestAvailable,
@@ -73,7 +79,7 @@ public final class BtcSupportingMarketDataImportApplication {
         long processed = 0;
         while (!cursor.isBefore(earliestAvailable)) {
             List<TraderRatio> batch = client.fetchRatios(
-                    SYMBOL, PERIOD, type, earliestAvailable.toEpochMilli(),
+                    symbol, PERIOD, type, earliestAvailable.toEpochMilli(),
                     cursor.toEpochMilli(), BATCH_SIZE);
             if (batch.isEmpty()) {
                 break;
@@ -87,7 +93,7 @@ public final class BtcSupportingMarketDataImportApplication {
             cursor = previousCursor(cursor, firstTime);
         }
         System.out.printf("%s: %,d processed, %,d total stored.%n",
-                type, processed, repository.ratioCount(SYMBOL, PERIOD, type));
+                type, processed, repository.ratioCount(symbol, PERIOD, type));
     }
 
     static Instant previousCursor(Instant currentCursor, Instant firstPageTime) {

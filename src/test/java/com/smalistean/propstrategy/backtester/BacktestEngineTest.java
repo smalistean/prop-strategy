@@ -91,13 +91,56 @@ class BacktestEngineTest {
         assertTrue(trade.netPnl().signum() > 0);
     }
 
+    @Test
+    void makerEntryFillsOnlyWhenOneMinutePriceTradesThroughLimit() {
+        List<BacktestEngine.BacktestBar> bars = List.of(
+                bar(0, "100", "101", "99", "100"),
+                bar(1, "100", "101", "99", "100"),
+                bar(2, "100", "101", "99", "100"));
+        Kline fillMinute = minute(15, "100", "100.1", "99.98", "100");
+
+        Trade trade = makerEngine().run(enterOnce(Side.LONG, "10", "100"),
+                        bars, List.of(), List.of(fillMinute,
+                                minute(16, "100", "100.1", "99.9", "100")))
+                .account().closedTrades().getFirst();
+
+        assertEquals(0, trade.entryPrice().compareTo(new BigDecimal("99.99")));
+        assertEquals(fillMinute.closeTime(), trade.entryTime());
+        assertEquals(0, trade.entrySlippageCost().compareTo(BigDecimal.ZERO));
+    }
+
+    @Test
+    void makerEntryExpiresWhenPriceOnlyTouchesLimit() {
+        List<BacktestEngine.BacktestBar> bars = List.of(
+                bar(0, "100", "101", "99", "100"),
+                bar(1, "100", "101", "99", "100"));
+
+        BacktestEngine.BacktestResult result = makerEngine().run(
+                enterOnce(Side.LONG, "10", "100"), bars, List.of(),
+                List.of(minute(15, "100", "100", "99.99", "100")));
+
+        assertTrue(result.account().closedTrades().isEmpty());
+    }
+
     private static BacktestEngine engine(String slippageBps, String feeBps) {
         return new BacktestEngine(new BacktestEngine.BacktestConfig(
                 new BigDecimal("10000"), new BigDecimal("0.01"),
-                new BigDecimal("100"), new BigDecimal(slippageBps),
-                new BigDecimal(feeBps), new PropRuleEngine.PropRules(
+                new BigDecimal("100"), new BacktestEngine.ExecutionConfig(
+                false, BigDecimal.ZERO, new BigDecimal(feeBps),
+                new BigDecimal(slippageBps), BigDecimal.ZERO, 5, true),
+                new PropRuleEngine.PropRules(
                 new BigDecimal("1000"), new BigDecimal("1000"),
                 new BigDecimal("1000"))));
+    }
+
+    private static BacktestEngine makerEngine() {
+        return new BacktestEngine(new BacktestEngine.BacktestConfig(
+                new BigDecimal("10000"), new BigDecimal("0.01"), new BigDecimal("100"),
+                new BacktestEngine.ExecutionConfig(true, new BigDecimal("2"),
+                        new BigDecimal("5"), new BigDecimal("2"),
+                        BigDecimal.ONE, 5, true),
+                new PropRuleEngine.PropRules(new BigDecimal("1000"),
+                        new BigDecimal("1000"), new BigDecimal("1000"))));
     }
 
     private static Strategy enterOnce(Side side, String stop, String target) {
@@ -133,5 +176,14 @@ class BacktestEngineTest {
         FeatureSnapshot features = new FeatureSnapshot(openTime, closeTime,
                 closeTime.plusMillis(1), Map.of(FeatureKey.close(), new BigDecimal(close)));
         return new BacktestEngine.BacktestBar(candle, features);
+    }
+
+    private static Kline minute(int minuteOffset, String open, String high,
+                                String low, String close) {
+        Instant openTime = START.plus(Duration.ofMinutes(minuteOffset));
+        return new Kline(openTime, new BigDecimal(open), new BigDecimal(high),
+                new BigDecimal(low), new BigDecimal(close), BigDecimal.ONE,
+                openTime.plus(Duration.ofMinutes(1)).minusMillis(1),
+                BigDecimal.ZERO, 1, BigDecimal.ZERO, BigDecimal.ZERO);
     }
 }

@@ -4,17 +4,18 @@ Last updated: 2026-08-06
 
 ## Current position
 
-The BTCUSDT kline pipeline is complete for the current scope: three years of
-1m, 5m, 15m, and 1h data plus incremental closed-candle synchronization. ETH
-is explicitly deferred. Phase 3 is complete for BTCUSDT: three years of
-funding rates and the full Binance-retained window of 5m supporting statistics
-are stored. The agreed initial Phase 4 BTCUSDT 15m feature slice is complete
+The BTCUSDT and ETHUSDT historical pipelines now contain at least three years
+of 1m, 5m, 15m, and 1h data, with reusable incremental closed-candle
+synchronization for both. Phase 3 is complete for both symbols: three years of funding
+rates and the full Binance-retained window of 5m supporting statistics are
+stored. The agreed initial Phase 4 BTCUSDT 15m feature slice is complete
 and ready to feed the backtester. Phase 5 now has a configurable, extensible
 backtesting engine and one deliberately unoptimized EMA-pullback baseline.
 Phase 6 metrics and chronological dataset controls are complete. Phase 7 now
-has two materially different strategy candidates and a shared automated
-acceptance gate; both initial training baselines were rejected. Validation and
-final-test results remain unopened.
+has three materially different strategy candidates and a shared automated
+acceptance gate; all initial training baselines were rejected. The RSI/ATR
+candidate is the closest so far. Validation and final-test results remain
+unopened.
 
 ## Completed
 
@@ -36,6 +37,9 @@ final-test results remain unopened.
 - Sixteen parsing, pagination, cursor, and interval-alignment unit tests pass.
 - Three complete years of BTCUSDT were imported and verified for all four
   selected intervals.
+- ETHUSDT was imported from 2023-08-06 UTC through the latest closed candle and
+  verified for all four intervals: 1,579,518 x 1m, 315,903 x 5m, 105,301 x
+  15m, and 26,325 x 1h.
 - The incremental sync resumes after each interval's latest database candle,
   excludes the currently open candle, and verifies the final timestamp.
 - An incremental run appended 52 new closed candles: 42 x 1m, 8 x 5m, and
@@ -45,6 +49,8 @@ final-test results remain unopened.
 - The funding-rate importer is paginated, paced, retryable, idempotent, and
   resumes after the latest stored funding event.
 - Three years of BTCUSDT funding-rate history were imported and verified.
+- ETHUSDT funding history contains 3,291 verified events from 2023-08-06
+  through 2026-08-06.
 - Binance limits open-interest and trader-ratio REST history to approximately
   one month. The top-trader account and position endpoints also require a
   Binance API key.
@@ -56,6 +62,8 @@ final-test results remain unopened.
 - The complete rolling 30-day BTCUSDT window is stored at 5m resolution for
   open interest, global account ratio, top-trader account ratio, and top-trader
   position ratio. Each dataset has zero non-5m gaps.
+- ETHUSDT also has 8,640 rows each for 5m open interest, global account ratio,
+  top-trader account ratio, and top-trader position ratio.
 - The project builds successfully with JDK 25.
 - Recent BTCUSDT 15m candles load from PostgreSQL in chronological order.
 - `FeatureGenerator` calculates EMA 20/50, Wilder RSI 14, Wilder ATR 14,
@@ -67,7 +75,7 @@ final-test results remain unopened.
   at or before candle close; missing context remains `null`.
 - A live preview generated 151 feature rows from 200 recent 15m candles and
   printed the latest 10 with all Futures context populated.
-- Thirty-five tests cover downloads, cursors, formulas, warm-up, chronology,
+- Forty-three tests cover downloads, cursors, formulas, warm-up, chronology,
   no-look-ahead alignment, long/short execution, fees, stops, and funding.
 - Engine and strategy configuration live in separate tracked properties files.
 - A strategy registry selects factories by type; each factory owns typed
@@ -120,6 +128,47 @@ final-test results remain unopened.
   failed seven of eight checks: -9.89% return, 0.271 profit factor, 10.14%
   maximum drawdown, 25 trades, and one profitable subperiod. Average win/loss
   ratio was 1.424, while stressed net profit was -10,706.52. It is rejected.
+- The RSI/ATR mean-reversion strategy trades fresh RSI extreme crossings only
+  with the EMA 200 trend, rejects fast ATR expansion, uses an ATR stop, and
+  exits at RSI mean reversion or trend failure. It completed all 70,004
+  training bars with -2.55% return, 0.755 profit factor, 3.80% drawdown, and 34
+  trades. Two subperiods were profitable. It passed only the drawdown criterion
+  and is rejected, but is the strongest baseline so far. Fees were 4,275.18
+  and modeled slippage was 1,710.07.
+- A reusable diagnostic report now separates raw price PnL, funding, fees,
+  slippage, and net PnL; groups trades by side, exit reason, month, and prior
+  24-hour trend regime; and reports holding time, MFE, MAE, consecutive losses,
+  break-even cost, and execution-model details.
+- The taker-only diagnostics showed that RSI/ATR had a positive raw edge and
+  justified implementing maker execution rather than assuming every limit
+  filled.
+- The engine now resolves maker orders against 1m candles. It requires strict
+  trade-through, expires entries after five minutes, charges 2 bps maker fees,
+  uses maker targets, and keeps stops at 5 bps taker fees plus 2 bps slippage.
+  Strategy exits try maker and use a timed taker fallback. Fill and expiry
+  counts are reported.
+- BTC RSI/ATR now returns +1.05% with 32/35 maker entries filled, 3.25% maximum
+  drawdown, and 1.125 profit factor. It still fails acceptance because it has
+  only 32 trades, one profitable subperiod, concentrated profit, and negative
+  stressed-cost PnL.
+- Acceptance has separate frequency profiles. The high-frequency profile
+  requires at least 1,460 filled trades over two training years (approximately
+  two per day). The default low-frequency profile requires at least 60 trades
+  for strategies expected to trade less than daily. Both retain the same
+  profitability, drawdown, subperiod-stability, win/loss, and cost-stress gates.
+- A new intraday flat-market mean-reversion baseline uses RSI 7, EMA 20 slope
+  and deviation, ATR expansion filtering, ATR protection, short holding time,
+  and real maker execution. It was rejected on both symbols. BTC reached
+  maximum drawdown at -9.73% after 48 trades; ETH reached it at -10.22% after
+  51. The four separately restarted subperiods totaled only 277 BTC and 300 ETH
+  trades, around 0.4 per day, and raw PnL was negative before costs.
+- With real maker fills and conservative protective-order sequencing, ETH
+  compression is -3,325.16 net. ETH RSI/ATR has +770.56 zero-cost PnL and
+  -1,069.35 net. Both fail acceptance.
+- Directional behavior differs by symbol: BTC RSI/ATR longs were profitable
+  and shorts were poor; ETH RSI/ATR shorts earned 1,317.49 and longs lost
+  2,386.83. This argues against hard-coding one directional bias
+  across symbols.
 - Validation and final-test periods have not been run.
 
 ## Current database
@@ -132,14 +181,23 @@ final-test results remain unopened.
 - BTCUSDT 5m: 315,656 rows
 - BTCUSDT 15m: 105,218 rows
 - BTCUSDT 1h: 26,304 rows
-- Total Futures klines: 2,025,460 rows
+- ETHUSDT 1m: 1,579,518 rows
+- ETHUSDT 5m: 315,903 rows
+- ETHUSDT 15m: 105,301 rows
+- ETHUSDT 1h: 26,325 rows
+- Total ETHUSDT Futures klines: 2,027,047 rows
 - BTCUSDT funding rates: 3,288 rows
+- ETHUSDT funding rates: 3,291 rows
 - Funding-rate window: 2023-08-07 through 2026-08-06
 - Historical funding rows without a Binance mark price: 256 (stored as NULL)
 - BTCUSDT 5m open-interest statistics: 8,640 rows
 - BTCUSDT 5m global account ratios: 8,640 rows
 - BTCUSDT 5m top-trader account ratios: 8,640 rows
 - BTCUSDT 5m top-trader position ratios: 8,640 rows
+- ETHUSDT 5m open-interest statistics: 8,640 rows
+- ETHUSDT 5m global account ratios: 8,640 rows
+- ETHUSDT 5m top-trader account ratios: 8,640 rows
+- ETHUSDT 5m top-trader position ratios: 8,640 rows
 - Supporting-statistics window: 2026-07-07 18:35 UTC through 2026-08-06
   18:30 UTC
 - `futures_kline` table and indexes: approximately 386 MB after import
@@ -178,12 +236,27 @@ mvn exec:java \
 JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
 PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
 mvn exec:java \
+  -Dexec.mainClass=com.smalistean.propstrategy.marketdownloader.EthHistoricalImportApplication
+
+JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
+PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
+mvn exec:java \
   -Dexec.mainClass=com.smalistean.propstrategy.marketdownloader.BtcIncrementalSyncApplication
 
 JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
 PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
 mvn exec:java \
+  -Dexec.mainClass=com.smalistean.propstrategy.marketdownloader.EthIncrementalSyncApplication
+
+JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
+PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
+mvn exec:java \
   -Dexec.mainClass=com.smalistean.propstrategy.marketdownloader.BtcFundingRateImportApplication
+
+JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
+PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
+mvn exec:java \
+  -Dexec.mainClass=com.smalistean.propstrategy.marketdownloader.EthFundingRateImportApplication
 
 set -a
 source .env.binance
@@ -221,6 +294,22 @@ mvn exec:java \
   -DstrategyConfig=config/backtests/volatility-compression-breakout.properties \
   -DbacktestDataset=TRAINING
 
+JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
+PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
+mvn exec:java \
+  -Dexec.mainClass=com.smalistean.propstrategy.statistics.BacktestApplication \
+  -DstrategyConfig=config/backtests/rsi-atr-mean-reversion.properties \
+  -DbacktestDataset=TRAINING \
+  -Ddiagnostics=true
+
+JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
+PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
+mvn exec:java \
+  -Dexec.mainClass=com.smalistean.propstrategy.statistics.BacktestApplication \
+  -DstrategyConfig=config/backtests/intraday-flat-mean-reversion.properties \
+  -DbacktestDataset=TRAINING \
+  -Ddiagnostics=true
+
 PGPASSWORD=$DB_PASSWORD /opt/homebrew/opt/postgresql@17/bin/psql \
   -h localhost -U "$DB_USER" -d "$DB_NAME" \
   -c "SELECT symbol, interval, COUNT(*) FROM futures_kline GROUP BY symbol, interval;"
@@ -228,7 +317,7 @@ PGPASSWORD=$DB_PASSWORD /opt/homebrew/opt/postgresql@17/bin/psql \
 
 ## Next step
 
-Add a controlled parameter-search runner. Search only the training period,
-rank candidates using the shared fixed acceptance criteria, and freeze search
-ranges and winning parameters before opening validation. Keep the final test
-closed until after validation.
+Do not increase the rejected intraday strategy's frequency by simply loosening
+thresholds: its current raw trades already lose. Next, test a training-only
+long-biased BTC RSI/ATR flat-regime variant and add controlled parameter search.
+Keep validation and final test closed.

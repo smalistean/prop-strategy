@@ -52,8 +52,14 @@ public final class BacktestConfigurationLoader {
                 decimal(engine, "account.initialBalance"),
                 decimal(engine, "risk.fractionPerTrade"),
                 decimal(engine, "risk.maxLeverage"),
-                decimal(engine, "execution.slippageBps"),
-                decimal(engine, "execution.takerFeeBps"),
+                new BacktestEngine.ExecutionConfig(
+                        bool(engine, "execution.makerEnabled"),
+                        decimal(engine, "execution.makerFeeBps"),
+                        decimal(engine, "execution.takerFeeBps"),
+                        decimal(engine, "execution.takerSlippageBps"),
+                        decimal(engine, "execution.makerOffsetBps"),
+                        integer(engine, "execution.makerOrderLifetimeMinutes"),
+                        bool(engine, "execution.strategyExitTakerFallback")),
                 new PropRuleEngine.PropRules(
                         decimal(engine, "prop.maxTotalDrawdownPercent"),
                         decimal(engine, "prop.maxDailyLossPercent"),
@@ -111,6 +117,14 @@ public final class BacktestConfigurationLoader {
             throw new IllegalArgumentException("Configuration property must be a positive integer: "
                     + name, e);
         }
+    }
+
+    private static boolean bool(Properties properties, String name) {
+        String value = required(properties, name);
+        if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")) {
+            throw new IllegalArgumentException("Configuration property must be true or false: " + name);
+        }
+        return Boolean.parseBoolean(value);
     }
 
     private static BacktestDataset.Type datasetType(Properties properties) {

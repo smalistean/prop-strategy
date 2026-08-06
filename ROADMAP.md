@@ -26,8 +26,10 @@ response and fields are verified, design the PostgreSQL schema and persistence.
 -   [x] Parse every required kline field.
 -   [x] Import and verify three years of BTCUSDT for 1m, 5m, 15m, and 1h.
 -   [x] Add production pagination, retries, pacing, and resumable batches.
--   [ ] Download at least three years for ETHUSDT and any later symbols
-    (explicitly deferred while the BTCUSDT vertical slice is built).
+-   [x] Download and verify at least three years for ETHUSDT at every selected
+    interval.
+-   [ ] Download later symbols only after BTCUSDT/ETHUSDT research justifies
+    expanding the universe.
 
 ## Symbols
 
@@ -70,6 +72,7 @@ response and fields are verified, design the PostgreSQL schema and persistence.
 -   [x] Insert a small Futures sample with an idempotent upsert.
 -   [x] Perform the complete BTCUSDT historical import.
 -   [x] Append new closed BTCUSDT candles incrementally.
+-   [x] Reuse historical and incremental persistence for ETHUSDT.
 
 ------------------------------------------------------------------------
 
@@ -86,6 +89,7 @@ response and fields are verified, design the PostgreSQL schema and persistence.
     resolution; requires a Binance API key.
 -   [x] Top Trader Position Ratio: store the latest available 30 days at 5m
     resolution; requires a Binance API key.
+-   [x] Repeat funding and all retained supporting datasets for ETHUSDT.
 
 Binance limits the four statistical datasets above to the latest month or
 30 days.
@@ -161,6 +165,9 @@ feature persistence remain candidates for later strategies.
 -   [x] Apply funding cash flows while a Futures position is open.
 -   [x] Track gross PnL, fees, funding, slippage costs, and net PnL per trade.
 -   [x] Mark equity each candle and enforce configured prop challenge limits.
+-   [x] Model post-only maker entries and ordinary exits using subsequent 1m
+    candles. Require price to trade through the limit; keep protective stops as
+    taker orders and count unfilled orders as missed trades.
 
 ## Baseline
 
@@ -213,6 +220,12 @@ keys, and tracked experiment file without changing the execution engine.
 -   [x] Add and reject a volatility-compression breakout baseline using the
     previous candle's Bollinger-bandwidth percentile, ATR expansion, and
     volume confirmation.
+-   [x] Add and reject an RSI/ATR mean-reversion baseline with an EMA 200 trend
+    filter, volatility-expansion guard, and RSI mean exit.
+-   [x] Add and reject an intraday flat-market mean-reversion baseline designed
+    for higher frequency with RSI 7, EMA 20, ATR, and real maker fills.
+-   [x] Add diagnostic reports by side, exit reason, calendar period, market
+    regime, and gross-versus-cost performance.
 -   [ ] Automatically test controlled parameter combinations.
 -   [ ] Compare frozen candidates on validation before opening the final test.
 -   [ ] Keep strategies that remain profitable across different market
@@ -220,13 +233,20 @@ keys, and tracked experiment file without changing the execution engine.
 
 ## Strategy acceptance criteria
 
-These thresholds are tracked in
-`config/backtests/strategy-acceptance.properties` and are evaluated by default
-for every strategy run on the training dataset. A candidate passes only when
-every check passes:
+Two profiles are tracked separately and selected with
+`-DacceptanceConfig=<file>` for every strategy run on the training dataset:
+
+-   `config/backtests/acceptance-high-frequency.properties` requires at least
+    1,460 filled trades over two training years, approximately two per day.
+-   `config/backtests/acceptance-low-frequency.properties` requires at least
+    60 filled trades as a basic evidence floor for strategies expected to trade
+    less than once per day. This is the default profile.
+
+A candidate passes only when every check in its selected profile passes:
 
 -   Net profit is positive and profit factor is at least 1.10.
--   Maximum drawdown is no more than 10% and there are at least 60 trades.
+-   Maximum drawdown is no more than 10%, and the trade count reaches the
+    selected profile's minimum.
 -   At least three of the four six-month training subperiods are profitable.
 -   No single positive subperiod supplies more than 60% of total positive
     subperiod profit.
@@ -243,6 +263,65 @@ checks: -9.89% return, 0.271 profit factor, 10.14% maximum drawdown, 25 trades,
 one profitable subperiod, and negative stressed-cost profit. Only average
 win/loss ratio passed. It is also rejected without opening validation or final
 test data.
+
+The initial RSI/ATR mean-reversion parameters failed seven of eight checks,
+but improved materially on the breakout baselines: -2.55% return, 0.755 profit
+factor, 3.80% maximum drawdown, 34 trades, and two profitable subperiods. It
+completed the full training period and passed the drawdown criterion. Modeled
+fees and slippage were 5,985.26, making execution-cost diagnostics a priority.
+
+## Initial taker-only diagnostic findings
+
+-   EMA pullback, Donchian breakout, and volatility-compression breakout have
+    negative price PnL before costs. Maker execution cannot rescue their
+    current signals.
+-   RSI/ATR mean reversion has positive zero-cost PnL of 3,431.80, but loses
+    5,985.26 to the current taker-fee and slippage model.
+-   RSI/ATR longs made 3,553.43 net while shorts lost 6,106.89. Flat-regime raw
+    PnL was positive, but current costs reduced it to -580.12 net.
+-   The original optimistic maker counterfactual motivated a real 1m execution
+    model; its values are superseded by the results below.
+
+## One-minute maker execution
+
+-   Maker orders are offset 1 bps from the next 15m open and live for five
+    minutes.
+-   A buy fills only when a later 1m low is strictly below its limit; a sell
+    fills only when a later 1m high is strictly above its limit. A touch does
+    not count, and expired entries become missed trades.
+-   Take-profit limits use maker fees. Stops use taker fees and adverse
+    slippage. Strategy exits try maker first and fall back to taker after five
+    minutes.
+-   BTC RSI/ATR becomes +1.05% net with 32 of 35 entries filled, but still
+    fails acceptance: only one profitable subperiod, 32 trades, concentrated
+    profit, and -134.51 stressed-cost PnL.
+
+## Intraday frequency baseline
+
+The initial intraday flat-market strategy failed immediately on both symbols:
+
+-   BTC stopped at maximum drawdown with -9.73%, 48 completed trades, 0.346
+    profit factor, and negative raw PnL. Its four independent subperiod runs
+    produced 277 trades in total.
+-   ETH stopped at maximum drawdown with -10.22%, 51 completed trades, 0.320
+    profit factor, and negative raw PnL. Its four independent subperiod runs
+    produced 300 trades in total.
+-   This is only about 0.4 trades per day when measured across independent
+    subperiods, far below the desired two per day. Loosening the entry rules is
+    not justified because the existing trades already lack a pre-cost edge.
+
+## ETHUSDT comparison
+
+-   All initial strategy configurations fail shared training acceptance on
+    ETHUSDT as well.
+-   EMA pullback and Donchian remain negative before costs.
+-   With real maker fills, ETH volatility compression remains -3,325.16 net
+    and fails acceptance.
+-   With real maker fills, ETH RSI/ATR produces 770.56 zero-cost PnL and
+    -1,069.35 net PnL. It also fails acceptance.
+-   BTC RSI/ATR favors longs; ETH RSI/ATR shorts earned 1,316.63 while ETH
+    longs lost 2,386.83. Strategy direction must therefore be
+    symbol-specific or driven by a validated regime rule.
 
 ------------------------------------------------------------------------
 

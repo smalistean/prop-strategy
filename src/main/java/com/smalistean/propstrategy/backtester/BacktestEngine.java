@@ -19,8 +19,7 @@ public final class BacktestEngine {
             BigDecimal initialBalance,
             BigDecimal riskFraction,
             BigDecimal maxLeverage,
-            BigDecimal slippageBps,
-            BigDecimal takerFeeBps,
+            ExecutionConfig execution,
             PropRuleEngine.PropRules propRules
     ) {
         public BacktestConfig {
@@ -28,6 +27,24 @@ public final class BacktestEngine {
                     || riskFraction.compareTo(BigDecimal.ONE) > 0
                     || maxLeverage.signum() <= 0) {
                 throw new IllegalArgumentException("Invalid backtest balance/risk configuration");
+            }
+        }
+    }
+
+    public record ExecutionConfig(
+            boolean makerEnabled,
+            BigDecimal makerFeeBps,
+            BigDecimal takerFeeBps,
+            BigDecimal takerSlippageBps,
+            BigDecimal makerOffsetBps,
+            int makerOrderLifetimeMinutes,
+            boolean strategyExitTakerFallback
+    ) {
+        public ExecutionConfig {
+            if (makerFeeBps.signum() < 0 || takerFeeBps.signum() < 0
+                    || takerSlippageBps.signum() < 0 || makerOffsetBps.signum() < 0
+                    || makerOrderLifetimeMinutes <= 0) {
+                throw new IllegalArgumentException("Invalid execution configuration");
             }
         }
     }
@@ -42,8 +59,14 @@ public final class BacktestEngine {
 
     public record BacktestResult(
             Account account,
-            Optional<PropRuleEngine.Violation> terminationReason
+            Optional<PropRuleEngine.Violation> terminationReason,
+            ExecutionStats executionStats
     ) {
+    }
+
+    public record ExecutionStats(int makerEntryOrders, int makerEntryFills,
+                                 int expiredMakerEntries, int makerExitOrders,
+                                 int makerExitFills, int takerExitFallbacks) {
     }
 
     private static final MathContext MC = new MathContext(16, RoundingMode.HALF_UP);
@@ -55,55 +78,79 @@ public final class BacktestEngine {
 
     public BacktestResult run(Strategy strategy, List<BacktestBar> bars,
                               List<FundingRate> fundingRates) {
+        return run(strategy, bars, fundingRates, List.of());
+    }
+
+    public BacktestResult run(Strategy strategy, List<BacktestBar> bars,
+                              List<FundingRate> fundingRates, List<Kline> minuteCandles) {
         if (bars.isEmpty()) {
             throw new IllegalArgumentException("Backtest requires at least one bar");
         }
+        if (config.execution().makerEnabled() && minuteCandles.isEmpty()) {
+            throw new IllegalArgumentException("Maker execution requires 1m candles");
+        }
         Account account = new Account(config.initialBalance());
         PositionSizer sizer = new PositionSizer(config.riskFraction());
-        ExecutionModel execution = new ExecutionModel(config.slippageBps(), config.takerFeeBps());
+        ExecutionModel execution = new ExecutionModel(config.execution().takerSlippageBps(),
+                config.execution().takerFeeBps(), config.execution().makerFeeBps());
         PropRuleEngine propRules = new PropRuleEngine(config.propRules());
         List<FeatureSnapshot> history = bars.stream().map(BacktestBar::features).toList();
         StrategyDecision pending = StrategyDecision.hold();
         Optional<PropRuleEngine.Violation> termination = Optional.empty();
         int fundingIndex = 0;
+        int minuteIndex = 0;
+        ExecutionTracker tracker = new ExecutionTracker();
 
         for (int index = 0; index < bars.size(); index++) {
             BacktestBar frame = bars.get(index);
             Kline bar = frame.candle();
 
-            executePending(pending, account, sizer, execution, bar);
+            while (minuteIndex < minuteCandles.size()
+                    && minuteCandles.get(minuteIndex).openTime().isBefore(bar.openTime())) {
+                minuteIndex++;
+            }
+            int minuteEnd = minuteIndex;
+            while (minuteEnd < minuteCandles.size()
+                    && !minuteCandles.get(minuteEnd).openTime().isAfter(bar.closeTime())) {
+                minuteEnd++;
+            }
+            List<Kline> withinBar = minuteCandles.subList(minuteIndex, minuteEnd);
+
+            executePending(pending, account, sizer, execution, bar, withinBar, tracker);
             applyFundingThrough(account, fundingRates, bar, fundingIndex);
             while (fundingIndex < fundingRates.size()
                     && !fundingRates.get(fundingIndex).fundingTime().isAfter(bar.closeTime())) {
                 fundingIndex++;
             }
-            executeProtectiveOrders(account, execution, bar);
+            executeProtectiveOrders(account, execution, bar, withinBar);
             account.incrementBarsHeld();
             BigDecimal equity = account.markToMarket(bar.close());
 
             PropRuleEngine.RuleCheckResult ruleCheck = propRules.check(account, equity, bar.closeTime());
             if (!ruleCheck.passed()) {
                 if (account.hasOpenPosition()) {
-                    closeAt(account, execution, bar.closeTime(), bar.close(), "prop rule termination");
+                    closeAtTaker(account, execution, bar.closeTime(), bar.close(), "prop rule termination");
                 }
                 termination = ruleCheck.violation();
                 break;
             }
 
             pending = strategy.evaluate(history, index, account.positionView());
+            minuteIndex = minuteEnd;
         }
 
         if (account.hasOpenPosition()) {
             Kline last = bars.getLast().candle();
-            closeAt(account, execution, last.closeTime(), last.close(), "end of data");
+            closeAtTaker(account, execution, last.closeTime(), last.close(), "end of data");
         }
-        return new BacktestResult(account, termination);
+        return new BacktestResult(account, termination, tracker.snapshot());
     }
 
     private void executePending(StrategyDecision pending, Account account,
-                                PositionSizer sizer, ExecutionModel execution, Kline bar) {
+                                PositionSizer sizer, ExecutionModel execution, Kline bar,
+                                List<Kline> minuteCandles, ExecutionTracker tracker) {
         if (pending instanceof StrategyDecision.Exit exit && account.hasOpenPosition()) {
-            closeAt(account, execution, bar.openTime(), bar.open(), exit.reason());
+            executeExit(account, execution, bar, minuteCandles, exit.reason(), tracker);
             return;
         }
         if (!(pending instanceof StrategyDecision.Enter entry) || account.hasOpenPosition()) {
@@ -111,7 +158,22 @@ public final class BacktestEngine {
         }
 
         boolean buy = entry.side() == Side.LONG;
-        ExecutionModel.Fill unitFill = execution.fill(bar.open(), buy, BigDecimal.ONE);
+        if (config.execution().makerEnabled()) {
+            tracker.makerEntryOrders++;
+        }
+        MakerFill makerFill = config.execution().makerEnabled()
+                ? findMakerFill(bar, minuteCandles, buy) : null;
+        if (config.execution().makerEnabled() && makerFill == null) {
+            tracker.expiredMakerEntries++;
+            return;
+        }
+        if (makerFill != null) {
+            tracker.makerEntryFills++;
+        }
+        BigDecimal entryPrice = makerFill == null ? bar.open() : makerFill.price();
+        ExecutionModel.Fill unitFill = makerFill == null
+                ? execution.takerFill(entryPrice, buy, BigDecimal.ONE)
+                : execution.makerFill(entryPrice, BigDecimal.ONE);
         BigDecimal quantity = sizer.size(account.balance(), unitFill.fillPrice(),
                 entry.side() == Side.LONG
                         ? unitFill.fillPrice().subtract(entry.stopDistance(), MC)
@@ -122,7 +184,9 @@ public final class BacktestEngine {
         if (quantity.signum() <= 0) {
             return;
         }
-        ExecutionModel.Fill fill = execution.fill(bar.open(), buy, quantity);
+        ExecutionModel.Fill fill = makerFill == null
+                ? execution.takerFill(entryPrice, buy, quantity)
+                : execution.makerFill(entryPrice, quantity);
         BigDecimal stop = entry.side() == Side.LONG
                 ? fill.fillPrice().subtract(entry.stopDistance(), MC)
                 : fill.fillPrice().add(entry.stopDistance(), MC);
@@ -132,28 +196,60 @@ public final class BacktestEngine {
         if (stop.signum() <= 0 || target.signum() <= 0) {
             return;
         }
-        account.open(bar.openTime(), entry.side(), quantity, stop, target, fill);
+        account.open(makerFill == null ? bar.openTime() : makerFill.time(),
+                entry.side(), quantity, stop, target, fill);
     }
 
-    private static void executeProtectiveOrders(Account account, ExecutionModel execution,
-                                                Kline bar) {
+    private void executeProtectiveOrders(Account account, ExecutionModel execution,
+                                         Kline bar, List<Kline> minuteCandles) {
         if (!account.hasOpenPosition()) {
+            return;
+        }
+        if (config.execution().makerEnabled()) {
+            for (Kline minute : minuteCandles) {
+                if (!account.hasOpenPosition()) {
+                    return;
+                }
+                if (!minute.openTime().isAfter(account.positionView().entryTime())) {
+                    continue;
+                }
+                executeProtectiveMinute(account, execution, minute);
+            }
             return;
         }
         if (account.side() == Side.LONG) {
             if (bar.low().compareTo(account.stopPrice()) <= 0) {
                 BigDecimal reference = bar.open().compareTo(account.stopPrice()) < 0
                         ? bar.open() : account.stopPrice();
-                closeAt(account, execution, bar.closeTime(), reference, "stop loss");
+                closeAtTaker(account, execution, bar.closeTime(), reference, "stop loss");
             } else if (bar.high().compareTo(account.targetPrice()) >= 0) {
-                closeAt(account, execution, bar.closeTime(), account.targetPrice(), "take profit");
+                closeAtTaker(account, execution, bar.closeTime(), account.targetPrice(), "take profit");
             }
         } else if (bar.high().compareTo(account.stopPrice()) >= 0) {
             BigDecimal reference = bar.open().compareTo(account.stopPrice()) > 0
                     ? bar.open() : account.stopPrice();
-            closeAt(account, execution, bar.closeTime(), reference, "stop loss");
+            closeAtTaker(account, execution, bar.closeTime(), reference, "stop loss");
         } else if (bar.low().compareTo(account.targetPrice()) <= 0) {
-            closeAt(account, execution, bar.closeTime(), account.targetPrice(), "take profit");
+            closeAtTaker(account, execution, bar.closeTime(), account.targetPrice(), "take profit");
+        }
+    }
+
+    private static void executeProtectiveMinute(Account account, ExecutionModel execution,
+                                                Kline minute) {
+        if (account.side() == Side.LONG) {
+            if (minute.low().compareTo(account.stopPrice()) <= 0) {
+                BigDecimal reference = minute.open().compareTo(account.stopPrice()) < 0
+                        ? minute.open() : account.stopPrice();
+                closeAtTaker(account, execution, minute.closeTime(), reference, "stop loss");
+            } else if (minute.high().compareTo(account.targetPrice()) > 0) {
+                closeAtMaker(account, execution, minute.closeTime(), account.targetPrice(), "take profit");
+            }
+        } else if (minute.high().compareTo(account.stopPrice()) >= 0) {
+            BigDecimal reference = minute.open().compareTo(account.stopPrice()) > 0
+                    ? minute.open() : account.stopPrice();
+            closeAtTaker(account, execution, minute.closeTime(), reference, "stop loss");
+        } else if (minute.low().compareTo(account.targetPrice()) < 0) {
+            closeAtMaker(account, execution, minute.closeTime(), account.targetPrice(), "take profit");
         }
     }
 
@@ -164,7 +260,8 @@ public final class BacktestEngine {
             if (rate.fundingTime().isAfter(bar.closeTime())) {
                 break;
             }
-            if (!rate.fundingTime().isBefore(bar.openTime()) && account.hasOpenPosition()) {
+            if (!rate.fundingTime().isBefore(bar.openTime()) && account.hasOpenPosition()
+                    && !rate.fundingTime().isBefore(account.positionView().entryTime())) {
                 BigDecimal price = rate.markPrice() == null ? bar.close() : rate.markPrice();
                 BigDecimal payment = price.multiply(account.quantity(), MC)
                         .multiply(rate.fundingRate(), MC);
@@ -173,10 +270,101 @@ public final class BacktestEngine {
         }
     }
 
-    private static void closeAt(Account account, ExecutionModel execution,
-                                java.time.Instant time, BigDecimal referencePrice, String reason) {
+    private MakerFill findMakerFill(Kline bar, List<Kline> minuteCandles, boolean buy) {
+        BigDecimal limit = makerLimit(bar.open(), buy);
+        java.time.Instant expires = bar.openTime()
+                .plus(java.time.Duration.ofMinutes(config.execution().makerOrderLifetimeMinutes()));
+        for (Kline minute : minuteCandles) {
+            if (!minute.openTime().isBefore(expires)) {
+                break;
+            }
+            boolean tradedThrough = buy
+                    ? minute.low().compareTo(limit) < 0
+                    : minute.high().compareTo(limit) > 0;
+            if (tradedThrough) {
+                return new MakerFill(minute.closeTime(), limit);
+            }
+        }
+        return null;
+    }
+
+    private void executeExit(Account account, ExecutionModel execution, Kline bar,
+                             List<Kline> minuteCandles, String reason, ExecutionTracker tracker) {
+        if (!config.execution().makerEnabled()) {
+            closeAtTaker(account, execution, bar.openTime(), bar.open(), reason);
+            return;
+        }
+        tracker.makerExitOrders++;
         boolean buy = account.side() == Side.SHORT;
-        ExecutionModel.Fill fill = execution.fill(referencePrice, buy, account.quantity());
+        BigDecimal limit = makerLimit(bar.open(), buy);
+        java.time.Instant expires = bar.openTime()
+                .plus(java.time.Duration.ofMinutes(config.execution().makerOrderLifetimeMinutes()));
+        for (Kline minute : minuteCandles) {
+            if (!minute.openTime().isBefore(expires)) {
+                break;
+            }
+            if (minute.openTime().isAfter(account.positionView().entryTime())) {
+                executeProtectiveMinute(account, execution, minute);
+                if (!account.hasOpenPosition()) {
+                    return;
+                }
+            }
+            boolean tradedThrough = buy
+                    ? minute.low().compareTo(limit) < 0
+                    : minute.high().compareTo(limit) > 0;
+            if (tradedThrough) {
+                tracker.makerExitFills++;
+                closeAtMaker(account, execution, minute.closeTime(), limit, reason);
+                return;
+            }
+        }
+        if (!config.execution().strategyExitTakerFallback()) {
+            return;
+        }
+        tracker.takerExitFallbacks++;
+        Kline fallback = minuteCandles.stream()
+                .filter(minute -> !minute.openTime().isBefore(expires))
+                .findFirst().orElse(null);
+        if (fallback == null) {
+            closeAtTaker(account, execution, bar.closeTime(), bar.close(), reason + " taker fallback");
+        } else {
+            closeAtTaker(account, execution, fallback.openTime(), fallback.open(),
+                    reason + " taker fallback");
+        }
+    }
+
+    private static void closeAtTaker(Account account, ExecutionModel execution,
+                                     java.time.Instant time, BigDecimal referencePrice, String reason) {
+        boolean buy = account.side() == Side.SHORT;
+        ExecutionModel.Fill fill = execution.takerFill(referencePrice, buy, account.quantity());
         account.close(time, fill, reason);
+    }
+
+    private static void closeAtMaker(Account account, ExecutionModel execution,
+                                     java.time.Instant time, BigDecimal limitPrice, String reason) {
+        account.close(time, execution.makerFill(limitPrice, account.quantity()), reason);
+    }
+
+    private record MakerFill(java.time.Instant time, BigDecimal price) {
+    }
+
+    private BigDecimal makerLimit(BigDecimal reference, boolean buy) {
+        BigDecimal offset = reference.multiply(config.execution().makerOffsetBps(), MC)
+                .divide(BigDecimal.valueOf(10_000), MC);
+        return buy ? reference.subtract(offset, MC) : reference.add(offset, MC);
+    }
+
+    private static final class ExecutionTracker {
+        private int makerEntryOrders;
+        private int makerEntryFills;
+        private int expiredMakerEntries;
+        private int makerExitOrders;
+        private int makerExitFills;
+        private int takerExitFallbacks;
+
+        private ExecutionStats snapshot() {
+            return new ExecutionStats(makerEntryOrders, makerEntryFills, expiredMakerEntries,
+                    makerExitOrders, makerExitFills, takerExitFallbacks);
+        }
     }
 }

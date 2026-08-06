@@ -18,7 +18,9 @@ public final class StrategyRegistry {
         return new StrategyRegistry(java.util.List.of(
                 new EmaPullbackStrategyFactory(),
                 new DonchianBreakoutStrategyFactory(),
-                new VolatilityCompressionBreakoutStrategyFactory()));
+                new VolatilityCompressionBreakoutStrategyFactory(),
+                new RsiAtrMeanReversionStrategyFactory(),
+                new IntradayFlatMeanReversionStrategyFactory()));
     }
 
     public Strategy create(String type, StrategyParameters parameters) {

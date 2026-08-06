@@ -21,6 +21,10 @@ public final class BtcHistoricalImportApplication {
     }
 
     public static void main(String[] args) {
+        importSymbol(SYMBOL, null);
+    }
+
+    static void importSymbol(String symbol, Instant fixedStartInclusive) {
         DatabaseConfig config = DatabaseConfig.fromEnvironment();
         DatabaseMigrator.migrate(config);
 
@@ -29,25 +33,26 @@ public final class BtcHistoricalImportApplication {
         Instant now = Instant.now();
 
         for (KlineInterval interval : KlineInterval.values()) {
-            importInterval(client, repository, interval, now);
+            importInterval(symbol, fixedStartInclusive, client, repository, interval, now);
         }
-        System.out.println("BTCUSDT three-year Futures import completed and verified.");
+        System.out.printf("%s Futures import completed and verified.%n", symbol);
     }
 
-    private static void importInterval(BinanceKlineClient client,
+    private static void importInterval(String symbol, Instant fixedStartInclusive,
+                                       BinanceKlineClient client,
                                        PostgresKlineRepository repository,
                                        KlineInterval interval,
                                        Instant now) {
         Instant endExclusive = interval.floor(now);
-        Instant threeYearsAgo = ZonedDateTime.ofInstant(endExclusive, ZoneOffset.UTC)
-                .minusYears(3)
-                .toInstant();
-        Instant startInclusive = interval.floor(threeYearsAgo);
+        Instant requestedStart = fixedStartInclusive == null
+                ? ZonedDateTime.ofInstant(endExclusive, ZoneOffset.UTC).minusYears(3).toInstant()
+                : fixedStartInclusive;
+        Instant startInclusive = interval.floor(requestedStart);
         long expected = Duration.between(startInclusive, endExclusive)
                 .dividedBy(interval.duration());
 
         KlineRangeStats initial = repository.rangeStats(
-                SYMBOL, interval.code(), startInclusive, endExclusive);
+                symbol, interval.code(), startInclusive, endExclusive);
         Instant cursor = resumeCursor(initial, startInclusive, interval);
         System.out.printf("%s: importing %,d expected candles from %s to %s; %,d already stored.%n",
                 interval.code(), expected, startInclusive, endExclusive, initial.count());
@@ -61,7 +66,7 @@ public final class BtcHistoricalImportApplication {
             Instant batchStart = cursor;
 
             List<Kline> batch = client.fetchKlines(
-                            SYMBOL, interval.code(), cursor.toEpochMilli(), endTimeInclusive, limit)
+                            symbol, interval.code(), cursor.toEpochMilli(), endTimeInclusive, limit)
                     .stream()
                     .filter(kline -> !kline.openTime().isBefore(batchStart)
                             && kline.openTime().isBefore(endExclusive))
@@ -71,11 +76,11 @@ public final class BtcHistoricalImportApplication {
                 throw new IllegalStateException("Binance returned no " + interval.code()
                         + " candles at " + cursor);
             }
-            repository.upsertAll(SYMBOL, interval.code(), batch);
+            repository.upsertAll(symbol, interval.code(), batch);
             cursor = batch.getLast().openTime().plus(interval.duration());
 
             KlineRangeStats progress = repository.rangeStats(
-                    SYMBOL, interval.code(), startInclusive, endExclusive);
+                    symbol, interval.code(), startInclusive, endExclusive);
             double percent = progress.count() * 100.0 / expected;
             long elapsedSeconds = Duration.ofNanos(System.nanoTime() - startedAt).toSeconds();
             System.out.printf("%s: %,d / %,d (%.2f%%), last=%s, elapsed=%ds%n",
@@ -84,7 +89,7 @@ public final class BtcHistoricalImportApplication {
         }
 
         KlineRangeStats result = repository.rangeStats(
-                SYMBOL, interval.code(), startInclusive, endExclusive);
+                symbol, interval.code(), startInclusive, endExclusive);
         Instant expectedLast = endExclusive.minus(interval.duration());
         if (result.count() != expected
                 || !startInclusive.equals(result.firstOpenTime())

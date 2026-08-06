@@ -42,7 +42,8 @@ public final class BacktestApplication {
         DatabaseConfig database = DatabaseConfig.fromEnvironment();
         ParameterizedFeatureGenerator featureGenerator = new ParameterizedFeatureGenerator();
         int warmupCandles = featureGenerator.requiredWarmupCandles(strategy.requiredFeatures());
-        List<Kline> candles = new PostgresKlineRepository(database).findRangeWithWarmup(
+        PostgresKlineRepository klineRepository = new PostgresKlineRepository(database);
+        List<Kline> candles = klineRepository.findRangeWithWarmup(
                 loaded.symbol(), loaded.interval(), loaded.dataset().startInclusive(),
                 loaded.dataset().endExclusive(), warmupCandles);
         List<FeatureSnapshot> snapshots = featureGenerator
@@ -61,9 +62,13 @@ public final class BacktestApplication {
         List<FundingRate> funding = new PostgresFundingRateRepository(database)
                 .findRange(loaded.symbol(), loaded.dataset().startInclusive(),
                         loaded.dataset().endExclusive());
+        List<Kline> minuteCandles = loaded.engine().execution().makerEnabled()
+                ? klineRepository.findRangeWithWarmup(loaded.symbol(), "1m",
+                loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), 0)
+                : List.of();
 
         BacktestEngine.BacktestResult result = new BacktestEngine(loaded.engine())
-                .run(strategy, bars, funding);
+                .run(strategy, bars, funding, minuteCandles);
         System.out.printf("Backtest: dataset=%s [%s, %s), strategy=%s, symbol=%s, interval=%s, "
                         + "loadedCandles=%,d, evaluatedBars=%,d%n",
                 loaded.dataset().type(), loaded.dataset().startInclusive(),
@@ -71,16 +76,31 @@ public final class BacktestApplication {
                 loaded.interval(), candles.size(), bars.size());
         PerformanceReport.Report report = new PerformanceReport().generate(result);
         System.out.println(report);
+        if (loaded.engine().execution().makerEnabled()) {
+            BacktestEngine.ExecutionStats stats = result.executionStats();
+            System.out.printf("Maker execution: entries filled=%d/%d, expired=%d; "
+                            + "strategy exits filled=%d/%d, taker fallbacks=%d%n",
+                    stats.makerEntryFills(), stats.makerEntryOrders(), stats.expiredMakerEntries(),
+                    stats.makerExitFills(), stats.makerExitOrders(), stats.takerExitFallbacks());
+        }
         result.account().closedTrades().stream().limit(5).forEach(trade ->
                 System.out.printf("%s %s -> %s net=%s reason=%s%n",
                         trade.side(), trade.entryTime(), trade.exitTime(),
                         trade.netPnl().stripTrailingZeros().toPlainString(), trade.exitReason()));
 
+        if (Boolean.getBoolean("diagnostics")) {
+            BigDecimal makerFeeBps = new BigDecimal(System.getProperty("makerFeeBps", "2"));
+            System.out.println(new StrategyDiagnosticReport().generate(
+                    result.account().closedTrades(), bars,
+                    loaded.engine().execution().takerFeeBps(), makerFeeBps,
+                    loaded.engine().execution().makerEnabled()));
+        }
+
         String acceptanceFile = System.getProperty(
-                "acceptanceConfig", "config/backtests/strategy-acceptance.properties");
+                "acceptanceConfig", "config/backtests/acceptance-low-frequency.properties");
         if (loaded.dataset().type() == BacktestDataset.Type.TRAINING
                 && !acceptanceFile.isBlank()) {
-            evaluateAcceptance(loaded, bars, funding, report, strategySupplier,
+            evaluateAcceptance(loaded, bars, funding, minuteCandles, report, strategySupplier,
                     Path.of(acceptanceFile));
         }
     }
@@ -89,6 +109,7 @@ public final class BacktestApplication {
             BacktestConfigurationLoader.LoadedConfiguration loaded,
             List<BacktestEngine.BacktestBar> bars,
             List<FundingRate> funding,
+            List<Kline> minuteCandles,
             PerformanceReport.Report overall,
             java.util.function.Supplier<Strategy> strategySupplier,
             Path acceptanceFile) {
@@ -107,9 +128,13 @@ public final class BacktestApplication {
                     .filter(rate -> !rate.fundingTime().isBefore(periodStart)
                             && rate.fundingTime().isBefore(subperiodEnd))
                     .toList();
+            List<Kline> subMinutes = minuteCandles.stream()
+                    .filter(candle -> !candle.openTime().isBefore(periodStart)
+                            && candle.openTime().isBefore(subperiodEnd))
+                    .toList();
             PerformanceReport.Report subperiod = reportGenerator.generate(
                     new BacktestEngine(loaded.engine()).run(
-                            strategySupplier.get(), subBars, subFunding));
+                            strategySupplier.get(), subBars, subFunding, subMinutes));
             subperiodReports.add(subperiod);
             System.out.printf("Training subperiod %d [%s, %s): net=%s, PF=%s, DD=%s%%, trades=%d%n",
                     index, periodStart, subperiodEnd,
@@ -124,12 +149,18 @@ public final class BacktestApplication {
         StrategyAcceptanceEvaluator.Criteria criteria = evaluator.load(acceptanceFile);
         BacktestEngine.BacktestConfig base = loaded.engine();
         BigDecimal costMultiplier = criteria.stressCostMultiplier();
+        BacktestEngine.ExecutionConfig execution = base.execution();
         BacktestEngine.BacktestConfig stressedConfig = new BacktestEngine.BacktestConfig(
                 base.initialBalance(), base.riskFraction(), base.maxLeverage(),
-                base.slippageBps().multiply(costMultiplier),
-                base.takerFeeBps().multiply(costMultiplier), base.propRules());
+                new BacktestEngine.ExecutionConfig(execution.makerEnabled(),
+                        execution.makerFeeBps().multiply(costMultiplier),
+                        execution.takerFeeBps().multiply(costMultiplier),
+                        execution.takerSlippageBps().multiply(costMultiplier),
+                        execution.makerOffsetBps(), execution.makerOrderLifetimeMinutes(),
+                        execution.strategyExitTakerFallback()), base.propRules());
         PerformanceReport.Report stressed = reportGenerator.generate(
-                new BacktestEngine(stressedConfig).run(strategySupplier.get(), bars, funding));
+                new BacktestEngine(stressedConfig).run(
+                        strategySupplier.get(), bars, funding, minuteCandles));
         System.out.printf("Cost stress x%s: net=%s, PF=%s, DD=%s%%%n",
                 costMultiplier.stripTrailingZeros().toPlainString(),
                 stressed.netProfit().stripTrailingZeros().toPlainString(),

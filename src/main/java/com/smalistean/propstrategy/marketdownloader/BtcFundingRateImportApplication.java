@@ -19,16 +19,20 @@ public final class BtcFundingRateImportApplication {
     }
 
     public static void main(String[] args) {
+        importSymbol(SYMBOL, null);
+    }
+
+    static void importSymbol(String symbol, Instant fixedStartInclusive) {
         DatabaseConfig config = DatabaseConfig.fromEnvironment();
         DatabaseMigrator.migrate(config);
 
         BinanceFundingRateClient client = new BinanceFundingRateClient();
         PostgresFundingRateRepository repository = new PostgresFundingRateRepository(config);
         Instant endInclusive = Instant.now();
-        Instant requestedStart = ZonedDateTime.ofInstant(endInclusive, ZoneOffset.UTC)
-                .minusYears(3)
-                .toInstant();
-        Instant cursor = repository.latestFundingTime(SYMBOL)
+        Instant requestedStart = fixedStartInclusive == null
+                ? ZonedDateTime.ofInstant(endInclusive, ZoneOffset.UTC).minusYears(3).toInstant()
+                : fixedStartInclusive;
+        Instant cursor = repository.latestFundingTime(symbol)
                 .map(value -> value.plusMillis(1))
                 .filter(value -> value.isAfter(requestedStart))
                 .orElse(requestedStart);
@@ -36,7 +40,7 @@ public final class BtcFundingRateImportApplication {
         long imported = 0;
         while (!cursor.isAfter(endInclusive)) {
             List<FundingRate> batch = client.fetch(
-                    SYMBOL, cursor.toEpochMilli(), endInclusive.toEpochMilli(), BATCH_SIZE);
+                    symbol, cursor.toEpochMilli(), endInclusive.toEpochMilli(), BATCH_SIZE);
             if (batch.isEmpty()) {
                 break;
             }
@@ -50,7 +54,7 @@ public final class BtcFundingRateImportApplication {
             }
         }
 
-        System.out.printf("BTCUSDT funding-rate sync completed: %,d rows processed, %,d total stored.%n",
-                imported, repository.count(SYMBOL));
+        System.out.printf("%s funding-rate sync completed: %,d rows processed, %,d total stored.%n",
+                symbol, imported, repository.count(symbol));
     }
 }

@@ -19,6 +19,10 @@ public final class BtcIncrementalSyncApplication {
     }
 
     public static void main(String[] args) {
+        synchronizeSymbol(SYMBOL);
+    }
+
+    static void synchronizeSymbol(String symbol) {
         DatabaseConfig config = DatabaseConfig.fromEnvironment();
         DatabaseMigrator.migrate(config);
 
@@ -28,22 +32,22 @@ public final class BtcIncrementalSyncApplication {
 
         long synchronizedCandles = 0;
         for (KlineInterval interval : KlineInterval.values()) {
-            synchronizedCandles += synchronizeInterval(client, repository, interval, now);
+            synchronizedCandles += synchronizeInterval(symbol, client, repository, interval, now);
         }
-        System.out.printf("BTCUSDT incremental sync completed: %,d closed candles upserted.%n",
-                synchronizedCandles);
+        System.out.printf("%s incremental sync completed: %,d closed candles upserted.%n",
+                symbol, synchronizedCandles);
     }
 
-    private static long synchronizeInterval(BinanceKlineClient client,
+    private static long synchronizeInterval(String symbol, BinanceKlineClient client,
                                             PostgresKlineRepository repository,
                                             KlineInterval interval,
                                             Instant now) {
         Instant endExclusive = interval.floor(now);
-        Optional<Instant> latest = repository.latestOpenTime(SYMBOL, interval.code());
+        Optional<Instant> latest = repository.latestOpenTime(symbol, interval.code());
         Instant cursor = nextCursor(latest, interval);
         if (cursor == null) {
-            throw new IllegalStateException("No existing BTCUSDT " + interval.code()
-                    + " candles. Run BtcHistoricalImportApplication first.");
+            throw new IllegalStateException("No existing " + symbol + " " + interval.code()
+                    + " candles. Run its historical import first.");
         }
         if (!cursor.isBefore(endExclusive)) {
             System.out.printf("%s: already current through %s.%n",
@@ -61,7 +65,7 @@ public final class BtcIncrementalSyncApplication {
             int limit = (int) Math.min(BATCH_SIZE, remaining);
             Instant batchStart = cursor;
             List<Kline> batch = client.fetchKlines(
-                            SYMBOL, interval.code(), cursor.toEpochMilli(),
+                            symbol, interval.code(), cursor.toEpochMilli(),
                             endExclusive.toEpochMilli() - 1, limit)
                     .stream()
                     .filter(kline -> !kline.openTime().isBefore(batchStart)
@@ -72,12 +76,12 @@ public final class BtcIncrementalSyncApplication {
                 throw new IllegalStateException("Binance returned no " + interval.code()
                         + " candles at " + cursor);
             }
-            repository.upsertAll(SYMBOL, interval.code(), batch);
+            repository.upsertAll(symbol, interval.code(), batch);
             synchronizedCandles += batch.size();
             cursor = batch.getLast().openTime().plus(interval.duration());
         }
 
-        Instant actualLatest = repository.latestOpenTime(SYMBOL, interval.code()).orElseThrow();
+        Instant actualLatest = repository.latestOpenTime(symbol, interval.code()).orElseThrow();
         Instant expectedLatest = endExclusive.minus(interval.duration());
         if (!expectedLatest.equals(actualLatest) || synchronizedCandles != expected) {
             throw new IllegalStateException("Incremental verification failed for %s: "
