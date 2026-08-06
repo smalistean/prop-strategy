@@ -5,9 +5,19 @@
 Build a historical market database and backtesting framework to develop
 statistically validated strategies for a prop trading challenge.
 
+## Market
+
+-   Use Binance USDⓈ-M Futures market data, not Binance Spot data.
+-   Use the Futures REST API (`https://fapi.binance.com`) for historical
+    downloads.
+-   Add Futures WebSocket streams later for incremental live updates.
+
 ------------------------------------------------------------------------
 
 # Phase 1 -- Download Historical Klines (Highest Priority)
+
+Start with a small terminal preview of historical Futures klines. Once the
+response and fields are verified, design the PostgreSQL schema and persistence.
 
 ## Symbols
 
@@ -152,18 +162,19 @@ target. - Works in bull, bear, and sideways markets.
 
 ------------------------------------------------------------------------
 
-# Suggested Java Project Structure
+# Suggested Java Package Structure
 
 ``` text
 prop-strategy/
 │
-├── market-downloader/
-├── database/
-├── feature-generator/
-├── backtester/
-├── strategy/
-├── statistics/
-└── visualization/ (optional)
+└── src/main/java/com/smalistean/propstrategy/
+    ├── marketdownloader/
+    ├── database/
+    ├── feature/
+    ├── backtester/
+    ├── strategy/
+    ├── statistics/
+    └── visualization/ (optional)
 ```
 
 ------------------------------------------------------------------------

@@ -7,20 +7,8 @@
     <groupId>com.smalistean.propstrategy</groupId>
     <artifactId>prop-strategy</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-    <packaging>pom</packaging>
-
     <name>prop-strategy</name>
     <description>Prop trading strategy backtesting framework</description>
-
-    <modules>
-        <module>database</module>
-        <module>market-downloader</module>
-        <module>feature-generator</module>
-        <module>strategy</module>
-        <module>backtester</module>
-        <module>statistics</module>
-        <module>visualization</module>
-    </modules>
 
     <properties>
         <java.version>25</java.version>
@@ -28,67 +16,35 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j.version>2.0.17</slf4j.version>
         <junit.version>5.12.2</junit.version>
+        <jackson.version>2.19.2</jackson.version>
     </properties>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>com.smalistean.propstrategy</groupId>
-                <artifactId>database</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.smalistean.propstrategy</groupId>
-                <artifactId>market-downloader</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.smalistean.propstrategy</groupId>
-                <artifactId>feature-generator</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.smalistean.propstrategy</groupId>
-                <artifactId>strategy</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.smalistean.propstrategy</groupId>
-                <artifactId>backtester</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.smalistean.propstrategy</groupId>
-                <artifactId>statistics</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.smalistean.propstrategy</groupId>
-                <artifactId>visualization</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
-                <version>${slf4j.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-simple</artifactId>
-                <version>${slf4j.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.junit.jupiter</groupId>
-                <artifactId>junit-jupiter</artifactId>
-                <version>${junit.version}</version>
-                <scope>test</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
     <build>
-        <pluginManagement>
-            <plugins>
+        <plugins>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
@@ -102,7 +58,6 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.5.3</version>
                 </plugin>
-            </plugins>
-        </pluginManagement>
+        </plugins>
     </build>
 </project>
