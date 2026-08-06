@@ -8,5 +8,6 @@ target/
 .vscode/
 .DS_Store
 .env
+.env.binance
 data/
 *.csv

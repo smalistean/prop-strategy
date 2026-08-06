@@ -9,6 +9,7 @@ import java.time.OffsetDateTime;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 
 public final class PostgresKlineRepository {
 
@@ -70,6 +71,22 @@ public final class PostgresKlineRepository {
             }
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to count Futures klines", e);
+        }
+    }
+
+    public Optional<Instant> latestOpenTime(String symbol, String interval) {
+        String sql = "SELECT MAX(open_time) FROM futures_kline WHERE symbol = ? AND interval = ?";
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, symbol);
+            statement.setString(2, interval);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                resultSet.next();
+                OffsetDateTime latest = resultSet.getObject(1, OffsetDateTime.class);
+                return latest == null ? Optional.empty() : Optional.of(latest.toInstant());
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to read latest Futures kline", e);
         }
     }
 

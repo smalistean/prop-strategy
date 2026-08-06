@@ -1,0 +1,91 @@
+package com.smalistean.propstrategy.database;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Optional;
+
+public final class PostgresFundingRateRepository {
+
+    private static final String UPSERT_SQL = """
+            INSERT INTO futures_funding_rate (
+                symbol, funding_time, rate_type, funding_rate, mark_price
+            ) VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (symbol, funding_time, rate_type) DO UPDATE SET
+                funding_rate = EXCLUDED.funding_rate,
+                mark_price = EXCLUDED.mark_price,
+                updated_at = NOW()
+            """;
+
+    private final DatabaseConfig config;
+
+    public PostgresFundingRateRepository(DatabaseConfig config) {
+        this.config = config;
+    }
+
+    public int upsertAll(List<FundingRate> rates) {
+        if (rates.isEmpty()) {
+            return 0;
+        }
+        try (Connection connection = openConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement statement = connection.prepareStatement(UPSERT_SQL)) {
+                for (FundingRate rate : rates) {
+                    statement.setString(1, rate.symbol());
+                    statement.setObject(2, OffsetDateTime.ofInstant(rate.fundingTime(), ZoneOffset.UTC));
+                    statement.setString(3, rate.rateType());
+                    statement.setBigDecimal(4, rate.fundingRate());
+                    statement.setBigDecimal(5, rate.markPrice());
+                    statement.addBatch();
+                }
+                int[] results = statement.executeBatch();
+                connection.commit();
+                return results.length;
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to upsert Futures funding rates", e);
+        }
+    }
+
+    public Optional<Instant> latestFundingTime(String symbol) {
+        String sql = "SELECT MAX(funding_time) FROM futures_funding_rate WHERE symbol = ?";
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, symbol);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                resultSet.next();
+                OffsetDateTime latest = resultSet.getObject(1, OffsetDateTime.class);
+                return latest == null ? Optional.empty() : Optional.of(latest.toInstant());
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to read latest Futures funding rate", e);
+        }
+    }
+
+    public long count(String symbol) {
+        String sql = "SELECT COUNT(*) FROM futures_funding_rate WHERE symbol = ?";
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, symbol);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                resultSet.next();
+                return resultSet.getLong(1);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to count Futures funding rates", e);
+        }
+    }
+
+    private Connection openConnection() throws SQLException {
+        return DriverManager.getConnection(config.url(), config.user(), config.password());
+    }
+}

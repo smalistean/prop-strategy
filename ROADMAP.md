@@ -26,7 +26,8 @@ response and fields are verified, design the PostgreSQL schema and persistence.
 -   [x] Parse every required kline field.
 -   [x] Import and verify three years of BTCUSDT for 1m, 5m, 15m, and 1h.
 -   [x] Add production pagination, retries, pacing, and resumable batches.
--   [ ] Download at least three years for ETHUSDT and any later symbols.
+-   [ ] Download at least three years for ETHUSDT and any later symbols
+    (explicitly deferred while the BTCUSDT vertical slice is built).
 
 ## Symbols
 
@@ -68,7 +69,7 @@ response and fields are verified, design the PostgreSQL schema and persistence.
 -   [x] Enforce uniqueness on `(symbol, interval, open_time)`.
 -   [x] Insert a small Futures sample with an idempotent upsert.
 -   [x] Perform the complete BTCUSDT historical import.
--   [ ] Append new candles incrementally.
+-   [x] Append new closed BTCUSDT candles incrementally.
 
 ------------------------------------------------------------------------
 
@@ -76,11 +77,18 @@ response and fields are verified, design the PostgreSQL schema and persistence.
 
 ## Required
 
--   Funding rates
--   Open Interest
--   Global Long/Short Ratio
--   Top Trader Long/Short Ratio
--   Top Trader Position Ratio
+-   [x] Funding rates: store three years for BTCUSDT and support incremental
+    reruns.
+-   [x] Open Interest: store the latest available month at 5m resolution.
+-   [x] Global Long/Short Ratio: store the latest available 30 days at 5m
+    resolution.
+-   [x] Top Trader Long/Short Ratio: store the latest available 30 days at 5m
+    resolution; requires a Binance API key.
+-   [x] Top Trader Position Ratio: store the latest available 30 days at 5m
+    resolution; requires a Binance API key.
+
+Binance limits the four statistical datasets above to the latest month or
+30 days.
 
 ## Optional
 
