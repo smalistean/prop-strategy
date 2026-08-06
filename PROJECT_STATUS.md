@@ -11,7 +11,9 @@ funding rates and the full Binance-retained window of 5m supporting statistics
 are stored. The agreed initial Phase 4 BTCUSDT 15m feature slice is complete
 and ready to feed the backtester. Phase 5 now has a configurable, extensible
 backtesting engine and one deliberately unoptimized EMA-pullback baseline.
-Phase 6 metrics and chronological dataset controls are complete; validation and
+Phase 6 metrics and chronological dataset controls are complete. Phase 7 now
+has two materially different strategy candidates and a shared automated
+acceptance gate; both initial training baselines were rejected. Validation and
 final-test results remain unopened.
 
 ## Completed
@@ -65,7 +67,7 @@ final-test results remain unopened.
   at or before candle close; missing context remains `null`.
 - A live preview generated 151 feature rows from 200 recent 15m candles and
   printed the latest 10 with all Futures context populated.
-- Twenty-eight tests cover downloads, cursors, formulas, warm-up, chronology,
+- Thirty-five tests cover downloads, cursors, formulas, warm-up, chronology,
   no-look-ahead alignment, long/short execution, fees, stops, and funding.
 - Engine and strategy configuration live in separate tracked properties files.
 - A strategy registry selects factories by type; each factory owns typed
@@ -98,6 +100,26 @@ final-test results remain unopened.
   maximum drawdown after 27 trades with -10.62% net return, 18.52% win rate,
   -393.20 expectancy, and 0.167 profit factor. Fees were 6,479.38 versus only
   47.69 positive funding PnL, confirming the baseline should be rejected.
+- A Donchian breakout candidate uses prior-candle entry/exit channels, volume
+  confirmation, ATR-based stops, a configurable reward/risk target, and a
+  maximum holding period. Its rolling channels and volume baseline explicitly
+  exclude the current candle to prevent look-ahead.
+- Acceptance thresholds are tracked independently from strategy and engine
+  parameters and run by default for every training backtest. The evaluator
+  checks overall profitability, profit factor, drawdown, trade count, four
+  six-month subperiods, concentration of profits, average win/loss ratio, and
+  a 1.5x fee/slippage stress run.
+- The initial Donchian training run evaluated 70,163 bars and failed seven of
+  eight acceptance checks: -9.05% return, 0.435 profit factor, 10.07% maximum
+  drawdown, 33 trades, and only one profitable subperiod. Its 1.956 average
+  win/loss ratio passed, but stressed net profit was -9,727.29. The baseline is
+  rejected without opening validation or final-test data.
+- The volatility-compression breakout requires a low previous-candle
+  Bollinger-bandwidth percentile followed by a range break, ATR expansion, and
+  above-average volume. Its initial training run evaluated 70,087 bars and
+  failed seven of eight checks: -9.89% return, 0.271 profit factor, 10.14%
+  maximum drawdown, 25 trades, and one profitable subperiod. Average win/loss
+  ratio was 1.424, while stressed net profit was -10,706.52. It is rejected.
 - Validation and final-test periods have not been run.
 
 ## Current database
@@ -185,6 +207,20 @@ mvn exec:java \
   -DstrategyConfig=config/backtests/ema-pullback.properties \
   -DbacktestDataset=TRAINING
 
+JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
+PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
+mvn exec:java \
+  -Dexec.mainClass=com.smalistean.propstrategy.statistics.BacktestApplication \
+  -DstrategyConfig=config/backtests/donchian-breakout.properties \
+  -DbacktestDataset=TRAINING
+
+JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
+PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
+mvn exec:java \
+  -Dexec.mainClass=com.smalistean.propstrategy.statistics.BacktestApplication \
+  -DstrategyConfig=config/backtests/volatility-compression-breakout.properties \
+  -DbacktestDataset=TRAINING
+
 PGPASSWORD=$DB_PASSWORD /opt/homebrew/opt/postgresql@17/bin/psql \
   -h localhost -U "$DB_USER" -d "$DB_NAME" \
   -c "SELECT symbol, interval, COUNT(*) FROM futures_kline GROUP BY symbol, interval;"
@@ -192,7 +228,7 @@ PGPASSWORD=$DB_PASSWORD /opt/homebrew/opt/postgresql@17/bin/psql \
 
 ## Next step
 
-Begin Phase 7 by designing one materially different strategy and a controlled
-parameter-search runner. Report results for the complete training period and
-its four six-month subperiods. Keep validation closed until candidate rules and
-search ranges are fixed, and keep final test closed until after validation.
+Add a controlled parameter-search runner. Search only the training period,
+rank candidates using the shared fixed acceptance criteria, and freeze search
+ranges and winning parameters before opening validation. Keep the final test
+closed until after validation.

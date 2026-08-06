@@ -15,7 +15,10 @@ public final class StrategyRegistry {
     }
 
     public static StrategyRegistry defaults() {
-        return new StrategyRegistry(java.util.List.of(new EmaPullbackStrategyFactory()));
+        return new StrategyRegistry(java.util.List.of(
+                new EmaPullbackStrategyFactory(),
+                new DonchianBreakoutStrategyFactory(),
+                new VolatilityCompressionBreakoutStrategyFactory()));
     }
 
     public Strategy create(String type, StrategyParameters parameters) {

@@ -18,7 +18,8 @@ public final class ParameterizedFeatureGenerator {
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     public int requiredWarmupCandles(Set<FeatureKey> requiredFeatures) {
-        return requiredFeatures.stream().mapToInt(FeatureKey::period).max().orElse(0) + 1;
+        return requiredFeatures.stream().mapToInt(key -> key.period() + key.lookback())
+                .max().orElse(0) + 1;
     }
 
     public List<FeatureSnapshot> generate(List<Kline> klines, Set<FeatureKey> requiredFeatures) {
@@ -58,6 +59,12 @@ public final class ParameterizedFeatureGenerator {
             case "ema" -> ema(klines, positivePeriod(key));
             case "rsi" -> rsi(klines, positivePeriod(key));
             case "atr" -> atr(klines, positivePeriod(key));
+            case "rollingHigh" -> rollingExtreme(klines, positivePeriod(key), true);
+            case "rollingLow" -> rollingExtreme(klines, positivePeriod(key), false);
+            case "volumeRatio" -> volumeRatio(klines, positivePeriod(key));
+            case "atrExpansion" -> atrExpansion(klines, positivePeriod(key));
+            case "priorBollingerBandwidthPercentile" -> priorBollingerBandwidthPercentile(
+                    klines, positivePeriod(key), positiveLookback(key));
             default -> throw new IllegalArgumentException("Unsupported feature: " + key);
         };
     }
@@ -139,6 +146,87 @@ public final class ParameterizedFeatureGenerator {
         return values;
     }
 
+    private static BigDecimal[] rollingExtreme(List<Kline> klines, int period, boolean high) {
+        BigDecimal[] values = new BigDecimal[klines.size()];
+        for (int i = period; i < klines.size(); i++) {
+            BigDecimal extreme = high ? klines.get(i - period).high() : klines.get(i - period).low();
+            for (int j = i - period + 1; j < i; j++) {
+                extreme = high ? extreme.max(klines.get(j).high()) : extreme.min(klines.get(j).low());
+            }
+            values[i] = extreme;
+        }
+        return values;
+    }
+
+    private static BigDecimal[] volumeRatio(List<Kline> klines, int period) {
+        BigDecimal[] values = new BigDecimal[klines.size()];
+        BigDecimal previousSum = BigDecimal.ZERO;
+        for (int i = 0; i < klines.size(); i++) {
+            if (i > 0) {
+                previousSum = previousSum.add(klines.get(i - 1).volume(), MC);
+            }
+            if (i > period) {
+                previousSum = previousSum.subtract(klines.get(i - period - 1).volume(), MC);
+            }
+            if (i >= period) {
+                BigDecimal average = previousSum.divide(BigDecimal.valueOf(period), MC);
+                values[i] = average.signum() == 0 ? BigDecimal.ZERO
+                        : klines.get(i).volume().divide(average, MC);
+            }
+        }
+        return values;
+    }
+
+    private static BigDecimal[] atrExpansion(List<Kline> klines, int period) {
+        BigDecimal[] atr = atr(klines, period);
+        BigDecimal[] values = new BigDecimal[klines.size()];
+        for (int i = 1; i < klines.size(); i++) {
+            if (atr[i] != null && atr[i - 1] != null) {
+                values[i] = atr[i - 1].signum() == 0 ? BigDecimal.ZERO
+                        : atr[i].divide(atr[i - 1], MC);
+            }
+        }
+        return values;
+    }
+
+    private static BigDecimal[] priorBollingerBandwidthPercentile(
+            List<Kline> klines, int period, int lookback) {
+        BigDecimal[] bandwidth = bollingerBandwidth(klines, period);
+        BigDecimal[] values = new BigDecimal[klines.size()];
+        for (int i = period + lookback; i < klines.size(); i++) {
+            BigDecimal prior = bandwidth[i - 1];
+            int lessOrEqual = 0;
+            for (int j = i - lookback - 1; j < i - 1; j++) {
+                if (bandwidth[j] != null && bandwidth[j].compareTo(prior) <= 0) {
+                    lessOrEqual++;
+                }
+            }
+            values[i] = BigDecimal.valueOf(lessOrEqual)
+                    .multiply(HUNDRED, MC).divide(BigDecimal.valueOf(lookback), MC);
+        }
+        return values;
+    }
+
+    private static BigDecimal[] bollingerBandwidth(List<Kline> klines, int period) {
+        BigDecimal[] values = new BigDecimal[klines.size()];
+        for (int i = period - 1; i < klines.size(); i++) {
+            BigDecimal sum = BigDecimal.ZERO;
+            BigDecimal sumSquares = BigDecimal.ZERO;
+            for (int j = i - period + 1; j <= i; j++) {
+                BigDecimal close = klines.get(j).close();
+                sum = sum.add(close, MC);
+                sumSquares = sumSquares.add(close.multiply(close, MC), MC);
+            }
+            BigDecimal mean = sum.divide(BigDecimal.valueOf(period), MC);
+            BigDecimal variance = sumSquares.divide(BigDecimal.valueOf(period), MC)
+                    .subtract(mean.multiply(mean, MC), MC).max(BigDecimal.ZERO);
+            BigDecimal deviation = variance.sqrt(MC);
+            values[i] = mean.signum() == 0 ? BigDecimal.ZERO
+                    : deviation.multiply(BigDecimal.valueOf(4), MC).divide(mean, MC);
+        }
+        return values;
+    }
+
     private static BigDecimal wilder(BigDecimal average, BigDecimal current, int period) {
         return average.multiply(BigDecimal.valueOf(period - 1L), MC).add(current, MC)
                 .divide(BigDecimal.valueOf(period), MC);
@@ -157,6 +245,13 @@ public final class ParameterizedFeatureGenerator {
             throw new IllegalArgumentException("Feature requires a positive period: " + key);
         }
         return key.period();
+    }
+
+    private static int positiveLookback(FeatureKey key) {
+        if (key.lookback() <= 0) {
+            throw new IllegalArgumentException("Feature requires a positive lookback: " + key);
+        }
+        return key.lookback();
     }
 
     private static void validateKlines(List<Kline> klines) {

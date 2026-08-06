@@ -201,13 +201,48 @@ keys, and tracked experiment file without changing the execution engine.
 
 # Phase 7 -- Strategy Search
 
--   Automatically test parameter combinations.
--   Reject strategies with excessive drawdown.
--   Report the four six-month training subperiods and reject candidates whose
+-   [x] Add a Donchian breakout strategy with prior-candle price channels,
+    volume confirmation, ATR risk, an asymmetric target, and a channel/time
+    exit.
+-   [x] Store its parameters separately from the execution-engine settings.
+-   [x] Define machine-readable acceptance criteria before parameter search.
+-   [x] Report the four six-month training subperiods and reject candidates whose
     result depends on one exceptional section.
--   Compare frozen candidates on validation before opening the final test.
--   Keep strategies that remain profitable across different market
+-   [x] Stress the candidate with fees and slippage multiplied by 1.5.
+-   [x] Run and reject the initial Donchian baseline on training data.
+-   [x] Add and reject a volatility-compression breakout baseline using the
+    previous candle's Bollinger-bandwidth percentile, ATR expansion, and
+    volume confirmation.
+-   [ ] Automatically test controlled parameter combinations.
+-   [ ] Compare frozen candidates on validation before opening the final test.
+-   [ ] Keep strategies that remain profitable across different market
     conditions.
+
+## Strategy acceptance criteria
+
+These thresholds are tracked in
+`config/backtests/strategy-acceptance.properties` and are evaluated by default
+for every strategy run on the training dataset. A candidate passes only when
+every check passes:
+
+-   Net profit is positive and profit factor is at least 1.10.
+-   Maximum drawdown is no more than 10% and there are at least 60 trades.
+-   At least three of the four six-month training subperiods are profitable.
+-   No single positive subperiod supplies more than 60% of total positive
+    subperiod profit.
+-   Average win divided by average loss is at least 1.20.
+-   Net profit remains positive with fees and slippage multiplied by 1.5.
+
+The initial parameters failed seven of eight checks: -9.05% return, 0.435
+profit factor, 10.07% maximum drawdown, 33 trades, one profitable subperiod,
+and negative stressed-cost profit. Only average win/loss ratio passed. This is
+a rejected baseline; validation and final-test data remain unopened.
+
+The initial volatility-compression parameters also failed seven of eight
+checks: -9.89% return, 0.271 profit factor, 10.14% maximum drawdown, 25 trades,
+one profitable subperiod, and negative stressed-cost profit. Only average
+win/loss ratio passed. It is also rejected without opening validation or final
+test data.
 
 ------------------------------------------------------------------------
 
