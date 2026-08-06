@@ -176,14 +176,26 @@ keys, and tracked experiment file without changing the execution engine.
 
 # Phase 6 -- Performance Metrics
 
--   Net Profit
--   Win Rate
--   Average Win
--   Average Loss
--   Profit Factor
--   Maximum Drawdown
--   Sharpe Ratio (optional)
--   Number of Trades
+## Dataset discipline
+
+-   [x] Training: `[2023-08-07, 2025-08-07)` UTC.
+-   [x] Validation: `[2025-08-07, 2026-02-07)` UTC.
+-   [x] Final test: `[2026-02-07, 2026-08-07)` UTC.
+-   [x] Load pre-period candles only as indicator warm-up; exclude them from
+    trading and metrics.
+-   [x] Lock final-test execution behind explicit `confirmFinalTest=true`.
+
+## Reported metrics
+
+-   [x] Net profit and return percentage.
+-   [x] Win rate and winning/losing trade counts.
+-   [x] Average win, average loss, and expectancy per trade.
+-   [x] Profit factor.
+-   [x] Maximum absolute and percentage drawdown.
+-   [x] Number of trades.
+-   [x] Total fees, funding PnL, and modeled slippage cost.
+-   [x] Prop-rule termination status.
+-   [ ] Sharpe ratio (optional; defer until return sampling is specified).
 
 ------------------------------------------------------------------------
 
@@ -191,6 +203,9 @@ keys, and tracked experiment file without changing the execution engine.
 
 -   Automatically test parameter combinations.
 -   Reject strategies with excessive drawdown.
+-   Report the four six-month training subperiods and reject candidates whose
+    result depends on one exceptional section.
+-   Compare frozen candidates on validation before opening the final test.
 -   Keep strategies that remain profitable across different market
     conditions.
 

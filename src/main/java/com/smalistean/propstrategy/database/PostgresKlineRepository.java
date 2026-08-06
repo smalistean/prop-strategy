@@ -134,6 +134,58 @@ public final class PostgresKlineRepository {
         }
     }
 
+    public List<Kline> findRangeWithWarmup(String symbol, String interval,
+                                           Instant startInclusive, Instant endExclusive,
+                                           int warmupCandles) {
+        if (!startInclusive.isBefore(endExclusive) || warmupCandles < 0) {
+            throw new IllegalArgumentException("Invalid kline range or warm-up count");
+        }
+        String sql = """
+                WITH warmup AS (
+                    SELECT open_time, open_price, high_price, low_price, close_price,
+                           volume, close_time, quote_asset_volume, trade_count,
+                           taker_buy_base_volume, taker_buy_quote_volume
+                    FROM futures_kline
+                    WHERE symbol = ? AND interval = ? AND open_time < ?
+                    ORDER BY open_time DESC
+                    LIMIT ?
+                ), period AS (
+                    SELECT open_time, open_price, high_price, low_price, close_price,
+                           volume, close_time, quote_asset_volume, trade_count,
+                           taker_buy_base_volume, taker_buy_quote_volume
+                    FROM futures_kline
+                    WHERE symbol = ? AND interval = ?
+                      AND open_time >= ? AND open_time < ?
+                )
+                SELECT * FROM (
+                    SELECT * FROM warmup
+                    UNION ALL
+                    SELECT * FROM period
+                ) combined
+                ORDER BY open_time
+                """;
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, symbol);
+            statement.setString(2, interval);
+            statement.setObject(3, OffsetDateTime.ofInstant(startInclusive, ZoneOffset.UTC));
+            statement.setInt(4, warmupCandles);
+            statement.setString(5, symbol);
+            statement.setString(6, interval);
+            statement.setObject(7, OffsetDateTime.ofInstant(startInclusive, ZoneOffset.UTC));
+            statement.setObject(8, OffsetDateTime.ofInstant(endExclusive, ZoneOffset.UTC));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                var result = new java.util.ArrayList<Kline>();
+                while (resultSet.next()) {
+                    result.add(readKline(resultSet));
+                }
+                return List.copyOf(result);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to load Futures kline range", e);
+        }
+    }
+
     public KlineRangeStats rangeStats(String symbol, String interval,
                                       Instant startInclusive, Instant endExclusive) {
         String sql = """
@@ -181,6 +233,21 @@ public final class PostgresKlineRepository {
         statement.setInt(11, kline.tradeCount());
         statement.setBigDecimal(12, kline.takerBuyBaseVolume());
         statement.setBigDecimal(13, kline.takerBuyQuoteVolume());
+    }
+
+    private static Kline readKline(ResultSet resultSet) throws SQLException {
+        return new Kline(
+                resultSet.getObject("open_time", OffsetDateTime.class).toInstant(),
+                resultSet.getBigDecimal("open_price"),
+                resultSet.getBigDecimal("high_price"),
+                resultSet.getBigDecimal("low_price"),
+                resultSet.getBigDecimal("close_price"),
+                resultSet.getBigDecimal("volume"),
+                resultSet.getObject("close_time", OffsetDateTime.class).toInstant(),
+                resultSet.getBigDecimal("quote_asset_volume"),
+                resultSet.getInt("trade_count"),
+                resultSet.getBigDecimal("taker_buy_base_volume"),
+                resultSet.getBigDecimal("taker_buy_quote_volume"));
     }
 
     public record KlineRangeStats(long count, Instant firstOpenTime, Instant lastOpenTime) {

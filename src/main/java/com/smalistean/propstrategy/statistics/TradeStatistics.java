@@ -18,13 +18,20 @@ public class TradeStatistics {
             BigDecimal winRate,
             BigDecimal totalPnl,
             BigDecimal averagePnl,
-            BigDecimal profitFactor
+            BigDecimal averageWin,
+            BigDecimal averageLoss,
+            BigDecimal profitFactor,
+            BigDecimal totalFees,
+            BigDecimal totalFunding,
+            BigDecimal totalSlippageCost
     ) {
     }
 
     public Stats calculate(List<Trade> trades) {
         if (trades.isEmpty()) {
-            return new Stats(0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+            return new Stats(0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, BigDecimal.ZERO);
         }
 
         int wins = 0;
@@ -32,9 +39,16 @@ public class TradeStatistics {
         BigDecimal grossProfit = BigDecimal.ZERO;
         BigDecimal grossLoss = BigDecimal.ZERO;
         BigDecimal totalPnl = BigDecimal.ZERO;
+        BigDecimal totalFees = BigDecimal.ZERO;
+        BigDecimal totalFunding = BigDecimal.ZERO;
+        BigDecimal totalSlippage = BigDecimal.ZERO;
 
         for (Trade trade : trades) {
             totalPnl = totalPnl.add(trade.netPnl(), MC);
+            totalFees = totalFees.add(trade.entryFee(), MC).add(trade.exitFee(), MC);
+            totalFunding = totalFunding.add(trade.fundingPnl(), MC);
+            totalSlippage = totalSlippage.add(trade.entrySlippageCost(), MC)
+                    .add(trade.exitSlippageCost(), MC);
             if (trade.netPnl().signum() > 0) {
                 wins++;
                 grossProfit = grossProfit.add(trade.netPnl(), MC);
@@ -48,10 +62,15 @@ public class TradeStatistics {
                 .divide(BigDecimal.valueOf(trades.size()), MC)
                 .multiply(BigDecimal.valueOf(100), MC);
         BigDecimal averagePnl = totalPnl.divide(BigDecimal.valueOf(trades.size()), MC);
+        BigDecimal averageWin = wins == 0 ? BigDecimal.ZERO
+                : grossProfit.divide(BigDecimal.valueOf(wins), MC);
+        BigDecimal averageLoss = losses == 0 ? BigDecimal.ZERO
+                : grossLoss.divide(BigDecimal.valueOf(losses), MC);
         BigDecimal profitFactor = grossLoss.signum() == 0
                 ? grossProfit
                 : grossProfit.divide(grossLoss, MC);
 
-        return new Stats(trades.size(), wins, losses, winRate, totalPnl, averagePnl, profitFactor);
+        return new Stats(trades.size(), wins, losses, winRate, totalPnl, averagePnl,
+                averageWin, averageLoss, profitFactor, totalFees, totalFunding, totalSlippage);
     }
 }

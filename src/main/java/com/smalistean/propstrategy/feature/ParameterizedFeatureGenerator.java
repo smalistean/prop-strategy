@@ -17,6 +17,10 @@ public final class ParameterizedFeatureGenerator {
     private static final MathContext MC = new MathContext(16, RoundingMode.HALF_UP);
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
+    public int requiredWarmupCandles(Set<FeatureKey> requiredFeatures) {
+        return requiredFeatures.stream().mapToInt(FeatureKey::period).max().orElse(0) + 1;
+    }
+
     public List<FeatureSnapshot> generate(List<Kline> klines, Set<FeatureKey> requiredFeatures) {
         if (requiredFeatures.isEmpty()) {
             throw new IllegalArgumentException("A strategy must require at least one feature");

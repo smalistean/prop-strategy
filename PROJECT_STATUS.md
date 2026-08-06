@@ -11,6 +11,8 @@ funding rates and the full Binance-retained window of 5m supporting statistics
 are stored. The agreed initial Phase 4 BTCUSDT 15m feature slice is complete
 and ready to feed the backtester. Phase 5 now has a configurable, extensible
 backtesting engine and one deliberately unoptimized EMA-pullback baseline.
+Phase 6 metrics and chronological dataset controls are complete; validation and
+final-test results remain unopened.
 
 ## Completed
 
@@ -63,7 +65,7 @@ backtesting engine and one deliberately unoptimized EMA-pullback baseline.
   at or before candle close; missing context remains `null`.
 - A live preview generated 151 feature rows from 200 recent 15m candles and
   printed the latest 10 with all Futures context populated.
-- Twenty-five tests cover downloads, cursors, formulas, warm-up, chronology,
+- Twenty-eight tests cover downloads, cursors, formulas, warm-up, chronology,
   no-look-ahead alignment, long/short execution, fees, stops, and funding.
 - Engine and strategy configuration live in separate tracked properties files.
 - A strategy registry selects factories by type; each factory owns typed
@@ -83,6 +85,20 @@ backtesting engine and one deliberately unoptimized EMA-pullback baseline.
   maximum drawdown: -9.95% return, 36.73% win rate, and 0.477 profit factor.
   This rejects the default parameters as a strategy candidate while validating
   the end-to-end engine path.
+- Tracked UTC periods are training `[2023-08-07, 2025-08-07)`, validation
+  `[2025-08-07, 2026-02-07)`, and final test
+  `[2026-02-07, 2026-08-07)`.
+- Range loading includes only the preceding candles required for indicator
+  warm-up; warm-up bars cannot trade or affect period metrics.
+- Final-test mode fails closed unless `-DconfirmFinalTest=true` is supplied.
+- Phase 6 reports net profit/return, win rate, win/loss counts, average win and
+  loss, expectancy, profit factor, drawdown, trade count, fees, funding,
+  slippage costs, and prop termination.
+- The untouched training-period run evaluated 70,154 bars. The baseline hit
+  maximum drawdown after 27 trades with -10.62% net return, 18.52% win rate,
+  -393.20 expectancy, and 0.167 profit factor. Fees were 6,479.38 versus only
+  47.69 positive funding PnL, confirming the baseline should be rejected.
+- Validation and final-test periods have not been run.
 
 ## Current database
 
@@ -166,7 +182,8 @@ PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
 mvn exec:java \
   -Dexec.mainClass=com.smalistean.propstrategy.statistics.BacktestApplication \
   -DengineConfig=config/backtests/engine.properties \
-  -DstrategyConfig=config/backtests/ema-pullback.properties
+  -DstrategyConfig=config/backtests/ema-pullback.properties \
+  -DbacktestDataset=TRAINING
 
 PGPASSWORD=$DB_PASSWORD /opt/homebrew/opt/postgresql@17/bin/psql \
   -h localhost -U "$DB_USER" -d "$DB_NAME" \
@@ -175,7 +192,7 @@ PGPASSWORD=$DB_PASSWORD /opt/homebrew/opt/postgresql@17/bin/psql \
 
 ## Next step
 
-Review Phase 6 metrics against the richer net trade accounting, then design the
-first strategy comparison: keep EMA pullback as the baseline and add one
-materially different strategy through a new factory/configuration. Do not tune
-the rejected baseline on the same sample before defining train/test periods.
+Begin Phase 7 by designing one materially different strategy and a controlled
+parameter-search runner. Report results for the complete training period and
+its four six-month subperiods. Keep validation closed until candidate rules and
+search ranges are fixed, and keep final test closed until after validation.

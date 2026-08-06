@@ -7,6 +7,8 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -16,7 +18,7 @@ public final class BacktestConfigurationLoader {
     public record LoadedConfiguration(
             String symbol,
             String interval,
-            int candleLimit,
+            BacktestDataset dataset,
             BacktestEngine.BacktestConfig engine,
             String strategyType,
             StrategyParameters strategyParameters
@@ -30,6 +32,21 @@ public final class BacktestConfigurationLoader {
         if (!"UTC".equals(timezone)) {
             throw new IllegalArgumentException("Only UTC prop-rule boundaries are currently supported");
         }
+        BacktestDataset.Type datasetType = datasetType(engine);
+        if (datasetType == BacktestDataset.Type.FINAL_TEST
+                && !Boolean.getBoolean("confirmFinalTest")) {
+            throw new IllegalStateException("FINAL_TEST is intentionally locked. Re-run with "
+                    + "-DconfirmFinalTest=true only after the strategy and parameters are frozen.");
+        }
+        String datasetPrefix = "data." + switch (datasetType) {
+            case TRAINING -> "training";
+            case VALIDATION -> "validation";
+            case FINAL_TEST -> "finalTest";
+        };
+        BacktestDataset dataset = new BacktestDataset(
+                datasetType,
+                date(engine, datasetPrefix + "Start"),
+                date(engine, datasetPrefix + "End"));
 
         BacktestEngine.BacktestConfig backtestConfig = new BacktestEngine.BacktestConfig(
                 decimal(engine, "account.initialBalance"),
@@ -51,7 +68,7 @@ public final class BacktestConfigurationLoader {
         return new LoadedConfiguration(
                 required(engine, "market.symbol"),
                 required(engine, "market.interval"),
-                integer(engine, "market.candleLimit"),
+                dataset,
                 backtestConfig,
                 required(strategy, "strategy.type"),
                 new StrategyParameters(parameters));
@@ -93,6 +110,23 @@ public final class BacktestConfigurationLoader {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Configuration property must be a positive integer: "
                     + name, e);
+        }
+    }
+
+    private static BacktestDataset.Type datasetType(Properties properties) {
+        try {
+            return BacktestDataset.Type.valueOf(System.getProperty(
+                    "backtestDataset", required(properties, "backtest.dataset")));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("backtest.dataset must be TRAINING, VALIDATION, or FINAL_TEST", e);
+        }
+    }
+
+    private static java.time.Instant date(Properties properties, String name) {
+        try {
+            return LocalDate.parse(required(properties, name)).atStartOfDay(ZoneOffset.UTC).toInstant();
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new IllegalArgumentException("Configuration property must be YYYY-MM-DD: " + name, e);
         }
     }
 }

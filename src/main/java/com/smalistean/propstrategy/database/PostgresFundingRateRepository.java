@@ -113,6 +113,36 @@ public final class PostgresFundingRateRepository {
         }
     }
 
+    public List<FundingRate> findRange(String symbol, Instant startInclusive,
+                                       Instant endExclusive) {
+        String sql = """
+                SELECT symbol, funding_time, rate_type, funding_rate, mark_price
+                FROM futures_funding_rate
+                WHERE symbol = ? AND funding_time >= ? AND funding_time < ?
+                ORDER BY funding_time, rate_type
+                """;
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, symbol);
+            statement.setObject(2, OffsetDateTime.ofInstant(startInclusive, ZoneOffset.UTC));
+            statement.setObject(3, OffsetDateTime.ofInstant(endExclusive, ZoneOffset.UTC));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                var result = new java.util.ArrayList<FundingRate>();
+                while (resultSet.next()) {
+                    result.add(new FundingRate(
+                            resultSet.getString("symbol"),
+                            resultSet.getObject("funding_time", OffsetDateTime.class).toInstant(),
+                            resultSet.getString("rate_type"),
+                            resultSet.getBigDecimal("funding_rate"),
+                            resultSet.getBigDecimal("mark_price")));
+                }
+                return List.copyOf(result);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to load Futures funding-rate range", e);
+        }
+    }
+
     private Connection openConnection() throws SQLException {
         return DriverManager.getConnection(config.url(), config.user(), config.password());
     }

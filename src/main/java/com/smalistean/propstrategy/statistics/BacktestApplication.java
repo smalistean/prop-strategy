@@ -33,10 +33,18 @@ public final class BacktestApplication {
                 loaded.strategyType(), loaded.strategyParameters());
 
         DatabaseConfig database = DatabaseConfig.fromEnvironment();
-        List<Kline> candles = new PostgresKlineRepository(database).findLatest(
-                loaded.symbol(), loaded.interval(), loaded.candleLimit());
-        List<FeatureSnapshot> snapshots = new ParameterizedFeatureGenerator()
-                .generate(candles, strategy.requiredFeatures());
+        ParameterizedFeatureGenerator featureGenerator = new ParameterizedFeatureGenerator();
+        int warmupCandles = featureGenerator.requiredWarmupCandles(strategy.requiredFeatures());
+        List<Kline> candles = new PostgresKlineRepository(database).findRangeWithWarmup(
+                loaded.symbol(), loaded.interval(), loaded.dataset().startInclusive(),
+                loaded.dataset().endExclusive(), warmupCandles);
+        List<FeatureSnapshot> snapshots = featureGenerator
+                .generate(candles, strategy.requiredFeatures()).stream()
+                .filter(snapshot -> !snapshot.candleOpenTime()
+                        .isBefore(loaded.dataset().startInclusive()))
+                .filter(snapshot -> snapshot.candleOpenTime()
+                        .isBefore(loaded.dataset().endExclusive()))
+                .toList();
         Map<java.time.Instant, Kline> candlesByOpenTime = new HashMap<>();
         candles.forEach(candle -> candlesByOpenTime.put(candle.openTime(), candle));
         List<BacktestEngine.BacktestBar> bars = snapshots.stream()
@@ -44,12 +52,16 @@ public final class BacktestApplication {
                         candlesByOpenTime.get(snapshot.candleOpenTime()), snapshot))
                 .toList();
         List<FundingRate> funding = new PostgresFundingRateRepository(database)
-                .findThrough(loaded.symbol(), candles.getLast().closeTime());
+                .findRange(loaded.symbol(), loaded.dataset().startInclusive(),
+                        loaded.dataset().endExclusive());
 
         BacktestEngine.BacktestResult result = new BacktestEngine(loaded.engine())
                 .run(strategy, bars, funding);
-        System.out.printf("Backtest: strategy=%s, symbol=%s, interval=%s, candles=%,d, featureBars=%,d%n",
-                strategy.name(), loaded.symbol(), loaded.interval(), candles.size(), bars.size());
+        System.out.printf("Backtest: dataset=%s [%s, %s), strategy=%s, symbol=%s, interval=%s, "
+                        + "loadedCandles=%,d, evaluatedBars=%,d%n",
+                loaded.dataset().type(), loaded.dataset().startInclusive(),
+                loaded.dataset().endExclusive(), strategy.name(), loaded.symbol(),
+                loaded.interval(), candles.size(), bars.size());
         System.out.println(new PerformanceReport().generate(result));
         result.account().closedTrades().stream().limit(5).forEach(trade ->
                 System.out.printf("%s %s -> %s net=%s reason=%s%n",
