@@ -19,6 +19,14 @@ statistically validated strategies for a prop trading challenge.
 Start with a small terminal preview of historical Futures klines. Once the
 response and fields are verified, design the PostgreSQL schema and persistence.
 
+## Progress
+
+-   [x] Confirm Binance USDⓈ-M Futures as the market-data source.
+-   [x] Retrieve and print a small historical kline sample.
+-   [x] Parse every required kline field.
+-   [ ] Add production pagination, retries, and rate-limit handling.
+-   [ ] Download at least three years for the selected symbols and intervals.
+
 ## Symbols
 
 -   BTCUSDT
@@ -54,12 +62,12 @@ response and fields are verified, design the PostgreSQL schema and persistence.
 
 # Phase 2 -- Store Data
 
--   Store data in PostgreSQL.
--   Create tables per timeframe or one unified table with a timeframe
-    column.
--   Add an index on `(symbol, open_time)`.
--   Perform one historical import, then append new candles
-    incrementally.
+-   [x] Use PostgreSQL 17 and manage schema changes with Flyway.
+-   [x] Create one unified kline table with an interval column.
+-   [x] Enforce uniqueness on `(symbol, interval, open_time)`.
+-   [x] Insert a small Futures sample with an idempotent upsert.
+-   [ ] Perform the complete historical import.
+-   [ ] Append new candles incrementally.
 
 ------------------------------------------------------------------------
 

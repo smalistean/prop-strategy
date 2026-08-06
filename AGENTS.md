@@ -7,6 +7,10 @@ decision changes so it remains the default source of truth for future work.
 
 - Work incrementally and keep each step small enough to run and verify from the
   terminal.
+- Read `PROJECT_STATUS.md` before inspecting implementation details to learn
+  what is complete, what is current, and what should happen next.
+- Update `PROJECT_STATUS.md` whenever a milestone is completed or the next step
+  changes. Update matching checkboxes in `ROADMAP.md` when roadmap work is done.
 - Do not implement later roadmap phases before the current phase has been
   reviewed and verified.
 - Prefer simple, explicit solutions over adding frameworks prematurely.

@@ -9,6 +9,15 @@ public record Kline(
         BigDecimal high,
         BigDecimal low,
         BigDecimal close,
-        BigDecimal volume
+        BigDecimal volume,
+        Instant closeTime,
+        BigDecimal quoteAssetVolume,
+        int tradeCount,
+        BigDecimal takerBuyBaseVolume,
+        BigDecimal takerBuyQuoteVolume
 ) {
+    public Kline(Instant openTime, BigDecimal open, BigDecimal high, BigDecimal low,
+                 BigDecimal close, BigDecimal volume) {
+        this(openTime, open, high, low, close, volume, null, null, 0, null, null);
+    }
 }

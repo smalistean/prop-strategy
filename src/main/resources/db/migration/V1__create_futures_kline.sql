@@ -1,0 +1,21 @@
+CREATE TABLE futures_kline (
+    symbol                  VARCHAR(20)              NOT NULL,
+    interval                VARCHAR(10)              NOT NULL,
+    open_time               TIMESTAMPTZ              NOT NULL,
+    open_price              NUMERIC(30, 12)          NOT NULL,
+    high_price              NUMERIC(30, 12)          NOT NULL,
+    low_price               NUMERIC(30, 12)          NOT NULL,
+    close_price             NUMERIC(30, 12)          NOT NULL,
+    volume                  NUMERIC(38, 12)          NOT NULL,
+    close_time              TIMESTAMPTZ              NOT NULL,
+    quote_asset_volume      NUMERIC(38, 12)          NOT NULL,
+    trade_count             INTEGER                 NOT NULL,
+    taker_buy_base_volume   NUMERIC(38, 12)          NOT NULL,
+    taker_buy_quote_volume  NUMERIC(38, 12)          NOT NULL,
+    created_at              TIMESTAMPTZ              NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ              NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (symbol, interval, open_time),
+    CHECK (high_price >= low_price),
+    CHECK (volume >= 0),
+    CHECK (trade_count >= 0)
+);

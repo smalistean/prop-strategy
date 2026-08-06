@@ -67,6 +67,11 @@ public class BinanceKlineClient {
         if (!rows.isArray()) {
             throw new IOException("Expected Binance kline response to be an array");
         }
+        for (JsonNode row : rows) {
+            if (!row.isArray() || row.size() < 11) {
+                throw new IOException("Binance returned an invalid kline row");
+            }
+        }
 
         return StreamSupport.stream(rows.spliterator(), false)
                 .map(row -> new Kline(
@@ -75,7 +80,12 @@ public class BinanceKlineClient {
                         new BigDecimal(row.get(2).asText()),
                         new BigDecimal(row.get(3).asText()),
                         new BigDecimal(row.get(4).asText()),
-                        new BigDecimal(row.get(5).asText())
+                        new BigDecimal(row.get(5).asText()),
+                        Instant.ofEpochMilli(row.get(6).asLong()),
+                        new BigDecimal(row.get(7).asText()),
+                        row.get(8).asInt(),
+                        new BigDecimal(row.get(9).asText()),
+                        new BigDecimal(row.get(10).asText())
                 ))
                 .toList();
     }
