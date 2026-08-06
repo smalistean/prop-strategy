@@ -99,42 +99,42 @@ Binance limits the four statistical datasets above to the latest month or
 
 # Phase 4 -- Generate Features
 
-## Trend
+Start with BTCUSDT 15m. Add indicators only when a strategy needs them instead
+of calculating the entire original wish list upfront.
 
--   SMA
--   EMA
--   ADX
+## Timing contract
 
-## Momentum
+-   [x] A feature row is available only when its candle has closed.
+-   [x] Supporting data must have a timestamp at or before that candle close.
+-   [x] A signal based on a feature row may execute no earlier than the next
+    candle.
+-   [x] Warm-up candles do not produce feature rows or signals.
 
--   RSI
--   MACD
+## Initial price and volume slice
 
-## Volatility
+-   [x] Load BTCUSDT 15m candles chronologically from PostgreSQL.
+-   [x] Candle return percentage.
+-   [x] EMA 20 and EMA 50.
+-   [x] Wilder RSI 14 and ATR 14.
+-   [x] Rolling 20-period volatility and volume ratio.
+-   [x] Body, upper-wick, and lower-wick percentages.
 
--   ATR
--   Rolling standard deviation
+## Futures context
 
-## Volume
+-   [x] Align the latest known funding rate without look-ahead bias.
+-   [x] Align 5m open interest and calculate its percentage change.
+-   [x] Align global, top-account, and top-position trader ratios.
+-   [x] Preserve missing context as missing rather than inventing values.
 
--   Moving average volume
--   Volume spikes
--   Buy/Sell imbalance
+## Delivery
 
-## Candlestick Statistics
+-   [x] Generate features in memory initially; do not persist a feature table.
+-   [x] Add deterministic tests for formulas, warm-up, and timestamp alignment.
+-   [x] Print a small recent feature sample in the terminal.
+-   [x] Keep the feature output directly usable by the Phase 5 backtester.
 
--   Body %
--   Upper wick %
--   Lower wick %
--   Inside bar
--   Outside bar
-
-## Market Context
-
--   Distance from previous day high
--   Distance from previous day low
--   Open Interest change
--   Funding rate
+ADX, MACD, previous-day levels, pattern flags, multi-timeframe context, and
+feature persistence remain candidates for later strategies.
 
 ------------------------------------------------------------------------
 

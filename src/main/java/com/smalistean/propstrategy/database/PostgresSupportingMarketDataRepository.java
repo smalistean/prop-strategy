@@ -114,6 +114,73 @@ public final class PostgresSupportingMarketDataRepository {
         return count("futures_trader_ratio", symbol, period, type);
     }
 
+    public List<OpenInterestStatistic> findOpenInterestThrough(
+            String symbol, String period, Instant endInclusive) {
+        String sql = """
+                SELECT symbol, period, statistic_time, sum_open_interest,
+                       sum_open_interest_value, circulating_supply
+                FROM futures_open_interest_statistic
+                WHERE symbol = ? AND period = ? AND statistic_time <= ?
+                ORDER BY statistic_time
+                """;
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, symbol);
+            statement.setString(2, period);
+            statement.setObject(3, utc(endInclusive));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                var result = new java.util.ArrayList<OpenInterestStatistic>();
+                while (resultSet.next()) {
+                    result.add(new OpenInterestStatistic(
+                            resultSet.getString("symbol"),
+                            resultSet.getString("period"),
+                            resultSet.getObject("statistic_time", OffsetDateTime.class).toInstant(),
+                            resultSet.getBigDecimal("sum_open_interest"),
+                            resultSet.getBigDecimal("sum_open_interest_value"),
+                            resultSet.getBigDecimal("circulating_supply")));
+                }
+                return List.copyOf(result);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to load open-interest statistics", e);
+        }
+    }
+
+    public List<TraderRatio> findRatiosThrough(
+            String symbol, String period, RatioType type, Instant endInclusive) {
+        String sql = """
+                SELECT symbol, period, ratio_type, statistic_time,
+                       long_short_ratio, long_share, short_share
+                FROM futures_trader_ratio
+                WHERE symbol = ? AND period = ? AND ratio_type = ?
+                  AND statistic_time <= ?
+                ORDER BY statistic_time
+                """;
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, symbol);
+            statement.setString(2, period);
+            statement.setString(3, type.name());
+            statement.setObject(4, utc(endInclusive));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                var result = new java.util.ArrayList<TraderRatio>();
+                while (resultSet.next()) {
+                    result.add(new TraderRatio(
+                            resultSet.getString("symbol"),
+                            resultSet.getString("period"),
+                            RatioType.valueOf(resultSet.getString("ratio_type")),
+                            resultSet.getObject("statistic_time", OffsetDateTime.class).toInstant(),
+                            resultSet.getBigDecimal("long_short_ratio"),
+                            resultSet.getBigDecimal("long_share"),
+                            resultSet.getBigDecimal("short_share")));
+                }
+                return List.copyOf(result);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to load trader ratios", e);
+        }
+    }
+
     private Optional<Instant> latest(String table, String symbol, String period, RatioType type) {
         String sql = "SELECT MAX(statistic_time) FROM " + table
                 + " WHERE symbol = ? AND period = ?"

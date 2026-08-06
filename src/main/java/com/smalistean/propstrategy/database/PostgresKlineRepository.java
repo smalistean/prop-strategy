@@ -90,6 +90,50 @@ public final class PostgresKlineRepository {
         }
     }
 
+    public List<Kline> findLatest(String symbol, String interval, int limit) {
+        if (limit < 1) {
+            throw new IllegalArgumentException("Kline query limit must be positive");
+        }
+        String sql = """
+                SELECT open_time, open_price, high_price, low_price, close_price,
+                       volume, close_time, quote_asset_volume, trade_count,
+                       taker_buy_base_volume, taker_buy_quote_volume
+                FROM (
+                    SELECT * FROM futures_kline
+                    WHERE symbol = ? AND interval = ?
+                    ORDER BY open_time DESC
+                    LIMIT ?
+                ) recent
+                ORDER BY open_time
+                """;
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, symbol);
+            statement.setString(2, interval);
+            statement.setInt(3, limit);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                var result = new java.util.ArrayList<Kline>();
+                while (resultSet.next()) {
+                    result.add(new Kline(
+                            resultSet.getObject("open_time", OffsetDateTime.class).toInstant(),
+                            resultSet.getBigDecimal("open_price"),
+                            resultSet.getBigDecimal("high_price"),
+                            resultSet.getBigDecimal("low_price"),
+                            resultSet.getBigDecimal("close_price"),
+                            resultSet.getBigDecimal("volume"),
+                            resultSet.getObject("close_time", OffsetDateTime.class).toInstant(),
+                            resultSet.getBigDecimal("quote_asset_volume"),
+                            resultSet.getInt("trade_count"),
+                            resultSet.getBigDecimal("taker_buy_base_volume"),
+                            resultSet.getBigDecimal("taker_buy_quote_volume")));
+                }
+                return List.copyOf(result);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to load latest Futures klines", e);
+        }
+    }
+
     public KlineRangeStats rangeStats(String symbol, String interval,
                                       Instant startInclusive, Instant endExclusive) {
         String sql = """

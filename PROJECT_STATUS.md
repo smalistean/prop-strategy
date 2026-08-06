@@ -8,7 +8,8 @@ The BTCUSDT kline pipeline is complete for the current scope: three years of
 1m, 5m, 15m, and 1h data plus incremental closed-candle synchronization. ETH
 is explicitly deferred. Phase 3 is complete for BTCUSDT: three years of
 funding rates and the full Binance-retained window of 5m supporting statistics
-are stored.
+are stored. The agreed initial Phase 4 BTCUSDT 15m feature slice is complete
+and ready to feed the backtester.
 
 ## Completed
 
@@ -51,6 +52,18 @@ are stored.
   open interest, global account ratio, top-trader account ratio, and top-trader
   position ratio. Each dataset has zero non-5m gaps.
 - The project builds successfully with JDK 25.
+- Recent BTCUSDT 15m candles load from PostgreSQL in chronological order.
+- `FeatureGenerator` calculates EMA 20/50, Wilder RSI 14, Wilder ATR 14,
+  20-period return volatility and volume ratio, candle return, and candle-shape
+  percentages in one chronological pass.
+- `FeatureRow` records candle close availability and the earliest next-candle
+  execution time. Warm-up ends only after 50 candles.
+- Funding, open interest, and trader ratios align using the latest observation
+  at or before candle close; missing context remains `null`.
+- A live preview generated 151 feature rows from 200 recent 15m candles and
+  printed the latest 10 with all Futures context populated.
+- Twenty tests cover downloads, cursors, formulas, warm-up, chronology, and
+  no-look-ahead timestamp alignment.
 
 ## Current database
 
@@ -124,6 +137,11 @@ PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
 mvn exec:java \
   -Dexec.mainClass=com.smalistean.propstrategy.marketdownloader.BtcSupportingMarketDataImportApplication
 
+JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
+PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
+mvn exec:java \
+  -Dexec.mainClass=com.smalistean.propstrategy.feature.BtcFeaturePreviewApplication
+
 PGPASSWORD=$DB_PASSWORD /opt/homebrew/opt/postgresql@17/bin/psql \
   -h localhost -U "$DB_USER" -d "$DB_NAME" \
   -c "SELECT symbol, interval, COUNT(*) FROM futures_kline GROUP BY symbol, interval;"
@@ -131,7 +149,7 @@ PGPASSWORD=$DB_PASSWORD /opt/homebrew/opt/postgresql@17/bin/psql \
 
 ## Next step
 
-Begin Phase 4 by defining how each indicator aligns to the four kline
-timeframes and how supporting 5m statistics and funding events are joined
-without look-ahead bias. Then implement the first tested feature slice. Keep
-ETHUSDT deferred.
+Begin Phase 5 by adapting the existing backtester to consume `FeatureRow`,
+execute signals no earlier than `earliestExecutionTime`, and run a small
+BTCUSDT 15m end-to-end backtest. Keep ETHUSDT and additional features deferred
+until a strategy demonstrates that they are needed.
