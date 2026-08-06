@@ -6,6 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 
@@ -72,6 +73,34 @@ public final class PostgresKlineRepository {
         }
     }
 
+    public KlineRangeStats rangeStats(String symbol, String interval,
+                                      Instant startInclusive, Instant endExclusive) {
+        String sql = """
+                SELECT COUNT(*), MIN(open_time), MAX(open_time)
+                FROM futures_kline
+                WHERE symbol = ? AND interval = ? AND open_time >= ? AND open_time < ?
+                """;
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, symbol);
+            statement.setString(2, interval);
+            statement.setObject(3, OffsetDateTime.ofInstant(startInclusive, ZoneOffset.UTC));
+            statement.setObject(4, OffsetDateTime.ofInstant(endExclusive, ZoneOffset.UTC));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                resultSet.next();
+                long count = resultSet.getLong(1);
+                OffsetDateTime first = resultSet.getObject(2, OffsetDateTime.class);
+                OffsetDateTime last = resultSet.getObject(3, OffsetDateTime.class);
+                return new KlineRangeStats(
+                        count,
+                        first == null ? null : first.toInstant(),
+                        last == null ? null : last.toInstant());
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to read Futures kline range stats", e);
+        }
+    }
+
     private Connection openConnection() throws SQLException {
         return DriverManager.getConnection(config.url(), config.user(), config.password());
     }
@@ -91,5 +120,8 @@ public final class PostgresKlineRepository {
         statement.setInt(11, kline.tradeCount());
         statement.setBigDecimal(12, kline.takerBuyBaseVolume());
         statement.setBigDecimal(13, kline.takerBuyQuoteVolume());
+    }
+
+    public record KlineRangeStats(long count, Instant firstOpenTime, Instant lastOpenTime) {
     }
 }

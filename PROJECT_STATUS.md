@@ -4,9 +4,9 @@ Last updated: 2026-08-06
 
 ## Current position
 
-Phase 1's small Binance Futures API proof and Phase 2's small PostgreSQL
-persistence proof are complete. The project is not yet ready for a full
-historical import.
+The three-year BTCUSDT Futures historical import is complete for 1m, 5m, 15m,
+and 1h. Phase 1 remains open for ETHUSDT and any later symbols. Phase 2 remains
+open for incremental updates.
 
 ## Completed
 
@@ -20,8 +20,14 @@ historical import.
   `futures_kline` table.
 - `(symbol, interval, open_time)` is the table's primary key.
 - The JDBC repository performs transactional, idempotent batch upserts.
-- The persistence example fetched and stored 10 BTCUSDT 1h candles.
-- Running the example twice still produced exactly 10 rows.
+- The production importer writes 1,000-row batches directly to PostgreSQL.
+- Imports are resumable when existing rows form a complete prefix; sparse or
+  gapped data causes a safe idempotent restart from the requested beginning.
+- Binance calls are paced and retry transient I/O failures, HTTP 418/429, and
+  HTTP 5xx responses with backoff.
+- Four parsing and interval-alignment unit tests pass.
+- Three complete years of BTCUSDT were imported and verified for all four
+  selected intervals.
 - The project builds successfully with JDK 25.
 
 ## Current database
@@ -30,16 +36,27 @@ historical import.
 - Service: `postgresql@17`
 - Database: `prop_strategy`
 - Schema version: Flyway V1
-- Sample data: 10 BTCUSDT 1h candles beginning around one year ago
+- BTCUSDT 1m: 1,578,240 rows
+- BTCUSDT 5m: 315,648 rows
+- BTCUSDT 15m: 105,216 rows
+- BTCUSDT 1h: 26,304 rows
+- Total Futures klines: 2,025,408 rows
+- `futures_kline` table and indexes: approximately 386 MB after import
+- Import window: 2023-08-06 through the last closed candle on 2026-08-06
+- Full import runtime: 20 minutes 56 seconds
 
-The local defaults use the current macOS username and passwordless local
-development authentication. Override them when necessary with `DB_URL`,
-`DB_USER`, and `DB_PASSWORD`.
+Local credentials belong to the dedicated `prop_strategy_app` role and are
+stored in the ignored `.env` file. The application reads `DB_URL`, `DB_USER`,
+and `DB_PASSWORD` from its process environment.
 
 ## Verification commands
 
 ``` shell
 brew services list
+
+set -a
+source .env
+set +a
 
 JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
 PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
@@ -50,15 +67,18 @@ PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
 mvn exec:java \
   -Dexec.mainClass=com.smalistean.propstrategy.database.KlinePersistenceApplication
 
-/opt/homebrew/opt/postgresql@17/bin/psql -d prop_strategy \
+JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
+PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH \
+mvn exec:java \
+  -Dexec.mainClass=com.smalistean.propstrategy.marketdownloader.BtcHistoricalImportApplication
+
+PGPASSWORD=$DB_PASSWORD /opt/homebrew/opt/postgresql@17/bin/psql \
+  -h localhost -U "$DB_USER" -d "$DB_NAME" \
   -c "SELECT symbol, interval, COUNT(*) FROM futures_kline GROUP BY symbol, interval;"
 ```
 
 ## Next step
 
-Before importing years of data, add repeatable tests for Binance response
-parsing and PostgreSQL upserts, then make the downloader write paginated batches
-directly to PostgreSQL with retry and rate-limit handling.
-
-Do not begin the complete historical import until that path is verified on a
-small bounded date range.
+Add an incremental synchronization command that appends newly closed BTCUSDT
+candles, then decide whether to import ETHUSDT before moving to supporting
+Futures data such as funding rates and open interest.

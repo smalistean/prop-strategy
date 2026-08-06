@@ -24,8 +24,9 @@ response and fields are verified, design the PostgreSQL schema and persistence.
 -   [x] Confirm Binance USDⓈ-M Futures as the market-data source.
 -   [x] Retrieve and print a small historical kline sample.
 -   [x] Parse every required kline field.
--   [ ] Add production pagination, retries, and rate-limit handling.
--   [ ] Download at least three years for the selected symbols and intervals.
+-   [x] Import and verify three years of BTCUSDT for 1m, 5m, 15m, and 1h.
+-   [x] Add production pagination, retries, pacing, and resumable batches.
+-   [ ] Download at least three years for ETHUSDT and any later symbols.
 
 ## Symbols
 
@@ -66,7 +67,7 @@ response and fields are verified, design the PostgreSQL schema and persistence.
 -   [x] Create one unified kline table with an interval column.
 -   [x] Enforce uniqueness on `(symbol, interval, open_time)`.
 -   [x] Insert a small Futures sample with an idempotent upsert.
--   [ ] Perform the complete historical import.
+-   [x] Perform the complete BTCUSDT historical import.
 -   [ ] Append new candles incrementally.
 
 ------------------------------------------------------------------------
