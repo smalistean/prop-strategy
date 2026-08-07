@@ -38,8 +38,8 @@ public final class HistoricalImportApplication {
                 : Arrays.stream(configured.split(",")).map(String::trim)
                 .map(String::toUpperCase).filter(value -> !value.isBlank()).distinct().toList();
         if (symbols.isEmpty() || symbols.stream().anyMatch(
-                symbol -> !symbol.matches("[A-Z0-9]{2,20}USDT"))) {
-            throw new IllegalArgumentException("Symbols must be comma-separated USDT pairs");
+                symbol -> !symbol.matches("[A-Z0-9]{2,20}USD[TC]"))) {
+            throw new IllegalArgumentException("Symbols must be comma-separated USDT/USDC pairs");
         }
         return symbols;
     }

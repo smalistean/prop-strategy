@@ -21,7 +21,10 @@ public final class BtcHistoricalImportApplication {
     }
 
     public static void main(String[] args) {
-        importSymbol(SYMBOL, null);
+        String symbol = System.getProperty("symbol", SYMBOL).trim().toUpperCase();
+        String configuredStart = System.getProperty("start", "").trim();
+        Instant start = configuredStart.isEmpty() ? null : Instant.parse(configuredStart);
+        importSymbol(symbol, start);
     }
 
     static void importSymbol(String symbol, Instant fixedStartInclusive) {

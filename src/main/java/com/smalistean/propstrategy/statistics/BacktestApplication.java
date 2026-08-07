@@ -8,6 +8,7 @@ import com.smalistean.propstrategy.database.FundingRate;
 import com.smalistean.propstrategy.database.Kline;
 import com.smalistean.propstrategy.database.PostgresFundingRateRepository;
 import com.smalistean.propstrategy.database.PostgresKlineRepository;
+import com.smalistean.propstrategy.database.PostgresOrderFlowFeatureRepository;
 import com.smalistean.propstrategy.feature.FeatureSnapshot;
 import com.smalistean.propstrategy.feature.ParameterizedFeatureGenerator;
 import com.smalistean.propstrategy.feature.MultiTimeframeFeatureAssembler;
@@ -44,6 +45,7 @@ public final class BacktestApplication {
         ParameterizedFeatureGenerator featureGenerator = new ParameterizedFeatureGenerator();
         PostgresKlineRepository klineRepository = new PostgresKlineRepository(database);
         boolean multiTimeframe = loaded.strategyType().equals("multi-timeframe-flat-long");
+        boolean orderFlow = loaded.strategyType().equals("order-flow-exhaustion");
         int warmupCandles = multiTimeframe ? 1
                 : featureGenerator.requiredWarmupCandles(strategy.requiredFeatures());
         List<Kline> candles = klineRepository.findRangeWithWarmup(loaded.symbol(), loaded.interval(),
@@ -59,6 +61,18 @@ public final class BacktestApplication {
                     loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), 25);
             generatedSnapshots = new MultiTimeframeFeatureAssembler()
                     .assemble(candles, fifteen, hourly, 200, 14, 14);
+        } else if (orderFlow) {
+            if (!loaded.interval().equals("5m")) {
+                throw new IllegalArgumentException("Order-flow strategy requires market.interval=5m");
+            }
+            List<FeatureSnapshot> technical = featureGenerator.generate(candles,
+                    java.util.Set.of(com.smalistean.propstrategy.feature.FeatureKey.close(),
+                            com.smalistean.propstrategy.feature.FeatureKey.ema(200),
+                            com.smalistean.propstrategy.feature.FeatureKey.atr(14)));
+            List<FeatureSnapshot> flow = new PostgresOrderFlowFeatureRepository(database)
+                    .findFiveMinuteSnapshots(loaded.symbol(), loaded.dataset().startInclusive(),
+                            loaded.dataset().endExclusive());
+            generatedSnapshots = merge(technical, flow);
         } else {
             generatedSnapshots = featureGenerator.generate(candles, strategy.requiredFeatures());
         }
@@ -118,6 +132,24 @@ public final class BacktestApplication {
             evaluateAcceptance(loaded, bars, funding, minuteCandles, report, strategySupplier,
                     Path.of(acceptanceFile));
         }
+    }
+
+    private static List<FeatureSnapshot> merge(List<FeatureSnapshot> technical,
+                                               List<FeatureSnapshot> flow) {
+        Map<Instant, FeatureSnapshot> flowByTime = new HashMap<>();
+        flow.forEach(item -> flowByTime.put(item.candleOpenTime(), item));
+        return technical.stream().filter(item -> flowByTime.containsKey(item.candleOpenTime()))
+                .map(item -> {
+                    FeatureSnapshot orderFlow = flowByTime.get(item.candleOpenTime());
+                    Map<com.smalistean.propstrategy.feature.FeatureKey, BigDecimal> values =
+                            new HashMap<>(item.values());
+                    values.putAll(orderFlow.values());
+                    Instant available = item.availableAt().isAfter(orderFlow.availableAt())
+                            ? item.availableAt() : orderFlow.availableAt();
+                    Instant executable = item.earliestExecutionTime().isAfter(orderFlow.earliestExecutionTime())
+                            ? item.earliestExecutionTime() : orderFlow.earliestExecutionTime();
+                    return new FeatureSnapshot(item.candleOpenTime(), available, executable, values);
+                }).toList();
     }
 
     private static void evaluateAcceptance(

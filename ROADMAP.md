@@ -369,6 +369,121 @@ and conclusions for every completed experiment are kept together in
 -   [x] 5. Improved exits
 -   [x] 6. Portfolio-level risk
 
+## Order-flow research sequence
+
+The next research direction must introduce information that is not derived only
+from OHLCV candles. Historical completeness is mandatory: a signal may enter a
+training backtest only when equivalent source data covers the full two-year
+training window. Liquidations, live order books, and other forward-only feeds
+are deferred unless a reliable full-window archive is obtained.
+
+-   [x] 0. Freeze scope: start with BTCUSDT USD-M Futures aggregate trades for
+    `[2023-08-07, 2025-08-07)` only;
+    retain raw archives outside PostgreSQL and store compact 1m features in the
+    database.
+-   [x] 1. Verify Binance archive coverage, file sizes, checksums, timestamp
+    format, and gaps for the complete BTCUSDT three-year window. Produce a
+    download/storage/runtime estimate before downloading the dataset.
+-   [x] 2. Define and review the 1m aggregate-trade schema and deterministic
+    aggregation rules. Include aggressive buy/sell quantity and notional,
+    delta, cumulative delta, trade counts, large-trade measures, and data-quality
+    fields. Apply Flyway only after review.
+-   [x] 3. Implement resumable, checksum-verified archive download and streaming
+    aggregation. Do not load every raw trade into PostgreSQL.
+-   [x] 4. Import BTCUSDT and independently verify time boundaries, continuity,
+    totals, duplicates, and reconciliation with kline volumes.
+-   [x] 5. Add no-look-ahead order-flow features such as imbalance, delta
+    acceleration, absorption, exhaustion, and price/order-flow divergence.
+-   [x] 6. Define an order-flow exhaustion strategy and acceptance criteria
+    before running it. Freeze parameters and retain existing fees and 1m
+    execution rules.
+-   [x] 7. Run BTC training diagnostics. Import aggregate trades for additional
+    symbols only if BTC shows material improvement without failing stability or
+    cost stress.
+
+Funding and the existing three-year candle history may be used. Existing
+open-interest/trader-ratio history covers only about 30 days, so it must not be
+used as a three-year strategy input. It can remain stored for future forward
+research.
+
+Step 1 conclusion: the official archive has all 36 monthly files from 2023-08
+through 2026-07 and daily files for 2026-08-01 through 2026-08-05, with checksum
+companions. The required 2026-08-06 file was not yet published when audited, so
+the exact three-year endpoint is temporarily incomplete by one day. Available
+archives total 19.90 GB compressed; a verified sample implies approximately
+104.5 GB expanded and 1.57 billion raw aggregate-trade rows. Streaming directly
+to 1m aggregation avoids expanded storage and produces at most 1,579,680 feature
+rows. Full details and estimates are in `PROJECT_STATUS.md`.
+
+Step 2 conclusion: `ORDER_FLOW_DESIGN.md` freezes the BTC training-only scope,
+source-side aggressor semantics, proposed 1m table, exact aggregation formulas,
+trade-size buckets, gap/duplicate handling, kline reconciliation, derived-feature
+boundary, and stopping rule. No migration has been created or applied.
+
+Step 3 conclusion: Flyway V5 creates the minute-feature and archive-manifest
+tables. The importer supports HTTP range resume, SHA-256 verification, ZIP/CSV
+streaming, UTC boundary filtering, aggressor aggregation, size buckets,
+duplicate/gap detection, batched idempotent upserts, archive completion records,
+and kline-volume reconciliation. A real 399,219-row archive produced 1,440
+minutes with no duplicates or missing IDs in dry-run mode. No sample rows or
+bulk training archives were persisted.
+
+Step 4 conclusion: all 30 BTCUSDT training archives were checksum-verified and
+imported. The source contains 996,290,953 archive rows; 4,063,849 boundary rows
+were filtered and the remaining 992,227,104 aggregate trades produced 1,052,606
+minute rows representing 2,541,354,833 underlying trades. There are no duplicate
+or missing aggregate IDs. The 34 calendar minutes without aggregate rows all
+have zero kline volume and zero trades. Exact kline-volume reconciliation holds
+for 874,678 minutes; 177,928 differ, mostly by small amounts, with only 462 over
+10 BTC and a total-window volume difference of about 0.00075%. Keep the explicit
+quality status and use aggregate trades as the order-flow source of truth.
+
+Step 5 conclusion: deterministic 5m/15m/60m/240m features now cover order-flow
+imbalance, rolling quote delta, >=100k trade imbalance, coverage, reconciliation
+quality, price return, delta acceleration, sell absorption, sell exhaustion, and
+price/flow divergence. Snapshots become executable only after the source minute
+closes, and a regression test proves future flow cannot change an earlier
+snapshot. A real six-day preview generated all 8,640 expected snapshots.
+
+Step 6 conclusion: the 5m long-only exhaustion hypothesis, thresholds, ATR/2R
+risk, flow/time exits, six-bar entry-signal spacing, 75% primary quality floor,
+95% quality sensitivity, and materially stricter acceptance profile are frozen
+in code and configuration. Unit tests cover entry, quality rejection, and flow
+exit. No training performance was inspected.
+
+Step 7 conclusion: the primary BTC training run failed every acceptance gate and
+hit the 10% account drawdown stop after 48 trades: -10.29% return, 0.072 profit
+factor, and -$1,849 before costs. The predeclared 95%-quality sensitivity also
+hit the drawdown stop: -10.36% return and 0.287 profit factor. Its raw price PnL
+was +$1,519, but $11,878 of fees and slippage overwhelmed the small captured
+moves; all four independent six-month subperiods lost money. The frozen stopping
+rule rejects this strategy branch. Do not tune its thresholds, open validation
+or final-test data, or import aggregate trades for more symbols on its behalf.
+
+## Direct Binance BTCUSDC research
+
+This is a separate execution track from prop-account research. BTCUSDC USD-M
+Futures launched on 2024-01-03, with its first actual 1m candle at
+2024-01-04 12:31 UTC. Use `[2024-02-01, 2026-02-01)` for training, reserve the
+next three months for validation and `[2026-05-01, 2026-08-01)` for final test.
+The account fee schedule observed on 2026-08-07 is 0 bps maker and 3.6 bps
+taker; keep it configurable because Binance can change account/promotional fees.
+
+-   [x] Import and verify BTCUSDC 1m, 5m, 15m, and 1h candles and funding.
+-   [x] Run unchanged intraday mean-reversion rules on 15m, 5m, and 1m training
+    data with strict maker trade-through and the BTCUSDC fee schedule.
+-   [x] Design a new passive-maker candidate after reviewing the baselines,
+    freeze it before measuring performance, and apply the high-frequency
+    acceptance profile.
+
+BTCUSDC conclusion: zero maker fees solve only one part of execution economics.
+The unchanged intraday rules lost 30.10% on 15m, 97.92% on 5m, and 100% on 1m
+over the full training period. A new frozen passive-maker strategy generated
+79,288 fills but also lost 100% with a 0.335 profit factor: its 62.8% win rate
+was overwhelmed by average losses roughly five times average wins. All four
+six-month subperiods failed for every candidate. Reject both rule families
+without threshold tuning. Do not open the reserved validation/final periods.
+
 ------------------------------------------------------------------------
 
 # Suggested Java Package Structure

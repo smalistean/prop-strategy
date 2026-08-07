@@ -20,7 +20,9 @@ public final class StrategyRegistry {
                 new DonchianBreakoutStrategyFactory(),
                 new VolatilityCompressionBreakoutStrategyFactory(),
                 new RsiAtrMeanReversionStrategyFactory(),
+                new OrderFlowExhaustionStrategyFactory(),
                 new MultiTimeframeFlatLongStrategyFactory(),
+                new PassiveMakerMeanReversionStrategyFactory(),
                 new IntradayFlatMeanReversionStrategyFactory()));
     }
 

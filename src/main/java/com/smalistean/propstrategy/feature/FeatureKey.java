@@ -53,4 +53,44 @@ public record FeatureKey(String name, int period, int lookback) {
     public static FeatureKey priorBollingerBandwidthPercentile(int period, int lookback) {
         return new FeatureKey("priorBollingerBandwidthPercentile", period, lookback);
     }
+
+    public static FeatureKey orderFlowImbalance(int period) {
+        return new FeatureKey("orderFlowImbalance", period);
+    }
+
+    public static FeatureKey rollingQuoteDelta(int period) {
+        return new FeatureKey("rollingQuoteDelta", period);
+    }
+
+    public static FeatureKey largeTradeImbalance(int period) {
+        return new FeatureKey("large100kImbalance", period);
+    }
+
+    public static FeatureKey orderFlowCoverage(int period) {
+        return new FeatureKey("orderFlowCoverage", period);
+    }
+
+    public static FeatureKey orderFlowQuality(int period) {
+        return new FeatureKey("orderFlowQuality", period);
+    }
+
+    public static FeatureKey priceReturn(int period) {
+        return new FeatureKey("priceReturn", period);
+    }
+
+    public static FeatureKey deltaAcceleration(int fastPeriod, int slowPeriod) {
+        return new FeatureKey("deltaAcceleration", fastPeriod, slowPeriod);
+    }
+
+    public static FeatureKey sellAbsorption(int period) {
+        return new FeatureKey("sellAbsorption", period);
+    }
+
+    public static FeatureKey sellExhaustion(int fastPeriod, int slowPeriod) {
+        return new FeatureKey("sellExhaustion", fastPeriod, slowPeriod);
+    }
+
+    public static FeatureKey priceFlowDivergence(int period) {
+        return new FeatureKey("priceFlowDivergence", period);
+    }
 }

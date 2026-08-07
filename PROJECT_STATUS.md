@@ -186,7 +186,15 @@ unopened.
 - PostgreSQL: 17.10
 - Service: `postgresql@17`
 - Database: `prop_strategy`
-- Schema version: Flyway V4
+- Schema version: Flyway V5
+- BTCUSDC Futures contract metadata onboarded at 2024-01-03 12:30 UTC; its first
+  actual 1m candle is 2024-01-04 12:31 UTC.
+- BTCUSDC 1m: 1,362,009 rows
+- BTCUSDC 5m: 272,402 rows
+- BTCUSDC 15m: 90,800 rows
+- BTCUSDC 1h: 22,700 rows
+- BTCUSDC funding rates: 2,838 rows
+
 - BTCUSDT 1m: 1,578,282 rows
 - BTCUSDT 5m: 315,656 rows
 - BTCUSDT 15m: 105,218 rows
@@ -219,6 +227,40 @@ stored in the ignored `.env` file. The application reads `DB_URL`, `DB_USER`,
 and `DB_PASSWORD` from its process environment. Binance credentials are stored
 separately in ignored `.env.binance`; Phase 3 only sends the API key to the two
 read-only market-data endpoints that require it and never uses the secret key.
+
+### Direct-Binance BTCUSDC high-frequency research
+
+BTCUSDC is treated separately from prop-account research. The reproducible
+training window is `[2024-02-01, 2026-02-01)`; validation is reserved through
+2026-05-01 and final test through 2026-08-01. The observed regular-account fee
+profile is configurable at 0 bps maker and 3.6 bps taker, with 2 bps modeled
+taker slippage and strict 1m maker trade-through. Direct-Binance research uses
+0.1% risk per trade and does not terminate at prop-account loss thresholds;
+the acceptance profile still rejects drawdown above 10%.
+
+The existing intraday flat mean-reversion rules were run unchanged at three
+timeframes over the complete training period:
+
+- 15m: 2,869 trades, -30.10%, 0.778 profit factor, 30.97% drawdown.
+- 5m: 13,919 trades, -97.92%, 0.607 profit factor, 97.93% drawdown.
+- 1m: 43,507 trades, -100%, 0.368 profit factor, 100% drawdown.
+
+A new `passive-maker-mean-reversion` candidate was frozen before its first run.
+On 1m data it uses EMA-60, RSI-7, a 15-bar flatness guard, 0.15 ATR minimum
+deviation, 2 ATR protective stop, 0.75 ATR maker target, and 30-minute maximum
+holding period. It completed 79,288 trades (about 109 per day), with 62.76% win
+rate, but lost 100% with a 0.335 profit factor. The average win was $1.01 and
+average loss $5.10 as equity decayed; fees were $39,387 and modeled slippage
+$21,882. Each independently restarted six-month subperiod lost effectively all
+capital, and the 1.5x-cost run also lost 100%.
+
+Conclusion: frequency is achievable, but neither tested rule family has
+positive expectancy. Zero maker fees do not compensate for adverse selection,
+taker stop/fallback costs, and a payoff distribution where occasional losses
+erase several maker wins. Both branches are rejected without tuning, and the
+reserved validation/final periods remain unopened. BTCUSDC aggregate-trade
+archives are available but were not imported because these candidates do not
+consume order-flow features.
 
 ## Verification commands
 
@@ -444,17 +486,202 @@ rather than solve the evidence problem.
 
 ## Next step
 
-1. Upgrade the portfolio engine to event-driven mark-to-market equity, including
-   simultaneous stops, daily loss limits, and measured rolling correlations.
-2. Freeze two candidates before opening validation: BTC flat-long as the simple
-   benchmark and BTC/XRP/ADA/DOGE/LINK with the moderate 1.5x crypto-notional cap
-   as the portfolio hypothesis. Do not change them after seeing validation.
-3. Run the single six-month validation period once. Reject candidates that lose,
-   violate prop limits, or show materially worse execution/stability.
-4. If validation is promising, obtain a larger independent sample through older
-   data or additional liquid symbols before touching the final-test period.
-5. Keep the final six-month test locked until the implementation, universe, and
-   risk limits are frozen after validation.
+The user selected order-flow research before validation because the completed
+strategies mostly rearrange price-derived indicators. The ordered plan is in
+`ROADMAP.md` under **Order-flow research sequence**.
+
+Proceed only one confirmed step at a time. Steps 1 through 7 are complete. The
+approved download scope is BTCUSDT training only: `[2023-08-07, 2025-08-07)`.
+The first order-flow research branch is closed by its frozen stopping rule. Do
+not tune the exhaustion thresholds, inspect validation/final-test performance,
+or import additional aggregate-trade symbols for this rejected candidate.
+
+Historical completeness is a project rule for new signals. Do not use the
+approximately 30-day open-interest/trader-ratio history in the two-year training
+backtest.
+Liquidations and order-book streams are deferred because equivalent full-window
+USD-M history is not currently established. The portfolio mark-to-market upgrade
+and validation plan remain future work after the order-flow candidate is assessed.
+
+### Order-flow Step 1 — BTCUSDT archive audit
+
+Audit date: 2026-08-07. No bulk history was downloaded and PostgreSQL was not
+changed.
+
+- Required target window: `[2023-08-06, 2026-08-07)` UTC, 1,097 days and at
+  most 1,579,680 one-minute aggregate rows.
+- Available monthly archives: all 36 files from 2023-08 through 2026-07.
+- Available daily tail: 2026-08-01 through 2026-08-05.
+- Missing tail: 2026-08-06 archive and checksum both returned HTTP 404. The
+  archive normally appears after the UTC day has been processed, so coverage
+  must be checked again before the final import.
+- Every available archive has an HTTP 200 checksum companion.
+- Available compressed size: 19,904,613,739 bytes (19.90 GB / 18.54 GiB).
+- Largest monthly archive: 1,006,713,302 bytes for 2026-02.
+- Mean monthly archive: approximately 551.6 MB.
+- Verified sample: BTCUSDT 2026-08-01, checksum passed; 5,049,749-byte ZIP,
+  26,515,205-byte CSV, and 399,219 data rows plus one header.
+- Sample schema: aggregate-trade ID, price, quantity, first/last trade IDs,
+  transaction time, and buyer-maker flag. Transaction timestamps are 13-digit
+  Unix milliseconds. The first and last sample events fall inside the expected
+  UTC day.
+- Sample compression ratio: 5.25x. Linear estimates are approximately 104.5 GB
+  expanded and 1.57 billion raw aggregate-trade rows. These are planning
+  estimates; activity and compression vary by month.
+- Measured sample download: 2.44 MB/s. At that rate, 19.90 GB takes about 2.3
+  hours. Allow roughly 3–6 hours for resumable download, checksum verification,
+  Java CSV parsing, aggregation, and database insertion.
+- Disk availability at audit time: 721 GiB. Retaining compressed archives needs
+  about 20 GB; streaming ZIP entries avoids the extra estimated 104.5 GB.
+- Expected PostgreSQL feature footprint: approximately 0.3–0.7 GB for 1.58
+  million rows, depending on the Step 2 column types and indexes.
+
+Step 1 identified a one-day publication lag at the original three-year endpoint.
+That gap is outside the subsequently approved training-only scope and does not
+block the `[2023-08-07, 2025-08-07)` import.
+
+### Order-flow Step 3 — importer implementation
+
+- Flyway V5 is applied locally and verified. It creates
+  `futures_agg_trade_minute` and `futures_agg_trade_import`.
+- Downloads use `.part` files and HTTP Range requests for resume, validate the
+  official checksum before rename, and reuse already verified archives.
+- ZIP entries are streamed directly into deterministic minute aggregation.
+- Persistence uses 1,000-row transactional upsert batches and is idempotent.
+- The archive manifest records checksum, byte size, source/minute row counts,
+  status, and completion time.
+- Minute rows are reconciled against existing BTCUSDT 1m kline volume with an
+  explicit difference and `MATCHED`, `MISMATCH`, or `KLINE_MISSING` status.
+- A synthetic unit test verifies aggressor direction, quote delta, size buckets,
+  underlying trade counts, and missing-ID detection.
+- The real checksum-aware dry run read 399,219 aggregate trades from the verified
+  2026-08-01 sample and generated all 1,440 expected UTC minutes, with zero
+  duplicates and zero missing IDs. `orderFlowPersist` remained false.
+- No aggregate-trade rows have been inserted yet. Bulk training download remains
+  Step 4.
+
+### Order-flow Step 4 — BTCUSDT training import
+
+- Exact window: `[2023-08-07, 2025-08-07)` UTC.
+- Archives: 24 monthly files plus six daily tail files; all 30 checksums passed.
+- Compressed bytes retained under ignored `data/order-flow/BTCUSDT`: 12,712,704,057
+  bytes (about 12 GB on disk). No `.part` file remains.
+- Archive source rows: 996,290,953.
+- Rows outside the training boundary: 4,063,849.
+- In-range aggregate trades: 992,227,104.
+- Represented underlying trades: 2,541,354,833.
+- Stored minute rows: 1,052,606 of a 1,052,640 calendar maximum.
+- The 34 absent minutes are two exchange inactivity windows (19 minutes on
+  2023-09-12 and 15 minutes on 2024-10-28); every corresponding kline has zero
+  volume and zero trades.
+- Aggregate-trade ID gaps: zero. Duplicate aggregate IDs: zero.
+- First/last stored minutes: 2023-08-07 00:00 UTC and 2025-08-06 23:59 UTC.
+- PostgreSQL size: 467 MB for minute data and 64 kB for the manifest.
+- Elapsed completion span: approximately 45 minutes, including diagnosis,
+  cleanup, and corrected replay of the unordered October 2023 archive.
+
+The October 2023 official CSV interleaves two distant time ranges. The initial
+reader assumed global chronology, producing fragmented partial minutes. The run
+was stopped, exactly 44,640 invalid October rows and its manifest entry were
+deleted transactionally, the reader was changed to order-independent minute
+aggregation, and the same checksum-verified archive then produced the correct
+44,640 rows with zero gaps. A regression test now covers interleaved input.
+
+Kline reconciliation:
+
+- `MATCHED`: 874,678 minutes (83.1%).
+- `MISMATCH`: 177,928 minutes (16.9%).
+- Median absolute mismatch among mismatches: 0.038 BTC; 90th percentile 0.926
+  BTC; 99th percentile 4.968 BTC; 462 minutes exceed 10 BTC.
+- Aggregate-trade total base volume is 185,382,349.052 BTC versus
+  185,380,958.755 BTC in klines, a net difference of 1,390.297 BTC or about
+  0.00075% of total volume.
+
+Many differences cancel in adjacent minutes, indicating timestamp-boundary or
+historical revision drift between independently obtained Binance archives and
+kline API data. A few exchange-data anomalies are materially larger. The import
+keeps every difference and quality status visible; it does not rewrite order
+flow to match klines. Aggregate trades are the source of truth for Step 5 flow
+features, while reconciliation status remains available for sensitivity checks.
+
+### Order-flow Step 5 — no-look-ahead features
+
+Implemented deterministic rolling features for 5m, 15m, 60m, and 240m windows:
+order-flow imbalance, rolling quote delta, >=100k trade imbalance, data coverage,
+exact-reconciliation quality, price returns, 5m-vs-60m delta acceleration, sell
+absorption, sell exhaustion, and price/flow divergence. Exact formulas are
+frozen in `ORDER_FLOW_DESIGN.md`.
+
+Every snapshot is timestamped at the source minute close and can first execute
+one millisecond later. A unit test changes a future minute by an extreme amount
+and proves the earlier snapshot is unchanged.
+
+A read-only real-data preview used 8,881 klines/order-flow minutes including
+warm-up and produced all 8,640 snapshots for 2025-08-01 through 2025-08-06. The
+final snapshot had full 240m coverage and 95.83% exact-reconciliation quality.
+No strategy rules, thresholds, or returns were evaluated in Step 5.
+
+### Order-flow Step 6 — frozen strategy and acceptance
+
+Added the long-only `order-flow-exhaustion` strategy and registered it in the
+strategy factory. It evaluates completed 5m bars and requires a 15m aggressive
+sell shock with >=100k seller participation, price absorption, sell exhaustion,
+5m flow recovery versus 60m, positive price/flow divergence, nearly complete
+coverage, and acceptable reconciliation quality. A broad EMA-200 guard avoids
+entries more than 2% below trend.
+
+Risk is fixed at a 1.25 ATR stop and 2R target. Signal exits occur after +10%
+5m buy imbalance, renewed -15% sell imbalance, or one hour. Entry signals are
+spaced by at least six 5m bars.
+
+The primary quality floor is 75%. One predeclared sensitivity configuration
+changes only that floor to 95%; it cannot rescue a failed primary strategy.
+
+The new acceptance profile requires >=8,000 net profit, >=1.20 profit factor,
+<=5% drawdown, >=120 trades, three profitable subperiods, <=50% concentration,
+>=1.20 average win/loss, and positive net profit under 1.5x costs. Failure on
+profit, evidence count, stability, or cost stress stops this research branch;
+threshold searching after the result is prohibited.
+
+Strategy tests verify a complete entry, rejection by the quality sensitivity,
+and the recovered-buy-flow exit. At the end of Step 6, no performance data had
+been inspected; the frozen runs are recorded below.
+
+### Order-flow Step 7 — BTC training diagnostics
+
+The backtest application now assembles completed 5m EMA/ATR features with
+database-calculated 5m/15m/60m/240m order-flow features. Feature availability is
+the later of the technical and flow snapshots, so a decision cannot execute
+before the final source minute closes. Existing 1m strict maker trade-through,
+funding, fees, slippage, prop limits, subperiod evaluation, and 1.5x cost stress
+were retained. The full JDK 25 test suite passes: 62 tests.
+
+Primary frozen configuration (`minimumQuality=0.75`):
+
+- 48 completed trades; 14.58% win rate; 7 wins and 41 losses.
+- Net -$10,285.18 (-10.29%); profit factor 0.072; maximum drawdown 10.29%.
+- Raw price PnL before costs -$1,849.00; fees $6,953.69; slippage $1,482.48.
+- 48 of 100 maker entries filled; 52 expired. The account hit `MAX_DRAWDOWN`.
+- Every one of the four independently replayed six-month subperiods lost roughly
+  $9,609 to $10,285 and zero met the stability requirement.
+- The 1.5x-cost run lost $10,322.33. Every acceptance criterion failed.
+
+Predeclared sensitivity (`minimumQuality=0.95`, all other rules unchanged):
+
+- 80 completed trades; 32.50% win rate; 26 wins and 54 losses.
+- Net -$10,358.43 (-10.36%); profit factor 0.287; maximum drawdown 10.18%.
+- Raw price PnL before costs +$1,519.25, but fees of $10,338.94 and slippage of
+  $1,538.74 produced $11,877.68 in execution costs.
+- 80 of 115 maker entries filled; 35 expired. The account hit `MAX_DRAWDOWN`.
+- All four independent six-month subperiods lost money; the 1.5x-cost run lost
+  $10,299.71. Every acceptance criterion failed.
+
+Conclusion: the primary signal has no raw edge. Stricter data-quality filtering
+reveals only a very small gross move whose scale is incompatible with the chosen
+short holding period and real Binance futures costs. Because neither run is
+stable and both breach the loss limit, the frozen stopping rule rejects the
+candidate. No validation or final-test data was opened, and no additional symbol
+archive is justified for this hypothesis.
 
 The first experiment-4 import universe is SOLUSDT, XRPUSDT, BNBUSDT, ADAUSDT,
 DOGEUSDT, and LINKUSDT. LTCUSDT, AVAXUSDT, BCHUSDT, TRXUSDT, AAVEUSDT,
