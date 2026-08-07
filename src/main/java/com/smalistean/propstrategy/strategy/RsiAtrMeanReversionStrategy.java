@@ -12,6 +12,12 @@ import java.util.Set;
 public final class RsiAtrMeanReversionStrategy implements Strategy {
 
     public record Config(
+            boolean allowLong,
+            boolean allowShort,
+            Set<MarketRegime> longRegimes,
+            Set<MarketRegime> shortRegimes,
+            int regimeLookbackBars,
+            BigDecimal regimeDirectionalMovePercent,
             int trendEmaPeriod,
             int rsiPeriod,
             BigDecimal longEntryRsi,
@@ -25,7 +31,12 @@ public final class RsiAtrMeanReversionStrategy implements Strategy {
             int maxHoldingBars
     ) {
         public Config {
-            if (trendEmaPeriod <= 1 || rsiPeriod <= 1 || atrPeriod <= 1
+            longRegimes = Set.copyOf(longRegimes);
+            shortRegimes = Set.copyOf(shortRegimes);
+            if ((!allowLong && !allowShort) || (allowLong && longRegimes.isEmpty())
+                    || (allowShort && shortRegimes.isEmpty())
+                    || regimeLookbackBars <= 0 || regimeDirectionalMovePercent.signum() <= 0
+                    || trendEmaPeriod <= 1 || rsiPeriod <= 1 || atrPeriod <= 1
                     || longEntryRsi.signum() < 0 || longEntryRsi.compareTo(longExitRsi) >= 0
                     || longExitRsi.compareTo(BigDecimal.valueOf(100)) > 0
                     || shortExitRsi.signum() < 0 || shortExitRsi.compareTo(shortEntryRsi) >= 0
@@ -45,6 +56,7 @@ public final class RsiAtrMeanReversionStrategy implements Strategy {
     private final FeatureKey rsi;
     private final FeatureKey atr;
     private final FeatureKey atrExpansion;
+    private final MarketRegimeClassifier regimeClassifier;
 
     public RsiAtrMeanReversionStrategy(Config config) {
         this.config = config;
@@ -52,6 +64,8 @@ public final class RsiAtrMeanReversionStrategy implements Strategy {
         this.rsi = FeatureKey.rsi(config.rsiPeriod());
         this.atr = FeatureKey.atr(config.atrPeriod());
         this.atrExpansion = FeatureKey.atrExpansion(config.atrPeriod());
+        this.regimeClassifier = new MarketRegimeClassifier(
+                config.regimeLookbackBars(), config.regimeDirectionalMovePercent());
     }
 
     @Override
@@ -88,21 +102,26 @@ public final class RsiAtrMeanReversionStrategy implements Strategy {
             return StrategyDecision.hold();
         }
 
-        if (index == 0 || current.require(atrExpansion)
+        if (index < config.regimeLookbackBars() || current.require(atrExpansion)
                 .compareTo(config.maximumAtrExpansionRatio()) > 0) {
             return StrategyDecision.hold();
         }
+        MarketRegime regime = regimeClassifier.classify(history, index);
         BigDecimal previousRsi = history.get(index - 1).require(rsi);
         BigDecimal stopDistance = current.require(atr).multiply(config.stopAtrMultiplier(), MC);
         BigDecimal targetDistance = stopDistance.multiply(config.rewardRiskRatio(), MC);
 
-        boolean longSetup = currentClose.compareTo(current.require(trendEma)) > 0
+        boolean longSetup = config.allowLong()
+                && config.longRegimes().contains(regime)
+                && currentClose.compareTo(current.require(trendEma)) > 0
                 && previousRsi.compareTo(config.longEntryRsi()) > 0
                 && currentRsi.compareTo(config.longEntryRsi()) <= 0;
         if (longSetup) {
             return new StrategyDecision.Enter(Side.LONG, stopDistance, targetDistance);
         }
-        boolean shortSetup = currentClose.compareTo(current.require(trendEma)) < 0
+        boolean shortSetup = config.allowShort()
+                && config.shortRegimes().contains(regime)
+                && currentClose.compareTo(current.require(trendEma)) < 0
                 && previousRsi.compareTo(config.shortEntryRsi()) < 0
                 && currentRsi.compareTo(config.shortEntryRsi()) >= 0;
         return shortSetup

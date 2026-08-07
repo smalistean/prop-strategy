@@ -26,7 +26,7 @@ public class BinanceKlineClient {
     private final ObjectMapper objectMapper;
     private final String baseUrl;
     private final Duration minimumRequestInterval;
-    private long lastRequestNanos;
+    private static long lastRequestNanos;
 
     public BinanceKlineClient() {
         this(HttpClient.newBuilder()
@@ -63,7 +63,7 @@ public class BinanceKlineClient {
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                paceRequests();
+                paceRequests(minimumRequestInterval);
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() == 200) {
                     return parseKlines(response.body());
@@ -128,8 +128,8 @@ public class BinanceKlineClient {
         }
     }
 
-    private synchronized void paceRequests() throws InterruptedException {
-        long waitNanos = minimumRequestInterval.toNanos()
+    private static synchronized void paceRequests(Duration requestInterval) throws InterruptedException {
+        long waitNanos = requestInterval.toNanos()
                 - (System.nanoTime() - lastRequestNanos);
         if (waitNanos > 0) {
             long millis = waitNanos / 1_000_000;

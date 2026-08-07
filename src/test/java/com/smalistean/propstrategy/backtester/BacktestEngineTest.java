@@ -122,23 +122,47 @@ class BacktestEngineTest {
         assertTrue(result.account().closedTrades().isEmpty());
     }
 
+    @Test
+    void movesLongStopToCostAdjustedBreakEvenAfterOneRiskUnit() {
+        List<BacktestEngine.BacktestBar> bars = List.of(
+                bar(0, "100", "101", "99", "100"),
+                bar(1, "100", "111", "99", "105"),
+                bar(2, "105", "106", "104", "105"));
+        List<Kline> minutes = List.of(
+                minute(15, "100", "100.1", "99.98", "100"),
+                minute(16, "100", "110", "100", "105"));
+
+        Trade trade = makerEngine(true).run(
+                        enterOnce(Side.LONG, "10", "100"), bars, List.of(), minutes)
+                .account().closedTrades().getFirst();
+
+        assertEquals("break-even stop", trade.exitReason());
+        assertTrue(trade.exitPrice().compareTo(trade.entryPrice()) > 0);
+        assertTrue(trade.netPnl().abs().compareTo(new BigDecimal("0.00000001")) < 0);
+    }
+
     private static BacktestEngine engine(String slippageBps, String feeBps) {
         return new BacktestEngine(new BacktestEngine.BacktestConfig(
                 new BigDecimal("10000"), new BigDecimal("0.01"),
                 new BigDecimal("100"), new BacktestEngine.ExecutionConfig(
                 false, BigDecimal.ZERO, new BigDecimal(feeBps),
-                new BigDecimal(slippageBps), BigDecimal.ZERO, 5, true),
+                new BigDecimal(slippageBps), BigDecimal.ZERO, 5, true,
+                false, BigDecimal.ONE),
                 new PropRuleEngine.PropRules(
                 new BigDecimal("1000"), new BigDecimal("1000"),
                 new BigDecimal("1000"))));
     }
 
     private static BacktestEngine makerEngine() {
+        return makerEngine(false);
+    }
+
+    private static BacktestEngine makerEngine(boolean breakEvenEnabled) {
         return new BacktestEngine(new BacktestEngine.BacktestConfig(
                 new BigDecimal("10000"), new BigDecimal("0.01"), new BigDecimal("100"),
-                new BacktestEngine.ExecutionConfig(true, new BigDecimal("2"),
-                        new BigDecimal("5"), new BigDecimal("2"),
-                        BigDecimal.ONE, 5, true),
+                new BacktestEngine.ExecutionConfig(true, new BigDecimal("1.8"),
+                        new BigDecimal("4.5"), new BigDecimal("2"),
+                        BigDecimal.ONE, 5, true, breakEvenEnabled, BigDecimal.ONE),
                 new PropRuleEngine.PropRules(new BigDecimal("1000"),
                         new BigDecimal("1000"), new BigDecimal("1000"))));
     }

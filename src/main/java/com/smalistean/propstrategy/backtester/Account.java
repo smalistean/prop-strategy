@@ -62,6 +62,34 @@ public final class Account {
         return requirePosition().quantity;
     }
 
+    public BigDecimal entryPrice() {
+        return requirePosition().entryPrice;
+    }
+
+    public BigDecimal entryFeePerUnit() {
+        Position current = requirePosition();
+        return current.entryFee.divide(current.quantity, MC);
+    }
+
+    public BigDecimal initialRiskDistance() {
+        return requirePosition().initialRiskDistance;
+    }
+
+    public boolean breakEvenActive() {
+        return requirePosition().breakEvenActive;
+    }
+
+    public void activateBreakEven(BigDecimal stopPrice) {
+        Position current = requirePosition();
+        boolean improvesStop = current.side == Side.LONG
+                ? stopPrice.compareTo(current.stopPrice) > 0
+                : stopPrice.compareTo(current.stopPrice) < 0;
+        if (improvesStop) {
+            current.stopPrice = stopPrice;
+            current.breakEvenActive = true;
+        }
+    }
+
     public List<Trade> closedTrades() {
         return List.copyOf(closedTrades);
     }
@@ -141,11 +169,13 @@ public final class Account {
         private final Instant entryTime;
         private final BigDecimal entryPrice;
         private final BigDecimal quantity;
-        private final BigDecimal stopPrice;
+        private BigDecimal stopPrice;
         private final BigDecimal targetPrice;
+        private final BigDecimal initialRiskDistance;
         private final BigDecimal entryFee;
         private final BigDecimal entrySlippageCost;
         private BigDecimal fundingPnl = BigDecimal.ZERO;
+        private boolean breakEvenActive;
         private int barsHeld;
 
         private Position(Side side, Instant entryTime, BigDecimal entryPrice,
@@ -157,6 +187,7 @@ public final class Account {
             this.quantity = quantity;
             this.stopPrice = stopPrice;
             this.targetPrice = targetPrice;
+            this.initialRiskDistance = entryPrice.subtract(stopPrice).abs();
             this.entryFee = entryFee;
             this.entrySlippageCost = entrySlippageCost;
         }

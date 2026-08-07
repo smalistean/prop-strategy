@@ -10,6 +10,7 @@ import com.smalistean.propstrategy.database.PostgresFundingRateRepository;
 import com.smalistean.propstrategy.database.PostgresKlineRepository;
 import com.smalistean.propstrategy.feature.FeatureSnapshot;
 import com.smalistean.propstrategy.feature.ParameterizedFeatureGenerator;
+import com.smalistean.propstrategy.feature.MultiTimeframeFeatureAssembler;
 import com.smalistean.propstrategy.strategy.Strategy;
 import com.smalistean.propstrategy.strategy.StrategyRegistry;
 
@@ -41,13 +42,27 @@ public final class BacktestApplication {
 
         DatabaseConfig database = DatabaseConfig.fromEnvironment();
         ParameterizedFeatureGenerator featureGenerator = new ParameterizedFeatureGenerator();
-        int warmupCandles = featureGenerator.requiredWarmupCandles(strategy.requiredFeatures());
         PostgresKlineRepository klineRepository = new PostgresKlineRepository(database);
-        List<Kline> candles = klineRepository.findRangeWithWarmup(
-                loaded.symbol(), loaded.interval(), loaded.dataset().startInclusive(),
-                loaded.dataset().endExclusive(), warmupCandles);
-        List<FeatureSnapshot> snapshots = featureGenerator
-                .generate(candles, strategy.requiredFeatures()).stream()
+        boolean multiTimeframe = loaded.strategyType().equals("multi-timeframe-flat-long");
+        int warmupCandles = multiTimeframe ? 1
+                : featureGenerator.requiredWarmupCandles(strategy.requiredFeatures());
+        List<Kline> candles = klineRepository.findRangeWithWarmup(loaded.symbol(), loaded.interval(),
+                loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), warmupCandles);
+        List<FeatureSnapshot> generatedSnapshots;
+        if (multiTimeframe) {
+            if (!loaded.interval().equals("5m")) {
+                throw new IllegalArgumentException("Multi-timeframe strategy requires market.interval=5m");
+            }
+            List<Kline> fifteen = klineRepository.findRangeWithWarmup(loaded.symbol(), "15m",
+                    loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), 220);
+            List<Kline> hourly = klineRepository.findRangeWithWarmup(loaded.symbol(), "1h",
+                    loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), 25);
+            generatedSnapshots = new MultiTimeframeFeatureAssembler()
+                    .assemble(candles, fifteen, hourly, 200, 14, 14);
+        } else {
+            generatedSnapshots = featureGenerator.generate(candles, strategy.requiredFeatures());
+        }
+        List<FeatureSnapshot> snapshots = generatedSnapshots.stream()
                 .filter(snapshot -> !snapshot.candleOpenTime()
                         .isBefore(loaded.dataset().startInclusive()))
                 .filter(snapshot -> snapshot.candleOpenTime()
@@ -89,10 +104,10 @@ public final class BacktestApplication {
                         trade.netPnl().stripTrailingZeros().toPlainString(), trade.exitReason()));
 
         if (Boolean.getBoolean("diagnostics")) {
-            BigDecimal makerFeeBps = new BigDecimal(System.getProperty("makerFeeBps", "2"));
             System.out.println(new StrategyDiagnosticReport().generate(
                     result.account().closedTrades(), bars,
-                    loaded.engine().execution().takerFeeBps(), makerFeeBps,
+                    loaded.engine().execution().takerFeeBps(),
+                    loaded.engine().execution().makerFeeBps(),
                     loaded.engine().execution().makerEnabled()));
         }
 
@@ -157,7 +172,8 @@ public final class BacktestApplication {
                         execution.takerFeeBps().multiply(costMultiplier),
                         execution.takerSlippageBps().multiply(costMultiplier),
                         execution.makerOffsetBps(), execution.makerOrderLifetimeMinutes(),
-                        execution.strategyExitTakerFallback()), base.propRules());
+                        execution.strategyExitTakerFallback(), execution.breakEvenEnabled(),
+                        execution.breakEvenTriggerRiskMultiple()), base.propRules());
         PerformanceReport.Report stressed = reportGenerator.generate(
                 new BacktestEngine(stressedConfig).run(
                         strategySupplier.get(), bars, funding, minuteCandles));

@@ -54,10 +54,11 @@ public final class BtcHistoricalImportApplication {
         KlineRangeStats initial = repository.rangeStats(
                 symbol, interval.code(), startInclusive, endExclusive);
         Instant cursor = resumeCursor(initial, startInclusive, interval);
-        System.out.printf("%s: importing %,d expected candles from %s to %s; %,d already stored.%n",
-                interval.code(), expected, startInclusive, endExclusive, initial.count());
+        System.out.printf("%s %s: importing %,d expected candles from %s to %s; %,d already stored.%n",
+                symbol, interval.code(), expected, startInclusive, endExclusive, initial.count());
 
         long startedAt = System.nanoTime();
+        int batches = 0;
         while (cursor.isBefore(endExclusive)) {
             long remaining = Duration.between(cursor, endExclusive)
                     .dividedBy(interval.duration());
@@ -78,14 +79,16 @@ public final class BtcHistoricalImportApplication {
             }
             repository.upsertAll(symbol, interval.code(), batch);
             cursor = batch.getLast().openTime().plus(interval.duration());
-
-            KlineRangeStats progress = repository.rangeStats(
-                    symbol, interval.code(), startInclusive, endExclusive);
-            double percent = progress.count() * 100.0 / expected;
-            long elapsedSeconds = Duration.ofNanos(System.nanoTime() - startedAt).toSeconds();
-            System.out.printf("%s: %,d / %,d (%.2f%%), last=%s, elapsed=%ds%n",
-                    interval.code(), progress.count(), expected, percent,
-                    progress.lastOpenTime(), elapsedSeconds);
+            batches++;
+            if (batches % 10 == 0 || !cursor.isBefore(endExclusive)) {
+                long completedPrefix = Duration.between(startInclusive, cursor)
+                        .dividedBy(interval.duration());
+                double percent = completedPrefix * 100.0 / expected;
+                long elapsedSeconds = Duration.ofNanos(System.nanoTime() - startedAt).toSeconds();
+                System.out.printf("%s %s: %,d / %,d (%.2f%%), last=%s, elapsed=%ds%n",
+                        symbol, interval.code(), completedPrefix, expected, percent,
+                        cursor.minus(interval.duration()), elapsedSeconds);
+            }
         }
 
         KlineRangeStats result = repository.rangeStats(
@@ -97,7 +100,8 @@ public final class BtcHistoricalImportApplication {
             throw new IllegalStateException("Verification failed for %s: expected %,d rows [%s, %s], got %s"
                     .formatted(interval.code(), expected, startInclusive, expectedLast, result));
         }
-        System.out.printf("%s: verified %,d candles.%n", interval.code(), result.count());
+        System.out.printf("%s %s: verified %,d candles.%n",
+                symbol, interval.code(), result.count());
     }
 
     private static Instant resumeCursor(KlineRangeStats existing, Instant startInclusive,

@@ -38,12 +38,15 @@ public final class BacktestEngine {
             BigDecimal takerSlippageBps,
             BigDecimal makerOffsetBps,
             int makerOrderLifetimeMinutes,
-            boolean strategyExitTakerFallback
+            boolean strategyExitTakerFallback,
+            boolean breakEvenEnabled,
+            BigDecimal breakEvenTriggerRiskMultiple
     ) {
         public ExecutionConfig {
             if (makerFeeBps.signum() < 0 || takerFeeBps.signum() < 0
                     || takerSlippageBps.signum() < 0 || makerOffsetBps.signum() < 0
-                    || makerOrderLifetimeMinutes <= 0) {
+                    || makerOrderLifetimeMinutes <= 0
+                    || breakEvenTriggerRiskMultiple.signum() <= 0) {
                 throw new IllegalArgumentException("Invalid execution configuration");
             }
         }
@@ -70,6 +73,7 @@ public final class BacktestEngine {
     }
 
     private static final MathContext MC = new MathContext(16, RoundingMode.HALF_UP);
+    private static final BigDecimal BPS = BigDecimal.valueOf(10_000);
     private final BacktestConfig config;
 
     public BacktestEngine(BacktestConfig config) {
@@ -234,23 +238,69 @@ public final class BacktestEngine {
         }
     }
 
-    private static void executeProtectiveMinute(Account account, ExecutionModel execution,
-                                                Kline minute) {
+    private void executeProtectiveMinute(Account account, ExecutionModel execution,
+                                         Kline minute) {
         if (account.side() == Side.LONG) {
             if (minute.low().compareTo(account.stopPrice()) <= 0) {
                 BigDecimal reference = minute.open().compareTo(account.stopPrice()) < 0
                         ? minute.open() : account.stopPrice();
-                closeAtTaker(account, execution, minute.closeTime(), reference, "stop loss");
+                closeAtTaker(account, execution, minute.closeTime(), reference,
+                        stopReason(account));
             } else if (minute.high().compareTo(account.targetPrice()) > 0) {
                 closeAtMaker(account, execution, minute.closeTime(), account.targetPrice(), "take profit");
+            } else if (shouldActivateBreakEven(account, minute.high())) {
+                account.activateBreakEven(breakEvenStop(account));
+                if (minute.low().compareTo(account.stopPrice()) <= 0) {
+                    closeAtTaker(account, execution, minute.closeTime(), account.stopPrice(),
+                            "break-even stop");
+                }
             }
         } else if (minute.high().compareTo(account.stopPrice()) >= 0) {
             BigDecimal reference = minute.open().compareTo(account.stopPrice()) > 0
                     ? minute.open() : account.stopPrice();
-            closeAtTaker(account, execution, minute.closeTime(), reference, "stop loss");
+            closeAtTaker(account, execution, minute.closeTime(), reference,
+                    stopReason(account));
         } else if (minute.low().compareTo(account.targetPrice()) < 0) {
             closeAtMaker(account, execution, minute.closeTime(), account.targetPrice(), "take profit");
+        } else if (shouldActivateBreakEven(account, minute.low())) {
+            account.activateBreakEven(breakEvenStop(account));
+            if (minute.high().compareTo(account.stopPrice()) >= 0) {
+                closeAtTaker(account, execution, minute.closeTime(), account.stopPrice(),
+                        "break-even stop");
+            }
         }
+    }
+
+    private boolean shouldActivateBreakEven(Account account, BigDecimal favorablePrice) {
+        if (!config.execution().breakEvenEnabled() || account.breakEvenActive()) {
+            return false;
+        }
+        BigDecimal triggerDistance = account.initialRiskDistance()
+                .multiply(config.execution().breakEvenTriggerRiskMultiple(), MC);
+        BigDecimal trigger = account.side() == Side.LONG
+                ? account.entryPrice().add(triggerDistance, MC)
+                : account.entryPrice().subtract(triggerDistance, MC);
+        return account.side() == Side.LONG
+                ? favorablePrice.compareTo(trigger) >= 0
+                : favorablePrice.compareTo(trigger) <= 0;
+    }
+
+    private BigDecimal breakEvenStop(Account account) {
+        BigDecimal feeRate = config.execution().takerFeeBps().divide(BPS, MC);
+        BigDecimal slippageRate = config.execution().takerSlippageBps().divide(BPS, MC);
+        BigDecimal entryCost = account.entryFeePerUnit();
+        if (account.side() == Side.LONG) {
+            BigDecimal requiredFill = account.entryPrice().add(entryCost, MC)
+                    .divide(BigDecimal.ONE.subtract(feeRate, MC), MC);
+            return requiredFill.divide(BigDecimal.ONE.subtract(slippageRate, MC), MC);
+        }
+        BigDecimal requiredFill = account.entryPrice().subtract(entryCost, MC)
+                .divide(BigDecimal.ONE.add(feeRate, MC), MC);
+        return requiredFill.divide(BigDecimal.ONE.add(slippageRate, MC), MC);
+    }
+
+    private static String stopReason(Account account) {
+        return account.breakEvenActive() ? "break-even stop" : "stop loss";
     }
 
     private static void applyFundingThrough(Account account, List<FundingRate> rates,

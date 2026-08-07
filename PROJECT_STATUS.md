@@ -75,7 +75,7 @@ unopened.
   at or before candle close; missing context remains `null`.
 - A live preview generated 151 feature rows from 200 recent 15m candles and
   printed the latest 10 with all Futures context populated.
-- Forty-three tests cover downloads, cursors, formulas, warm-up, chronology,
+- Fifty tests cover downloads, cursors, formulas, warm-up, chronology,
   no-look-ahead alignment, long/short execution, fees, stops, and funding.
 - Engine and strategy configuration live in separate tracked properties files.
 - A strategy registry selects factories by type; each factory owns typed
@@ -143,10 +143,17 @@ unopened.
   justified implementing maker execution rather than assuming every limit
   filled.
 - The engine now resolves maker orders against 1m candles. It requires strict
-  trade-through, expires entries after five minutes, charges 2 bps maker fees,
-  uses maker targets, and keeps stops at 5 bps taker fees plus 2 bps slippage.
+  trade-through, expires entries after five minutes, charges the configured
+  Binance Futures fees of 1.8 bps maker and 4.5 bps taker, uses maker targets,
+  and keeps stops at the taker fee plus 2 bps modeled slippage.
   Strategy exits try maker and use a timed taker fallback. Fill and expiry
   counts are reported.
+- A configurable break-even stop activates after a favorable R multiple and
+  solves its stop price from the actual entry fee plus expected taker fee and
+  slippage. Ambiguous trigger-and-reversal ordering within a 1m candle is
+  resolved conservatively. BTC RSI/ATR comparisons rejected enabling it:
+  disabled returned +1.253%, versus +0.254% at 1.5R, -1.973% at 1.0R, and
+  -2.737% at 0.75R. The feature remains available but is disabled by default.
 - BTC RSI/ATR now returns +1.05% with 32/35 maker entries filled, 3.25% maximum
   drawdown, and 1.125 profit factor. It still fails acceptance because it has
   only 32 trades, one profitable subperiod, concentrated profit, and negative
@@ -169,6 +176,49 @@ unopened.
   and shorts were poor; ETH RSI/ATR shorts earned 1,317.49 and longs lost
   2,386.83. This argues against hard-coding one directional bias
   across symbols.
+- Return-improvement experiment 1 added explicit per-strategy long/short
+  controls and tested BTC RSI/ATR long-only with corrected Binance fees. It
+  returned +5.59% over two training years with 2.681 profit factor, 1.00%
+  maximum drawdown, 18 trades, and four profitable six-month subperiods. Cost
+  stress remained +4.99%. It is promising but fails acceptance because the
+  sample is below 60 trades and one subperiod supplies 72.17% of positive
+  profit. It is not evidence for a 5% monthly return and must not be leveraged
+  before broader validation.
+- Return-improvement experiment 2 added a reusable no-look-ahead market-regime
+  classifier using the completed 24-hour move: above +2% is bull, below -2% is
+  bear, and the remainder is flat. BTC component tests found +6.77% net, 4.050
+  profit factor, and 1.00% drawdown for 16 flat-regime long trades. Flat shorts
+  returned -4.02%, bull longs -1.10%, and bear shorts -0.09%. A naive router
+  reproduced the +1.25% two-sided baseline because the EMA-200 direction rule
+  already imposed the same broad direction/regime mapping. Flat-long RSI/ATR is
+  now the leading candidate, but it still fails the 60-trade evidence floor and
+  the subperiod-concentration gate.
+- Return-improvement experiment 3 added native multi-timeframe alignment: 1h
+  regime, 15m RSI/ATR setup, the first rising 5m close within the setup window,
+  and existing 1m execution. Only values closed by the 5m decision timestamp
+  are visible. BTC returned +6.31% with 6.509 profit factor, 0.82% drawdown, 14
+  trades, four profitable subperiods, 51.71% maximum positive-subperiod
+  contribution, and +5.86% under cost stress. It is more consistent than the
+  15m flat-long candidate but slightly less profitable and even less frequent.
+- Experiment 4 candle preparation is complete for SOLUSDT, XRPUSDT, BNBUSDT,
+  ADAUSDT, DOGEUSDT, and LINKUSDT. Each has 1,579,642 x 1m, 315,928 x 5m,
+  105,309 x 15m, and 26,327 x 1h verified candles from 2023-08-06 UTC through
+  the latest closed interval on 2026-08-06 UTC: 2,027,206 rows per symbol and
+  12,163,236 new rows in total. The rate-limited concurrent import completed in
+  approximately 28 minutes and independently verified count and boundary time
+  for every symbol/interval pair.
+- Experiment 4 context data is populated and independently verified for all six
+  symbols: 3,292 funding events each, plus 8,640 rows each of 5m open interest,
+  global account ratio, top-trader account ratio, and top-trader position ratio.
+- Frozen 15m flat-long tests returned SOL -1.43% (16 trades), XRP +2.00% (6),
+  BNB -2.85% (14), ADA +0.39% (10), DOGE +1.83% (12), and LINK +1.02% (9).
+  Four of six were positive, but no symbol passed acceptance. Across independent
+  runs the net result was only about +0.97% from 67 trades.
+- Frozen multi-timeframe tests returned SOL -0.17% (13 trades), XRP +1.49% (5),
+  BNB -0.19% (10), ADA +0.97% (5), DOGE +1.25% (10), and LINK -0.22% (7).
+  Three of six were positive; independent-run aggregate net was about +3.13%
+  from 50 trades. These sums are research summaries, not portfolio results,
+  because capital, overlapping positions, and correlation were not combined.
 - Validation and final-test periods have not been run.
 
 ## Current database
@@ -317,7 +367,9 @@ PGPASSWORD=$DB_PASSWORD /opt/homebrew/opt/postgresql@17/bin/psql \
 
 ## Next step
 
-Do not increase the rejected intraday strategy's frequency by simply loosening
-thresholds: its current raw trades already lose. Next, test a training-only
-long-biased BTC RSI/ATR flat-regime variant and add controlled parameter search.
-Keep validation and final test closed.
+Proceed to return-improvement experiment 5: compare improved exit structures
+without changing the entry logic. Keep validation and final test closed.
+
+The first experiment-4 import universe is SOLUSDT, XRPUSDT, BNBUSDT, ADAUSDT,
+DOGEUSDT, and LINKUSDT. LTCUSDT, AVAXUSDT, BCHUSDT, TRXUSDT, AAVEUSDT,
+DOTUSDT, and ETCUSDT are recorded as deferred candidates.

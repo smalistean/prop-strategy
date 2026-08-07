@@ -59,7 +59,9 @@ public final class BacktestConfigurationLoader {
                         decimal(engine, "execution.takerSlippageBps"),
                         decimal(engine, "execution.makerOffsetBps"),
                         integer(engine, "execution.makerOrderLifetimeMinutes"),
-                        bool(engine, "execution.strategyExitTakerFallback")),
+                        bool(engine, "execution.strategyExitTakerFallback"),
+                        bool(engine, "execution.breakEvenEnabled"),
+                        decimal(engine, "execution.breakEvenTriggerRiskMultiple")),
                 new PropRuleEngine.PropRules(
                         decimal(engine, "prop.maxTotalDrawdownPercent"),
                         decimal(engine, "prop.maxDailyLossPercent"),
@@ -72,7 +74,7 @@ public final class BacktestConfigurationLoader {
             }
         }
         return new LoadedConfiguration(
-                required(engine, "market.symbol"),
+                System.getProperty("marketSymbol", required(engine, "market.symbol")),
                 required(engine, "market.interval"),
                 dataset,
                 backtestConfig,

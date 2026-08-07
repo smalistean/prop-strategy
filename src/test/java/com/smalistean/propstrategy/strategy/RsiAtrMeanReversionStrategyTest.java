@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -15,7 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 class RsiAtrMeanReversionStrategyTest {
 
     private final RsiAtrMeanReversionStrategy strategy = new RsiAtrMeanReversionStrategy(
-            new RsiAtrMeanReversionStrategy.Config(200, 14, decimal("30"), decimal("70"),
+            new RsiAtrMeanReversionStrategy.Config(true, true,
+                    Set.of(MarketRegime.values()), Set.of(MarketRegime.values()), 1, decimal("2"),
+                    200, 14, decimal("30"), decimal("70"),
                     decimal("50"), decimal("50"), 14, decimal("1.05"), decimal("1.5"),
                     decimal("2"), 32));
 
@@ -52,6 +55,20 @@ class RsiAtrMeanReversionStrategyTest {
                         0, position));
 
         assertEquals("long mean reversion or trend failure", exit.reason());
+    }
+
+    @Test
+    void longOnlyConfigurationRejectsShortSetup() {
+        RsiAtrMeanReversionStrategy longOnly = new RsiAtrMeanReversionStrategy(
+                new RsiAtrMeanReversionStrategy.Config(true, false,
+                        Set.of(MarketRegime.values()), Set.of(), 1, decimal("2"), 200, 14,
+                        decimal("30"), decimal("70"), decimal("50"), decimal("50"),
+                        14, decimal("1.05"), decimal("1.5"), decimal("2"), 32));
+        List<FeatureSnapshot> history = List.of(
+                snapshot("95", "100", "69", "1.01", "4"),
+                snapshot("96", "100", "71", "1.01", "4"));
+
+        assertEquals(StrategyDecision.hold(), longOnly.evaluate(history, 1, PositionView.flat()));
     }
 
     private static FeatureSnapshot snapshot(String close, String ema, String rsi,

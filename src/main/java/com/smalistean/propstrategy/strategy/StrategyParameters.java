@@ -25,6 +25,18 @@ public record StrategyParameters(Map<String, String> values) {
         }
     }
 
+    public boolean requiredBoolean(String name) {
+        String value = required(name);
+        if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")) {
+            throw new IllegalArgumentException("Strategy parameter must be true or false: " + name);
+        }
+        return Boolean.parseBoolean(value);
+    }
+
+    public String requiredString(String name) {
+        return required(name);
+    }
+
     private String required(String name) {
         String value = values.get(name);
         if (value == null || value.isBlank()) {

@@ -226,6 +226,9 @@ keys, and tracked experiment file without changing the execution engine.
     for higher frequency with RSI 7, EMA 20, ATR, and real maker fills.
 -   [x] Add diagnostic reports by side, exit reason, calendar period, market
     regime, and gross-versus-cost performance.
+-   [x] Add and evaluate a cost-adjusted break-even stop using conservative 1m
+    sequencing; retain it as an opt-in feature after all tested triggers reduced
+    BTC RSI/ATR training profit.
 -   [ ] Automatically test controlled parameter combinations.
 -   [ ] Compare frozen candidates on validation before opening the final test.
 -   [ ] Keep strategies that remain profitable across different market
@@ -330,6 +333,94 @@ The initial intraday flat-market strategy failed immediately on both symbols:
 Verify that the strategy: - Never exceeds the daily loss limit. - Never
 exceeds the maximum drawdown. - Can realistically reach the profit
 target. - Works in bull, bear, and sideways markets.
+
+------------------------------------------------------------------------
+
+# Return-improvement research sequence
+
+The aspirational return target is 5% per month, but candidates must first show
+a repeatable net edge without relaxing drawdown, stability, or cost-stress
+requirements. Work through these experiments sequentially and record the result
+before proceeding:
+
+1.  **Long-only BTC RSI/ATR:** remove the historically damaging short side and
+    compare it with the unchanged two-sided baseline.
+2.  **Market-regime strategies:** independently enable bull pullbacks/breakouts,
+    bear shorts or flat positioning, and sideways mean reversion.
+3.  **Multi-timeframe execution:** use 1h regime, 15m setup, 5m entry, and 1m
+    maker-fill/protective-order resolution.
+4.  **More liquid symbols:** apply frozen logic to BTC, ETH, SOL, BNB, XRP, and
+    other sufficiently liquid Futures markets rather than forcing BTC entries.
+5.  **Improved exits:** compare partial profit, ATR trailing, lack-of-progress
+    time exits, and regime-specific stop/target behavior.
+6.  **Portfolio-level risk:** combine independently validated edges with caps
+    on total leverage and correlated crypto exposure.
+
+## Experiment results
+
+-   [x] 1. Long-only BTC RSI/ATR — +5.59% net over two training years, 2.68
+    profit factor, 1.00% maximum drawdown, and all four six-month periods
+    profitable. Promising but not accepted: only 18 trades and 72.17% of
+    positive subperiod profit came from one period.
+-   [x] 2. Market-regime strategies — a no-look-ahead 24-hour classifier tested
+    bull longs, bear shorts, flat longs, flat shorts, and a combined router.
+    Flat-regime BTC longs were the only strong component: +6.77% net, 4.05
+    profit factor, and 1.00% drawdown. The sample remains only 16 trades.
+-   [x] 3. Multi-timeframe execution — native 1h regime, 15m RSI/ATR setup, 5m
+    upward entry confirmation, and 1m execution returned +6.31% with 6.51
+    profit factor and 0.82% drawdown, but reduced the sample to 14 trades.
+-   [x] 4. More liquid symbols — SOL, XRP, BNB, ADA, DOGE, and LINK have full
+    market context and frozen 15m/multi-timeframe comparisons. The effect is
+    mixed and small; XRP and DOGE are the only symbols positive in both forms.
+-   [ ] 5. Improved exits — pending.
+-   [ ] 6. Portfolio-level risk — pending.
+
+Experiment 1 conclusion: removing BTC shorts isolated a materially stronger
+edge, improving the corrected-fee two-sided baseline from +1.25% to +5.59% and
+reducing maximum drawdown from 3.19% to 1.00%. It does not establish a 5%
+monthly strategy because the sample is too small and the absolute return is
+still only 5.59% over two years. Keep this configuration as a candidate input
+to the regime and multi-symbol experiments; do not increase leverage yet.
+
+Experiment 2 conclusion: the EMA-200 direction rule already kept the original
+longs in bull/flat regimes and shorts in flat/bear regimes, so the naive router
+reproduced the +1.25% two-sided baseline. Direction isolation exposed the real
+effect: flat longs returned +6.77%, flat shorts -4.02%, bull longs -1.10%, and
+bear shorts -0.09%. Keep flat-long RSI/ATR as the leading BTC candidate, but do
+not accept or leverage it: there are only 16 trades and 68.43% of positive
+subperiod profit comes from one six-month period. Experiment 3 should determine
+whether multi-timeframe setup and entry logic can provide more independent
+opportunities without weakening this edge.
+
+Experiment 3 conclusion: 5m confirmation improved trade quality and consistency
+but did not increase opportunity count. It returned +6.31% versus +6.77% for
+the simpler 15m flat-long candidate, reduced drawdown from 1.00% to 0.82%, and
+improved profit factor from 4.05 to 6.51. All four subperiods were profitable,
+the largest contribution fell to 51.71%, and 1.5x cost stress remained +5.86%.
+However, only 14 trades survived and average win/loss was 1.08. Retain it as a
+high-quality variant, but prefer experiment 4 (more liquid symbols) as the next
+way to increase independent opportunities rather than loosening BTC entries.
+
+Experiment 4 universe: import and test SOLUSDT, XRPUSDT, BNBUSDT, ADAUSDT,
+DOGEUSDT, and LINKUSDT first. Defer LTCUSDT, AVAXUSDT, BCHUSDT, TRXUSDT,
+AAVEUSDT, DOTUSDT, and ETCUSDT until the first group shows whether the frozen
+logic generalizes.
+
+The first-universe candle import is complete. Each symbol contains 1,579,642
+1m, 315,928 5m, 105,309 15m, and 26,327 1h candles from 2023-08-06 UTC through
+the last closed candle on 2026-08-06 UTC.
+
+Experiment 4 conclusion: unchanged 15m flat-long logic was profitable on XRP
+(+2.00%), DOGE (+1.83%), LINK (+1.02%), and ADA (+0.39%), but lost on SOL
+(-1.43%) and BNB (-2.85%). Across six independently funded runs it produced 67
+trades and approximately +0.97% aggregate net return. The frozen multi-timeframe
+variant was profitable on XRP (+1.49%), DOGE (+1.25%), and ADA (+0.97%), while
+SOL (-0.17%), BNB (-0.19%), and LINK (-0.22%) were negative; its independent-run
+aggregate was approximately +3.13% from 50 trades. No individual symbol passed
+acceptance, primarily because samples ranged from 5 to 16 trades. This suggests
+a weak cross-symbol effect, not a broadly transferable high-return strategy.
+Do not sum these as a deployable portfolio result: experiment 6 must model
+shared capital, simultaneous positions, and correlated exposure.
 
 ------------------------------------------------------------------------
 
