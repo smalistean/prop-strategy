@@ -187,12 +187,14 @@ public final class BacktestEngine {
         }
         if (!(pending instanceof StrategyDecision.Enter)
                 && !(pending instanceof StrategyDecision.EnterAtLevels)
+                && !(pending instanceof StrategyDecision.EnterAtLevelsWithScratch)
                 || account.hasOpenPosition()) {
             return;
         }
 
         Side side = pending instanceof StrategyDecision.Enter entry
-                ? entry.side() : ((StrategyDecision.EnterAtLevels) pending).side();
+                ? entry.side() : pending instanceof StrategyDecision.EnterAtLevels levels
+                ? levels.side() : ((StrategyDecision.EnterAtLevelsWithScratch) pending).side();
         boolean buy = side == Side.LONG;
         if (config.execution().makerEnabled()) {
             tracker.makerEntryOrders++;
@@ -214,12 +216,14 @@ public final class BacktestEngine {
                 ? side == Side.LONG
                     ? unitFill.fillPrice().subtract(entry.stopDistance(), MC)
                     : unitFill.fillPrice().add(entry.stopDistance(), MC)
-                : ((StrategyDecision.EnterAtLevels) pending).stopPrice();
+                : pending instanceof StrategyDecision.EnterAtLevels levels
+                ? levels.stopPrice() : ((StrategyDecision.EnterAtLevelsWithScratch) pending).stopPrice();
         BigDecimal target = pending instanceof StrategyDecision.Enter entry
                 ? side == Side.LONG
                     ? unitFill.fillPrice().add(entry.targetDistance(), MC)
                     : unitFill.fillPrice().subtract(entry.targetDistance(), MC)
-                : ((StrategyDecision.EnterAtLevels) pending).targetPrice();
+                : pending instanceof StrategyDecision.EnterAtLevels levels
+                ? levels.targetPrice() : ((StrategyDecision.EnterAtLevelsWithScratch) pending).targetPrice();
         if (stop.signum() <= 0 || target.signum() <= 0
                 || side == Side.LONG && (stop.compareTo(unitFill.fillPrice()) >= 0
                     || target.compareTo(unitFill.fillPrice()) <= 0)
@@ -238,8 +242,13 @@ public final class BacktestEngine {
         ExecutionModel.Fill fill = makerFill == null
                 ? execution.takerFill(entryPrice, buy, quantity)
                 : execution.makerFill(entryPrice, quantity);
-        account.open(makerFill == null ? bar.openTime() : makerFill.time(),
-                side, quantity, stop, target, fill);
+        if (pending instanceof StrategyDecision.EnterAtLevelsWithScratch scratch) {
+            account.openWithScratch(makerFill == null ? bar.openTime() : makerFill.time(),
+                    side, quantity, stop, target, scratch.scratchTriggerPrice(), fill);
+        } else {
+            account.open(makerFill == null ? bar.openTime() : makerFill.time(),
+                    side, quantity, stop, target, fill);
+        }
     }
 
     private void executeProtectiveOrders(Account account, ExecutionModel execution,
@@ -284,6 +293,13 @@ public final class BacktestEngine {
                         ? minute.open() : account.stopPrice();
                 closeAtTaker(account, execution, minute.closeTime(), reference,
                         stopReason(account));
+            } else if (account.scratchExitActive()
+                    && minute.high().compareTo(scratchBreakEvenLimit(account)) > 0) {
+                closeAtMaker(account, execution, minute.closeTime(), scratchBreakEvenLimit(account),
+                        "adverse excursion scratch exit");
+            } else if (account.scratchTriggerPrice() != null
+                    && minute.low().compareTo(account.scratchTriggerPrice()) <= 0) {
+                account.activateScratchExit();
             } else if (shouldTakePartial(account, minute.high())) {
                 closePartialAtMaker(account, execution, minute.closeTime(), partialPrice(account));
                 account.markPartialProfitTaken();
@@ -304,6 +320,13 @@ public final class BacktestEngine {
                     ? minute.open() : account.stopPrice();
             closeAtTaker(account, execution, minute.closeTime(), reference,
                     stopReason(account));
+        } else if (account.scratchExitActive()
+                && minute.low().compareTo(scratchBreakEvenLimit(account)) < 0) {
+            closeAtMaker(account, execution, minute.closeTime(), scratchBreakEvenLimit(account),
+                    "adverse excursion scratch exit");
+        } else if (account.scratchTriggerPrice() != null
+                && minute.high().compareTo(account.scratchTriggerPrice()) >= 0) {
+            account.activateScratchExit();
         } else if (shouldTakePartial(account, minute.low())) {
             closePartialAtMaker(account, execution, minute.closeTime(), partialPrice(account));
             account.markPartialProfitTaken();
@@ -407,6 +430,16 @@ public final class BacktestEngine {
         BigDecimal requiredFill = account.entryPrice().subtract(entryCost, MC)
                 .divide(BigDecimal.ONE.add(feeRate, MC), MC);
         return requiredFill.divide(BigDecimal.ONE.add(slippageRate, MC), MC);
+    }
+
+    private BigDecimal scratchBreakEvenLimit(Account account) {
+        BigDecimal feeRate = config.execution().makerFeeBps().divide(BPS, MC);
+        BigDecimal entryCost = account.entryFeePerUnit();
+        return account.side() == Side.LONG
+                ? account.entryPrice().add(entryCost, MC)
+                .divide(BigDecimal.ONE.subtract(feeRate, MC), MC)
+                : account.entryPrice().subtract(entryCost, MC)
+                .divide(BigDecimal.ONE.add(feeRate, MC), MC);
     }
 
     private static String stopReason(Account account) {

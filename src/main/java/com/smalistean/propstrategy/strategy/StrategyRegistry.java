@@ -25,6 +25,10 @@ public final class StrategyRegistry {
                 new PassiveMakerMeanReversionStrategyFactory(),
                 new StructuralChannelStrategyFactory(),
                 new GerchikLevelStrategyFactory(),
+                new VolumeProfileLevelStrategyFactory(),
+                new ApolloBasePocRetestStrategyFactory(),
+                new ApolloVariableBasePocStrategyFactory(),
+                new ThreeLevelRangeStrategyFactory(),
                 new IntradayFlatMeanReversionStrategyFactory()));
     }
 

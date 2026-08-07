@@ -14,10 +14,13 @@ public final class HistoricalImportApplication {
     }
 
     public static void main(String[] args) {
+        Instant start = Instant.parse(System.getProperty("start", RESEARCH_START.toString()));
+        String configuredEnd = System.getProperty("end", "").trim();
+        Instant end = configuredEnd.isEmpty() ? null : Instant.parse(configuredEnd);
         try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
             var imports = symbols(System.getProperty("symbols"))
                     .stream().map(symbol -> executor.submit(
-                            () -> BtcHistoricalImportApplication.importSymbol(symbol, RESEARCH_START)))
+                            () -> BtcHistoricalImportApplication.importSymbol(symbol, start, end)))
                     .toList();
             for (java.util.concurrent.Future<?> task : imports) {
                 try {

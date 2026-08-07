@@ -26,6 +26,17 @@ public sealed interface StrategyDecision {
         }
     }
 
+    record EnterAtLevelsWithScratch(Side side, BigDecimal stopPrice, BigDecimal targetPrice,
+                                    BigDecimal scratchTriggerPrice) implements StrategyDecision {
+        public EnterAtLevelsWithScratch {
+            if (side == null || stopPrice == null || targetPrice == null || scratchTriggerPrice == null
+                    || stopPrice.signum() <= 0 || targetPrice.signum() <= 0
+                    || scratchTriggerPrice.signum() <= 0 || stopPrice.compareTo(targetPrice) == 0) {
+                throw new IllegalArgumentException("Scratch entry requires positive structural prices");
+            }
+        }
+    }
+
     record Exit(String reason) implements StrategyDecision {
         public Exit {
             if (reason == null || reason.isBlank()) {

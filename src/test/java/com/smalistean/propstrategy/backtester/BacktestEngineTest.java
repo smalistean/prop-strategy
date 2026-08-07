@@ -142,6 +142,34 @@ class BacktestEngineTest {
     }
 
     @Test
+    void adverseTriggerPlacesPersistentMakerScratchAndDoesNotAssumeSameMinuteFill() {
+        List<BacktestEngine.BacktestBar> bars = List.of(
+                bar(0, "100", "101", "99", "100"),
+                bar(1, "100", "101", "97", "100"));
+        List<Kline> minutes = List.of(
+                minute(15, "100", "100.1", "99.98", "100"),
+                minute(16, "100", "100.2", "97", "99"),
+                minute(17, "99", "100.2", "98", "100"));
+        Strategy strategy = new Strategy() {
+            @Override public String name() { return "scratch-test"; }
+            @Override public Set<FeatureKey> requiredFeatures() { return Set.of(FeatureKey.close()); }
+            @Override public StrategyDecision evaluate(List<FeatureSnapshot> history, int index,
+                                                       PositionView position) {
+                return index == 0 ? new StrategyDecision.EnterAtLevelsWithScratch(
+                        Side.LONG, new BigDecimal("90"), new BigDecimal("105"),
+                        new BigDecimal("98")) : StrategyDecision.hold();
+            }
+        };
+
+        Trade trade = makerEngine().run(strategy, bars, List.of(), minutes)
+                .account().closedTrades().getFirst();
+
+        assertEquals("adverse excursion scratch exit", trade.exitReason());
+        assertEquals(minute(17, "99", "100.2", "98", "100").closeTime(), trade.exitTime());
+        assertTrue(trade.netPnl().abs().compareTo(new BigDecimal("0.000001")) < 0);
+    }
+
+    @Test
     void partiallyClosesAtOneRiskUnitAndKeepsRemainderOpen() {
         List<BacktestEngine.BacktestBar> bars = List.of(
                 bar(0, "100", "101", "99", "100"),

@@ -55,6 +55,7 @@ public final class ParameterizedFeatureGenerator {
 
     private static BigDecimal[] calculate(FeatureKey key, List<Kline> klines) {
         return switch (key.name()) {
+            case "open" -> opens(klines);
             case "close" -> closes(klines);
             case "high" -> prices(klines, true);
             case "low" -> prices(klines, false);
@@ -69,6 +70,12 @@ public final class ParameterizedFeatureGenerator {
                     klines, positivePeriod(key), positiveLookback(key));
             default -> throw new IllegalArgumentException("Unsupported feature: " + key);
         };
+    }
+
+    private static BigDecimal[] opens(List<Kline> klines) {
+        BigDecimal[] values = new BigDecimal[klines.size()];
+        for (int i = 0; i < klines.size(); i++) values[i] = klines.get(i).open();
+        return values;
     }
 
     private static BigDecimal[] closes(List<Kline> klines) {
