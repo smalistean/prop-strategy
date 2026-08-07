@@ -23,6 +23,8 @@ public final class StrategyRegistry {
                 new OrderFlowExhaustionStrategyFactory(),
                 new MultiTimeframeFlatLongStrategyFactory(),
                 new PassiveMakerMeanReversionStrategyFactory(),
+                new StructuralChannelStrategyFactory(),
+                new GerchikLevelStrategyFactory(),
                 new IntradayFlatMeanReversionStrategyFactory()));
     }
 

@@ -14,6 +14,18 @@ public sealed interface StrategyDecision {
         }
     }
 
+    record EnterAtLevels(Side side, BigDecimal stopPrice, BigDecimal targetPrice)
+            implements StrategyDecision {
+        public EnterAtLevels {
+            if (side == null || stopPrice == null || stopPrice.signum() <= 0
+                    || targetPrice == null || targetPrice.signum() <= 0
+                    || stopPrice.compareTo(targetPrice) == 0) {
+                throw new IllegalArgumentException(
+                        "Structural entry requires side and distinct positive stop/target prices");
+            }
+        }
+    }
+
     record Exit(String reason) implements StrategyDecision {
         public Exit {
             if (reason == null || reason.isBlank()) {

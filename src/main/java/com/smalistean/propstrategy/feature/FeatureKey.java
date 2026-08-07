@@ -22,6 +22,14 @@ public record FeatureKey(String name, int period, int lookback) {
         return new FeatureKey("close", 0);
     }
 
+    public static FeatureKey high() {
+        return new FeatureKey("high", 0);
+    }
+
+    public static FeatureKey low() {
+        return new FeatureKey("low", 0);
+    }
+
     public static FeatureKey ema(int period) {
         return new FeatureKey("ema", period);
     }

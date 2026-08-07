@@ -7,6 +7,7 @@ import com.smalistean.propstrategy.database.DatabaseConfig;
 import com.smalistean.propstrategy.database.FundingRate;
 import com.smalistean.propstrategy.database.Kline;
 import com.smalistean.propstrategy.database.PostgresFundingRateRepository;
+import com.smalistean.propstrategy.database.PostgresAggregateTradeMinuteRepository;
 import com.smalistean.propstrategy.database.PostgresKlineRepository;
 import com.smalistean.propstrategy.database.PostgresOrderFlowFeatureRepository;
 import com.smalistean.propstrategy.feature.FeatureSnapshot;
@@ -40,6 +41,8 @@ public final class BacktestApplication {
         java.util.function.Supplier<Strategy> strategySupplier = () -> registry.create(
                 loaded.strategyType(), loaded.strategyParameters());
         Strategy strategy = strategySupplier.get();
+        String marketSymbol = System.getProperty("marketSymbol", loaded.symbol())
+                .trim().toUpperCase();
 
         DatabaseConfig database = DatabaseConfig.fromEnvironment();
         ParameterizedFeatureGenerator featureGenerator = new ParameterizedFeatureGenerator();
@@ -48,16 +51,16 @@ public final class BacktestApplication {
         boolean orderFlow = loaded.strategyType().equals("order-flow-exhaustion");
         int warmupCandles = multiTimeframe ? 1
                 : featureGenerator.requiredWarmupCandles(strategy.requiredFeatures());
-        List<Kline> candles = klineRepository.findRangeWithWarmup(loaded.symbol(), loaded.interval(),
+        List<Kline> candles = klineRepository.findRangeWithWarmup(marketSymbol, loaded.interval(),
                 loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), warmupCandles);
         List<FeatureSnapshot> generatedSnapshots;
         if (multiTimeframe) {
             if (!loaded.interval().equals("5m")) {
                 throw new IllegalArgumentException("Multi-timeframe strategy requires market.interval=5m");
             }
-            List<Kline> fifteen = klineRepository.findRangeWithWarmup(loaded.symbol(), "15m",
+            List<Kline> fifteen = klineRepository.findRangeWithWarmup(marketSymbol, "15m",
                     loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), 220);
-            List<Kline> hourly = klineRepository.findRangeWithWarmup(loaded.symbol(), "1h",
+            List<Kline> hourly = klineRepository.findRangeWithWarmup(marketSymbol, "1h",
                     loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), 25);
             generatedSnapshots = new MultiTimeframeFeatureAssembler()
                     .assemble(candles, fifteen, hourly, 200, 14, 14);
@@ -70,7 +73,7 @@ public final class BacktestApplication {
                             com.smalistean.propstrategy.feature.FeatureKey.ema(200),
                             com.smalistean.propstrategy.feature.FeatureKey.atr(14)));
             List<FeatureSnapshot> flow = new PostgresOrderFlowFeatureRepository(database)
-                    .findFiveMinuteSnapshots(loaded.symbol(), loaded.dataset().startInclusive(),
+                    .findFiveMinuteSnapshots(marketSymbol, loaded.dataset().startInclusive(),
                             loaded.dataset().endExclusive());
             generatedSnapshots = merge(technical, flow);
         } else {
@@ -89,23 +92,33 @@ public final class BacktestApplication {
                         candlesByOpenTime.get(snapshot.candleOpenTime()), snapshot))
                 .toList();
         List<FundingRate> funding = new PostgresFundingRateRepository(database)
-                .findRange(loaded.symbol(), loaded.dataset().startInclusive(),
+                .findRange(marketSymbol, loaded.dataset().startInclusive(),
                         loaded.dataset().endExclusive());
-        List<Kline> minuteCandles = loaded.engine().execution().makerEnabled()
-                ? klineRepository.findRangeWithWarmup(loaded.symbol(), "1m",
-                loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), 0)
-                : List.of();
+        String tradeThroughSource = System.getProperty("makerTradeThroughSource", "klines");
+        if (!tradeThroughSource.equals("klines") && !tradeThroughSource.equals("aggTrades")) {
+            throw new IllegalArgumentException(
+                    "makerTradeThroughSource must be klines or aggTrades");
+        }
+        List<Kline> minuteCandles = !loaded.engine().execution().makerEnabled() ? List.of()
+                : tradeThroughSource.equals("aggTrades")
+                ? new PostgresAggregateTradeMinuteRepository(database).findExecutionRange(
+                        marketSymbol, loaded.dataset().startInclusive(),
+                        loaded.dataset().endExclusive())
+                : klineRepository.findRangeWithWarmup(marketSymbol, "1m",
+                        loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), 0);
 
         BacktestEngine.BacktestResult result = new BacktestEngine(loaded.engine())
                 .run(strategy, bars, funding, minuteCandles);
         System.out.printf("Backtest: dataset=%s [%s, %s), strategy=%s, symbol=%s, interval=%s, "
                         + "loadedCandles=%,d, evaluatedBars=%,d%n",
                 loaded.dataset().type(), loaded.dataset().startInclusive(),
-                loaded.dataset().endExclusive(), strategy.name(), loaded.symbol(),
+                loaded.dataset().endExclusive(), strategy.name(), marketSymbol,
                 loaded.interval(), candles.size(), bars.size());
         PerformanceReport.Report report = new PerformanceReport().generate(result);
         System.out.println(report);
         if (loaded.engine().execution().makerEnabled()) {
+            System.out.printf("Maker trade-through source: %s (%,d minute rows)%n",
+                    tradeThroughSource, minuteCandles.size());
             BacktestEngine.ExecutionStats stats = result.executionStats();
             System.out.printf("Maker execution: entries filled=%d/%d, expired=%d; "
                             + "strategy exits filled=%d/%d, taker fallbacks=%d%n",

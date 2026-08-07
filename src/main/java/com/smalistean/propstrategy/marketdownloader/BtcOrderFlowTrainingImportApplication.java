@@ -26,7 +26,14 @@ public final class BtcOrderFlowTrainingImportApplication {
     }
 
     public static void main(String[] args) {
-        String directoryProperty = System.getProperty("orderFlowArchiveDir", "data/order-flow/BTCUSDT");
+        String symbol = System.getProperty("orderFlowSymbol", SYMBOL).trim().toUpperCase();
+        Instant start = Instant.parse(System.getProperty("orderFlowStart", START.toString()));
+        Instant end = Instant.parse(System.getProperty("orderFlowEnd", END.toString()));
+        if (!start.isBefore(end)) {
+            throw new IllegalArgumentException("orderFlowStart must precede orderFlowEnd");
+        }
+        String directoryProperty = System.getProperty(
+                "orderFlowArchiveDir", "data/order-flow/" + symbol);
         Path archiveDirectory = Path.of(directoryProperty).toAbsolutePath();
         DatabaseConfig database = DatabaseConfig.fromEnvironment();
         DatabaseMigrator.migrate(database);
@@ -37,7 +44,8 @@ public final class BtcOrderFlowTrainingImportApplication {
         long totalSourceRows = 0;
         int totalMinuteRows = 0;
         int completed = 0;
-        List<Archive> archives = archives();
+        List<Archive> archives = symbol.equals(SYMBOL) && start.equals(START) && end.equals(END)
+                ? archives() : monthlyArchives(symbol, start, end);
 
         for (Archive planned : archives) {
             long started = System.nanoTime();
@@ -49,9 +57,9 @@ public final class BtcOrderFlowTrainingImportApplication {
                 System.out.printf("[%d/%d] SKIP completed %s%n", completed, archives.size(), archiveName);
                 continue;
             }
-            OptionalLong latest = repository.latestAggregateTradeIdBefore(SYMBOL, planned.start());
-            AggregateTradeArchiveReader.Result result = reader.read(downloaded.path(), SYMBOL,
-                    START, END, latest.isPresent() ? latest.getAsLong() : null);
+            OptionalLong latest = repository.latestAggregateTradeIdBefore(symbol, planned.start());
+            AggregateTradeArchiveReader.Result result = reader.read(downloaded.path(), symbol,
+                    start, end, latest.isPresent() ? latest.getAsLong() : null);
             int persisted = 0;
             for (int offset = 0; offset < result.minutes().size(); offset += 1_000) {
                 List<AggregateTradeMinute> batch = result.minutes().subList(offset,
@@ -61,7 +69,7 @@ public final class BtcOrderFlowTrainingImportApplication {
             if (!result.minutes().isEmpty()) {
                 Instant first = result.minutes().getFirst().minuteTime();
                 Instant lastExclusive = result.minutes().getLast().minuteTime().plusSeconds(60);
-                repository.reconcile(SYMBOL, first, lastExclusive);
+                repository.reconcile(symbol, first, lastExclusive);
             }
             repository.recordCompletedArchive(archiveName, planned.uri().toString(),
                     downloaded.sha256(), downloaded.size(), result.minutes().size(), result.sourceRows());
@@ -72,11 +80,11 @@ public final class BtcOrderFlowTrainingImportApplication {
                     completed, archives.size(), archiveName, downloaded.size(), result.sourceRows(),
                     persisted, result.filteredRows(), result.duplicateRows(), result.gapCount(), seconds);
         }
-        long stored = repository.count(SYMBOL, START, END);
-        System.out.printf("BTC order-flow training import complete: newSourceRows=%,d "
+        long stored = repository.count(symbol, start, end);
+        System.out.printf("%s order-flow training import complete: newSourceRows=%,d "
                         + "newMinuteRows=%,d storedMinutes=%,d expectedMaximum=%,d archives=%d%n",
-                totalSourceRows, totalMinuteRows, stored,
-                java.time.Duration.between(START, END).toMinutes(), archives.size());
+                symbol, totalSourceRows, totalMinuteRows, stored,
+                java.time.Duration.between(start, end).toMinutes(), archives.size());
     }
 
     static List<Archive> archives() {
@@ -96,6 +104,30 @@ public final class BtcOrderFlowTrainingImportApplication {
             Instant dayStart = LocalDate.of(2025, 8, day).atStartOfDay(ZoneOffset.UTC).toInstant();
             result.add(new Archive(URI.create(ROOT + "/daily/aggTrades/" + SYMBOL + "/"
                     + SYMBOL + "-aggTrades-" + date + ".zip"), dayStart, dayStart.plusSeconds(86_400)));
+        }
+        return List.copyOf(result);
+    }
+
+    static List<Archive> monthlyArchives(String symbol, Instant start, Instant end) {
+        LocalDate startDate = start.atZone(ZoneOffset.UTC).toLocalDate();
+        LocalDate endDate = end.atZone(ZoneOffset.UTC).toLocalDate();
+        if (!start.equals(startDate.atStartOfDay(ZoneOffset.UTC).toInstant())
+                || startDate.getDayOfMonth() != 1
+                || !end.equals(endDate.atStartOfDay(ZoneOffset.UTC).toInstant())
+                || endDate.getDayOfMonth() != 1) {
+            throw new IllegalArgumentException(
+                    "Generic order-flow import currently requires whole UTC months");
+        }
+        List<Archive> result = new ArrayList<>();
+        YearMonth month = YearMonth.from(startDate);
+        YearMonth endMonth = YearMonth.from(endDate);
+        while (month.isBefore(endMonth)) {
+            String period = month.toString();
+            Instant monthStart = month.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+            Instant monthEnd = month.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+            result.add(new Archive(URI.create(ROOT + "/monthly/aggTrades/" + symbol + "/"
+                    + symbol + "-aggTrades-" + period + ".zip"), monthStart, monthEnd));
+            month = month.plusMonths(1);
         }
         return List.copyOf(result);
     }

@@ -1,5 +1,14 @@
 # Project Status
 
+## Course-derived level strategies (2026-08-07)
+
+- Audited all user-requested course assets: 34 PDFs / 655 rendered pages and 298 PNGs. JPG/video assets were outside scope.
+- Added `COURSE_STRATEGY_RESEARCH.md` with source-derived concepts, explicit crypto formalizations, limitations, and frozen BTCUSDT training results.
+- Added configurable `gerchik-level` reactions: bounce, breakout, and false-breakout, with pivot-cluster BSU/BPU proxy, ATR level tolerance, structural stop, and >=3R target.
+- Frozen v1 BTCUSDT 15m training results: bounce -0.76% (3 trades); false breakout -48.64% (2,637); corrected breakout 0.00% (0 trades). An earlier permissive breakout-compression defect produced -98.52% / 5,271 trades and is retained only as a rejected diagnostic result.
+- Conclusion: one/two-bar price-pattern proxies are insufficient. Next iteration should add strict compression/reclaim semantics, opposing-level room, higher-timeframe context, and rejection-reason diagnostics before any parameter search.
+- Verification: 69 tests pass on JDK 25.
+
 Last updated: 2026-08-06
 
 ## Current position
@@ -258,9 +267,69 @@ Conclusion: frequency is achievable, but neither tested rule family has
 positive expectancy. Zero maker fees do not compensate for adverse selection,
 taker stop/fallback costs, and a payoff distribution where occasional losses
 erase several maker wins. Both branches are rejected without tuning, and the
-reserved validation/final periods remain unopened. BTCUSDC aggregate-trade
-archives are available but were not imported because these candidates do not
-consume order-flow features.
+reserved validation/final periods remain unopened.
+
+BTCUSDC aggregate-trade follow-up:
+
+- All 24 monthly training archives were downloaded to ignored
+  `data/order-flow/BTCUSDC`; checksums passed and retained ZIPs use 2.4 GB.
+- 191,841,827 aggregate-trade rows produced 1,052,024 stored minute rows out of
+  1,052,640 calendar minutes. There are zero duplicate or missing aggregate IDs.
+- Reconciliation is exact for 1,040,073 minutes and mismatched for 11,951. The
+  total base-volume difference versus klines is -23.919 BTC across 14,222,094
+  BTC of aggregate volume.
+- Of 616 calendar minutes without aggregate rows, 615 have zero kline volume
+  and trades. One active kline minute at 2024-02-04 10:11 UTC lacks an aggregate
+  row and remains an explicit source anomaly.
+- The backtest can now select aggregate-trade execution minutes. These use
+  actual first/last/minimum/maximum prices and last-event timestamps; they do
+  not claim to reproduce maker queue position.
+- The frozen passive-maker rerun still filled 79,288 entries and lost 100%.
+  Profit factor changed only from 0.335393 with kline trade-through to 0.335248
+  with aggregate trades; wins changed from 49,765 to 49,763. Aggregate trades
+  improve timestamps and enable flow features, but do not rescue this rule.
+
+### Structural channel experiment
+
+The frozen `structural-channel` strategy implements stops as actual market
+invalidation levels rather than arbitrary distances. It forms a channel from
+the prior 96 completed 15m bars, requires at least two touches at both boundaries
+within 0.25 ATR, and allows entry only within 0.35 ATR of support or resistance.
+The stop is fixed 0.25 ATR beyond that saved boundary. The target is the opposite
+boundary inset by 0.25 ATR; a trade is rejected unless channel width is at least
+6x risk and expected reward is at least 3x risk.
+
+The engine now supports absolute structural stop/target prices. A signal remains
+pending until the next bar's strict maker trade-through; the entry is discarded
+if its actual fill is no longer between the saved stop and target. This preserves
+the original support/resistance invalidation level across execution.
+
+Full training results with 0.1% risk per trade:
+
+| Symbol | Trades | Win rate | Profit factor | Return | Max drawdown |
+|---|---:|---:|---:|---:|---:|
+| BTCUSDC | 415 | 6.75% | 0.799 | -10.28% | 18.73% |
+| ADAUSDT | 598 | 7.19% | 0.794 | -15.09% | 21.49% |
+| DOGEUSDT | 392 | 6.38% | 0.785 | -10.29% | 16.84% |
+| XRPUSDT | 303 | 6.60% | 0.711 | -11.60% | 13.83% |
+| SOLUSDT | 508 | 6.50% | 0.707 | -17.71% | 21.20% |
+| LINKUSDT | 678 | 5.90% | 0.692 | -24.35% | 25.57% |
+| ETHUSDT | 298 | 7.05% | 0.673 | -12.41% | 14.39% |
+| BTCUSDT | 312 | 6.73% | 0.640 | -15.67% | 17.47% |
+| BNBUSDT | 470 | 5.53% | 0.499 | -32.94% | 36.56% |
+
+The requested asymmetric payoff was achieved: average winning trades were about
+8.5-11.5 times average losing trades, comfortably above 3:1. Nevertheless, only
+5.5-7.2% of entries won, below the net break-even hit rate. All nine symbols
+failed profitability and drawdown acceptance.
+
+Conclusion: channel width and reward/risk are necessary but not sufficient. A
+rolling high/low with two nearby touches often describes a trend leg or pause,
+not a stable auction between defended levels. Do not tune v1 thresholds. A new
+hypothesis should construct levels from clustered pivots, demand alternating
+time-separated tests, reject sloped/drifting channels, and enter only after a
+boundary rejection or false-break reclaim. BTCUSDC aggregate-flow confirmation
+can then be tested as an additional predeclared filter.
 
 ## Verification commands
 

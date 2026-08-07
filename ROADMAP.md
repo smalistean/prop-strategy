@@ -475,6 +475,9 @@ taker; keep it configurable because Binance can change account/promotional fees.
 -   [x] Design a new passive-maker candidate after reviewing the baselines,
     freeze it before measuring performance, and apply the high-frequency
     acceptance profile.
+-   [x] Import the complete BTCUSDC training aggregate-trade archive, switch
+    strict maker trade-through to aggregate min/max prices, and rerun the
+    frozen passive-maker candidate.
 
 BTCUSDC conclusion: zero maker fees solve only one part of execution economics.
 The unchanged intraday rules lost 30.10% on 15m, 97.92% on 5m, and 100% on 1m
@@ -483,6 +486,29 @@ over the full training period. A new frozen passive-maker strategy generated
 was overwhelmed by average losses roughly five times average wins. All four
 six-month subperiods failed for every candidate. Reject both rule families
 without threshold tuning. Do not open the reserved validation/final periods.
+The aggregate-trade rerun produced the same 79,288 fills and a slightly worse
+0.33525 profit factor versus 0.33539 with kline trade-through, confirming that
+1m kline ranges were already an accurate fill-crossing proxy for this strategy.
+
+## Structural channel experiment
+
+-   [x] Freeze a 15m channel strategy requiring a prior 96-bar range, at least
+    two support and resistance touches, entry within 0.35 ATR of a boundary,
+    stop 0.25 ATR beyond the saved structural level, channel width >=6x risk,
+    and opposite-boundary reward >=3x risk.
+-   [x] Extend strategy decisions and execution to preserve absolute stop and
+    target levels across the next-bar maker fill.
+-   [x] Run the unchanged strategy on every populated pair using each market's
+    training window and fee profile.
+
+The candidate failed on all nine pairs. Profit factors ranged from 0.499 on BNB
+to 0.799 on BTCUSDC; returns ranged from -10.28% to -32.94%. Average wins were
+roughly 8.5-11.5 times average losses, but win rates were only 5.5-7.2%. The
+problem is not reward/risk geometry: the simple rolling-extreme/two-touch rule
+frequently mistakes a trending range or temporary pause for a stable channel.
+Reject this v1 definition without threshold tuning. A future v2 must define
+levels from clustered pivots, require alternating and time-separated boundary
+defences, and confirm rejection after the boundary is tested.
 
 ------------------------------------------------------------------------
 

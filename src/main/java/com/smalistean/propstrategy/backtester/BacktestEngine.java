@@ -185,11 +185,15 @@ public final class BacktestEngine {
             executeExit(account, execution, bar, minuteCandles, exit.reason(), tracker);
             return;
         }
-        if (!(pending instanceof StrategyDecision.Enter entry) || account.hasOpenPosition()) {
+        if (!(pending instanceof StrategyDecision.Enter)
+                && !(pending instanceof StrategyDecision.EnterAtLevels)
+                || account.hasOpenPosition()) {
             return;
         }
 
-        boolean buy = entry.side() == Side.LONG;
+        Side side = pending instanceof StrategyDecision.Enter entry
+                ? entry.side() : ((StrategyDecision.EnterAtLevels) pending).side();
+        boolean buy = side == Side.LONG;
         if (config.execution().makerEnabled()) {
             tracker.makerEntryOrders++;
         }
@@ -206,10 +210,25 @@ public final class BacktestEngine {
         ExecutionModel.Fill unitFill = makerFill == null
                 ? execution.takerFill(entryPrice, buy, BigDecimal.ONE)
                 : execution.makerFill(entryPrice, BigDecimal.ONE);
+        BigDecimal stop = pending instanceof StrategyDecision.Enter entry
+                ? side == Side.LONG
+                    ? unitFill.fillPrice().subtract(entry.stopDistance(), MC)
+                    : unitFill.fillPrice().add(entry.stopDistance(), MC)
+                : ((StrategyDecision.EnterAtLevels) pending).stopPrice();
+        BigDecimal target = pending instanceof StrategyDecision.Enter entry
+                ? side == Side.LONG
+                    ? unitFill.fillPrice().add(entry.targetDistance(), MC)
+                    : unitFill.fillPrice().subtract(entry.targetDistance(), MC)
+                : ((StrategyDecision.EnterAtLevels) pending).targetPrice();
+        if (stop.signum() <= 0 || target.signum() <= 0
+                || side == Side.LONG && (stop.compareTo(unitFill.fillPrice()) >= 0
+                    || target.compareTo(unitFill.fillPrice()) <= 0)
+                || side == Side.SHORT && (stop.compareTo(unitFill.fillPrice()) <= 0
+                    || target.compareTo(unitFill.fillPrice()) >= 0)) {
+            return;
+        }
         BigDecimal quantity = sizer.size(account.balance(), unitFill.fillPrice(),
-                entry.side() == Side.LONG
-                        ? unitFill.fillPrice().subtract(entry.stopDistance(), MC)
-                        : unitFill.fillPrice().add(entry.stopDistance(), MC));
+                stop);
         BigDecimal maximumQuantity = account.balance().multiply(config.maxLeverage(), MC)
                 .divide(unitFill.fillPrice(), MC);
         quantity = quantity.min(maximumQuantity);
@@ -219,17 +238,8 @@ public final class BacktestEngine {
         ExecutionModel.Fill fill = makerFill == null
                 ? execution.takerFill(entryPrice, buy, quantity)
                 : execution.makerFill(entryPrice, quantity);
-        BigDecimal stop = entry.side() == Side.LONG
-                ? fill.fillPrice().subtract(entry.stopDistance(), MC)
-                : fill.fillPrice().add(entry.stopDistance(), MC);
-        BigDecimal target = entry.side() == Side.LONG
-                ? fill.fillPrice().add(entry.targetDistance(), MC)
-                : fill.fillPrice().subtract(entry.targetDistance(), MC);
-        if (stop.signum() <= 0 || target.signum() <= 0) {
-            return;
-        }
         account.open(makerFill == null ? bar.openTime() : makerFill.time(),
-                entry.side(), quantity, stop, target, fill);
+                side, quantity, stop, target, fill);
     }
 
     private void executeProtectiveOrders(Account account, ExecutionModel execution,

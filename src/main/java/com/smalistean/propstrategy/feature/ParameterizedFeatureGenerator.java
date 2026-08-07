@@ -56,6 +56,8 @@ public final class ParameterizedFeatureGenerator {
     private static BigDecimal[] calculate(FeatureKey key, List<Kline> klines) {
         return switch (key.name()) {
             case "close" -> closes(klines);
+            case "high" -> prices(klines, true);
+            case "low" -> prices(klines, false);
             case "ema" -> ema(klines, positivePeriod(key));
             case "rsi" -> rsi(klines, positivePeriod(key));
             case "atr" -> atr(klines, positivePeriod(key));
@@ -73,6 +75,14 @@ public final class ParameterizedFeatureGenerator {
         BigDecimal[] values = new BigDecimal[klines.size()];
         for (int i = 0; i < klines.size(); i++) {
             values[i] = klines.get(i).close();
+        }
+        return values;
+    }
+
+    private static BigDecimal[] prices(List<Kline> klines, boolean high) {
+        BigDecimal[] values = new BigDecimal[klines.size()];
+        for (int i = 0; i < klines.size(); i++) {
+            values[i] = high ? klines.get(i).high() : klines.get(i).low();
         }
         return values;
     }
