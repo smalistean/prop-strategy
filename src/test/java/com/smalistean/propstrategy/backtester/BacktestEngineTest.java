@@ -141,6 +141,52 @@ class BacktestEngineTest {
         assertTrue(trade.netPnl().abs().compareTo(new BigDecimal("0.00000001")) < 0);
     }
 
+    @Test
+    void partiallyClosesAtOneRiskUnitAndKeepsRemainderOpen() {
+        List<BacktestEngine.BacktestBar> bars = List.of(
+                bar(0, "100", "101", "99", "100"),
+                bar(1, "100", "112", "99", "111"),
+                bar(2, "111", "112", "110", "111"));
+        List<Kline> minutes = List.of(
+                minute(15, "100", "100.1", "99.98", "100"),
+                minute(16, "100", "110.1", "100", "110"));
+        BacktestEngine.ExitConfig exits = new BacktestEngine.ExitConfig(
+                true, BigDecimal.ONE, new BigDecimal("0.5"),
+                false, BigDecimal.ONE, BigDecimal.ONE,
+                false, 8, new BigDecimal("0.25"));
+
+        List<Trade> trades = makerEngine(false, exits).run(
+                        enterOnce(Side.LONG, "10", "100"), bars, List.of(), minutes)
+                .account().closedTrades();
+
+        assertEquals(2, trades.size());
+        assertEquals("partial take profit", trades.getFirst().exitReason());
+        assertEquals(0, trades.getFirst().quantity().compareTo(trades.getLast().quantity()));
+        assertEquals("end of data", trades.getLast().exitReason());
+    }
+
+    @Test
+    void trailsRemainderAfterPriceReachesActivationLevel() {
+        List<BacktestEngine.BacktestBar> bars = List.of(
+                bar(0, "100", "101", "99", "100"),
+                bar(1, "100", "116", "103", "105"));
+        List<Kline> minutes = List.of(
+                minute(15, "100", "100.1", "99.98", "100"),
+                minute(16, "100", "115", "110", "114"),
+                minute(17, "106", "107", "104", "105"));
+        BacktestEngine.ExitConfig exits = new BacktestEngine.ExitConfig(
+                false, BigDecimal.ONE, new BigDecimal("0.5"),
+                true, BigDecimal.ONE, BigDecimal.ONE,
+                false, 8, new BigDecimal("0.25"));
+
+        Trade trade = makerEngine(false, exits).run(
+                        enterOnce(Side.LONG, "10", "100"), bars, List.of(), minutes)
+                .account().closedTrades().getFirst();
+
+        assertEquals("stop loss", trade.exitReason());
+        assertEquals(0, trade.exitPrice().compareTo(new BigDecimal("104.979")));
+    }
+
     private static BacktestEngine engine(String slippageBps, String feeBps) {
         return new BacktestEngine(new BacktestEngine.BacktestConfig(
                 new BigDecimal("10000"), new BigDecimal("0.01"),
@@ -158,13 +204,18 @@ class BacktestEngineTest {
     }
 
     private static BacktestEngine makerEngine(boolean breakEvenEnabled) {
+        return makerEngine(breakEvenEnabled, BacktestEngine.ExitConfig.baseline());
+    }
+
+    private static BacktestEngine makerEngine(boolean breakEvenEnabled,
+                                               BacktestEngine.ExitConfig exits) {
         return new BacktestEngine(new BacktestEngine.BacktestConfig(
                 new BigDecimal("10000"), new BigDecimal("0.01"), new BigDecimal("100"),
                 new BacktestEngine.ExecutionConfig(true, new BigDecimal("1.8"),
                         new BigDecimal("4.5"), new BigDecimal("2"),
                         BigDecimal.ONE, 5, true, breakEvenEnabled, BigDecimal.ONE),
                 new PropRuleEngine.PropRules(new BigDecimal("1000"),
-                        new BigDecimal("1000"), new BigDecimal("1000"))));
+                        new BigDecimal("1000"), new BigDecimal("1000")), exits));
     }
 
     private static Strategy enterOnce(Side side, String stop, String target) {

@@ -20,14 +20,41 @@ public final class BacktestEngine {
             BigDecimal riskFraction,
             BigDecimal maxLeverage,
             ExecutionConfig execution,
-            PropRuleEngine.PropRules propRules
+            PropRuleEngine.PropRules propRules,
+            ExitConfig exits
     ) {
+        public BacktestConfig(BigDecimal initialBalance, BigDecimal riskFraction,
+                              BigDecimal maxLeverage, ExecutionConfig execution,
+                              PropRuleEngine.PropRules propRules) {
+            this(initialBalance, riskFraction, maxLeverage, execution, propRules, ExitConfig.baseline());
+        }
         public BacktestConfig {
             if (initialBalance.signum() <= 0 || riskFraction.signum() <= 0
                     || riskFraction.compareTo(BigDecimal.ONE) > 0
                     || maxLeverage.signum() <= 0) {
                 throw new IllegalArgumentException("Invalid backtest balance/risk configuration");
             }
+        }
+    }
+
+    public record ExitConfig(boolean partialEnabled, BigDecimal partialTriggerR,
+                             BigDecimal partialFraction, boolean trailingEnabled,
+                             BigDecimal trailingTriggerR, BigDecimal trailingDistanceR,
+                             boolean lackOfProgressEnabled, int lackOfProgressBars,
+                             BigDecimal minimumProgressR) {
+        public ExitConfig {
+            if (partialTriggerR.signum() <= 0 || partialFraction.signum() <= 0
+                    || partialFraction.compareTo(BigDecimal.ONE) >= 0
+                    || trailingTriggerR.signum() <= 0 || trailingDistanceR.signum() <= 0
+                    || lackOfProgressBars <= 0 || minimumProgressR.signum() < 0) {
+                throw new IllegalArgumentException("Invalid exit configuration");
+            }
+        }
+
+        public static ExitConfig baseline() {
+            return new ExitConfig(false, BigDecimal.ONE, new BigDecimal("0.5"),
+                    false, BigDecimal.ONE, BigDecimal.ONE, false, 8,
+                    new BigDecimal("0.25"));
         }
     }
 
@@ -128,6 +155,7 @@ public final class BacktestEngine {
             }
             executeProtectiveOrders(account, execution, bar, withinBar);
             account.incrementBarsHeld();
+            executeLackOfProgressExit(account, execution, bar);
             BigDecimal equity = account.markToMarket(bar.close());
 
             PropRuleEngine.RuleCheckResult ruleCheck = propRules.check(account, equity, bar.closeTime());
@@ -246,6 +274,10 @@ public final class BacktestEngine {
                         ? minute.open() : account.stopPrice();
                 closeAtTaker(account, execution, minute.closeTime(), reference,
                         stopReason(account));
+            } else if (shouldTakePartial(account, minute.high())) {
+                closePartialAtMaker(account, execution, minute.closeTime(), partialPrice(account));
+                account.markPartialProfitTaken();
+                updateTrailingStop(account, minute.high());
             } else if (minute.high().compareTo(account.targetPrice()) > 0) {
                 closeAtMaker(account, execution, minute.closeTime(), account.targetPrice(), "take profit");
             } else if (shouldActivateBreakEven(account, minute.high())) {
@@ -254,12 +286,18 @@ public final class BacktestEngine {
                     closeAtTaker(account, execution, minute.closeTime(), account.stopPrice(),
                             "break-even stop");
                 }
+            } else {
+                updateTrailingStop(account, minute.high());
             }
         } else if (minute.high().compareTo(account.stopPrice()) >= 0) {
             BigDecimal reference = minute.open().compareTo(account.stopPrice()) > 0
                     ? minute.open() : account.stopPrice();
             closeAtTaker(account, execution, minute.closeTime(), reference,
                     stopReason(account));
+        } else if (shouldTakePartial(account, minute.low())) {
+            closePartialAtMaker(account, execution, minute.closeTime(), partialPrice(account));
+            account.markPartialProfitTaken();
+            updateTrailingStop(account, minute.low());
         } else if (minute.low().compareTo(account.targetPrice()) < 0) {
             closeAtMaker(account, execution, minute.closeTime(), account.targetPrice(), "take profit");
         } else if (shouldActivateBreakEven(account, minute.low())) {
@@ -268,7 +306,69 @@ public final class BacktestEngine {
                 closeAtTaker(account, execution, minute.closeTime(), account.stopPrice(),
                         "break-even stop");
             }
+        } else {
+            updateTrailingStop(account, minute.low());
         }
+    }
+
+    private boolean shouldTakePartial(Account account, BigDecimal favorablePrice) {
+        if (!config.exits().partialEnabled() || account.partialProfitTaken()) {
+            return false;
+        }
+        BigDecimal trigger = partialPrice(account);
+        return account.side() == Side.LONG
+                ? favorablePrice.compareTo(trigger) > 0
+                : favorablePrice.compareTo(trigger) < 0;
+    }
+
+    private BigDecimal partialPrice(Account account) {
+        BigDecimal distance = account.initialRiskDistance().multiply(config.exits().partialTriggerR(), MC);
+        return account.side() == Side.LONG
+                ? account.entryPrice().add(distance, MC)
+                : account.entryPrice().subtract(distance, MC);
+    }
+
+    private void updateTrailingStop(Account account, BigDecimal favorablePrice) {
+        if (!config.exits().trailingEnabled()) {
+            return;
+        }
+        BigDecimal activationDistance = account.initialRiskDistance()
+                .multiply(config.exits().trailingTriggerR(), MC);
+        BigDecimal activation = account.side() == Side.LONG
+                ? account.entryPrice().add(activationDistance, MC)
+                : account.entryPrice().subtract(activationDistance, MC);
+        boolean active = account.side() == Side.LONG
+                ? favorablePrice.compareTo(activation) >= 0
+                : favorablePrice.compareTo(activation) <= 0;
+        if (active) {
+            BigDecimal trail = account.initialRiskDistance()
+                    .multiply(config.exits().trailingDistanceR(), MC);
+            account.improveStop(account.side() == Side.LONG
+                    ? favorablePrice.subtract(trail, MC)
+                    : favorablePrice.add(trail, MC));
+        }
+    }
+
+    private void executeLackOfProgressExit(Account account, ExecutionModel execution, Kline bar) {
+        if (!account.hasOpenPosition() || !config.exits().lackOfProgressEnabled()
+                || account.positionView().barsHeld() < config.exits().lackOfProgressBars()) {
+            return;
+        }
+        BigDecimal progress = account.side() == Side.LONG
+                ? bar.close().subtract(account.entryPrice(), MC)
+                : account.entryPrice().subtract(bar.close(), MC);
+        BigDecimal required = account.initialRiskDistance()
+                .multiply(config.exits().minimumProgressR(), MC);
+        if (progress.compareTo(required) < 0) {
+            closeAtTaker(account, execution, bar.closeTime(), bar.close(), "lack of progress");
+        }
+    }
+
+    private void closePartialAtMaker(Account account, ExecutionModel execution,
+                                     java.time.Instant time, BigDecimal price) {
+        BigDecimal quantity = account.quantity().multiply(config.exits().partialFraction(), MC);
+        account.closePartial(time, quantity, execution.makerFill(price, quantity),
+                "partial take profit");
     }
 
     private boolean shouldActivateBreakEven(Account account, BigDecimal favorablePrice) {

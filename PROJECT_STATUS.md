@@ -176,49 +176,9 @@ unopened.
   and shorts were poor; ETH RSI/ATR shorts earned 1,317.49 and longs lost
   2,386.83. This argues against hard-coding one directional bias
   across symbols.
-- Return-improvement experiment 1 added explicit per-strategy long/short
-  controls and tested BTC RSI/ATR long-only with corrected Binance fees. It
-  returned +5.59% over two training years with 2.681 profit factor, 1.00%
-  maximum drawdown, 18 trades, and four profitable six-month subperiods. Cost
-  stress remained +4.99%. It is promising but fails acceptance because the
-  sample is below 60 trades and one subperiod supplies 72.17% of positive
-  profit. It is not evidence for a 5% monthly return and must not be leveraged
-  before broader validation.
-- Return-improvement experiment 2 added a reusable no-look-ahead market-regime
-  classifier using the completed 24-hour move: above +2% is bull, below -2% is
-  bear, and the remainder is flat. BTC component tests found +6.77% net, 4.050
-  profit factor, and 1.00% drawdown for 16 flat-regime long trades. Flat shorts
-  returned -4.02%, bull longs -1.10%, and bear shorts -0.09%. A naive router
-  reproduced the +1.25% two-sided baseline because the EMA-200 direction rule
-  already imposed the same broad direction/regime mapping. Flat-long RSI/ATR is
-  now the leading candidate, but it still fails the 60-trade evidence floor and
-  the subperiod-concentration gate.
-- Return-improvement experiment 3 added native multi-timeframe alignment: 1h
-  regime, 15m RSI/ATR setup, the first rising 5m close within the setup window,
-  and existing 1m execution. Only values closed by the 5m decision timestamp
-  are visible. BTC returned +6.31% with 6.509 profit factor, 0.82% drawdown, 14
-  trades, four profitable subperiods, 51.71% maximum positive-subperiod
-  contribution, and +5.86% under cost stress. It is more consistent than the
-  15m flat-long candidate but slightly less profitable and even less frequent.
-- Experiment 4 candle preparation is complete for SOLUSDT, XRPUSDT, BNBUSDT,
-  ADAUSDT, DOGEUSDT, and LINKUSDT. Each has 1,579,642 x 1m, 315,928 x 5m,
-  105,309 x 15m, and 26,327 x 1h verified candles from 2023-08-06 UTC through
-  the latest closed interval on 2026-08-06 UTC: 2,027,206 rows per symbol and
-  12,163,236 new rows in total. The rate-limited concurrent import completed in
-  approximately 28 minutes and independently verified count and boundary time
-  for every symbol/interval pair.
-- Experiment 4 context data is populated and independently verified for all six
-  symbols: 3,292 funding events each, plus 8,640 rows each of 5m open interest,
-  global account ratio, top-trader account ratio, and top-trader position ratio.
-- Frozen 15m flat-long tests returned SOL -1.43% (16 trades), XRP +2.00% (6),
-  BNB -2.85% (14), ADA +0.39% (10), DOGE +1.83% (12), and LINK +1.02% (9).
-  Four of six were positive, but no symbol passed acceptance. Across independent
-  runs the net result was only about +0.97% from 67 trades.
-- Frozen multi-timeframe tests returned SOL -0.17% (13 trades), XRP +1.49% (5),
-  BNB -0.19% (10), ADA +0.97% (5), DOGE +1.25% (10), and LINK -0.22% (7).
-  Three of six were positive; independent-run aggregate net was about +3.13%
-  from 50 trades. These sums are research summaries, not portfolio results,
-  because capital, overlapping positions, and correlation were not combined.
+- Return-improvement experiments 1–5 are complete. Their complete comparable
+  results and conclusions are consolidated below rather than split between this
+  status file and the roadmap.
 - Validation and final-test periods have not been run.
 
 ## Current database
@@ -365,10 +325,136 @@ PGPASSWORD=$DB_PASSWORD /opt/homebrew/opt/postgresql@17/bin/psql \
   -c "SELECT symbol, interval, COUNT(*) FROM futures_kline GROUP BY symbol, interval;"
 ```
 
+## Return-improvement experiment results
+
+All results below use the two-year training window. Validation and final-test
+periods remain closed.
+
+### Experiment 1 — BTC long-only RSI/ATR
+
+| Candidate | Return | Profit factor | Max drawdown | Trades |
+| --- | ---: | ---: | ---: | ---: |
+| Corrected-fee two-sided baseline | +1.25% | — | 3.19% | — |
+| Long-only | +5.59% | 2.68 | 1.00% | 18 |
+
+All four six-month periods were profitable and 1.5x cost stress returned
++4.99%, but one period supplied 72.17% of positive subperiod profit. The sample
+failed the 60-trade evidence floor. Removing shorts improved the candidate, but
+did not establish anything close to 5% monthly returns.
+
+### Experiment 2 — market regimes
+
+The classifier uses only the completed 24-hour move: above +2% is bull, below
+-2% is bear, and the remainder is flat.
+
+| Component | Return | Profit factor | Max drawdown | Trades |
+| --- | ---: | ---: | ---: | ---: |
+| Flat-regime longs | +6.77% | 4.05 | 1.00% | 16 |
+| Flat-regime shorts | -4.02% | — | — | — |
+| Bull-regime longs | -1.10% | — | — | — |
+| Bear-regime shorts | -0.09% | — | — | — |
+| Combined router | +1.25% | — | — | — |
+
+Flat-regime longs were the only strong component, but still failed the trade
+count and subperiod-concentration gates. The combined router reproduced the
+two-sided baseline because EMA-200 already imposed a similar direction filter.
+
+### Experiment 3 — multi-timeframe execution
+
+| Candidate | Return | Profit factor | Max drawdown | Trades | 1.5x cost stress |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 15m flat-long baseline | +6.77% | 4.05 | 1.00% | 16 | — |
+| 1h/15m/5m/1m multi-timeframe | +6.31% | 6.51 | 0.82% | 14 | +5.86% |
+
+The multi-timeframe candidate improved quality and consistency but reduced the
+already-small sample. All four subperiods were profitable and the largest
+positive-subperiod contribution fell to 51.71%.
+
+### Experiment 4 — more liquid symbols
+
+Each new symbol has 1,579,642 x 1m, 315,928 x 5m, 105,309 x 15m, and 26,327 x
+1h candles. It also has 3,292 funding events and 8,640 rows for each supporting
+5m statistic.
+
+| Symbol | Frozen 15m return | Trades | Multi-timeframe return | Trades |
+| --- | ---: | ---: | ---: | ---: |
+| SOLUSDT | -1.43% | 16 | -0.17% | 13 |
+| XRPUSDT | +2.00% | 6 | +1.49% | 5 |
+| BNBUSDT | -2.85% | 14 | -0.19% | 10 |
+| ADAUSDT | +0.39% | 10 | +0.97% | 5 |
+| DOGEUSDT | +1.83% | 12 | +1.25% | 10 |
+| LINKUSDT | +1.02% | 9 | -0.22% | 7 |
+
+The independent-run sums were approximately +0.97% from 67 trades for the 15m
+candidate and +3.13% from 50 trades for multi-timeframe. These are not portfolio
+returns: shared capital, overlapping positions, and correlation were not modeled.
+No individual symbol passed acceptance.
+
+### Experiment 5 — improved exits
+
+Completed on the frozen BTCUSDT 15m flat-long training candidate:
+
+| Exit policy | Return | Profit factor | Max drawdown | Reported exit legs |
+| --- | ---: | ---: | ---: | ---: |
+| Baseline | +6.77% | 4.05 | 1.00% | 16 |
+| Partial 50% at 1R | +5.00% | 3.27 | 1.00% | 28 |
+| Initial-ATR trailing | +1.96% | 1.89 | 1.06% | 16 |
+| Eight-bar lack of progress | +5.95% | 3.55 | 1.00% | 16 |
+| Flat-regime stop/target | +6.67% | 3.68 | 1.21% | 17 |
+| Combined | +2.61% | 2.19 | 1.00% | 28 |
+
+Partial exits are reported as separate exit legs, so their count is not a count
+of independently opened positions. No overlay beat the baseline, and no exit
+variant was promoted to the other symbols.
+
+### Experiment 6 — portfolio-level shared risk
+
+The experiment replays the frozen 15m flat-long opportunities chronologically
+against one account. Position sizes scale to shared balance at entry. Admission
+enforces simultaneous-position, total-leverage, and correlated-crypto-notional
+caps. PnL retains each source trade's modeled maker/taker fees, slippage, and
+funding. Reported drawdown is realized-equity drawdown; a future event-driven
+portfolio engine must add simultaneous intratrade mark-to-market drawdown.
+
+| Universe and limits | Return | Realized DD | Accepted | Rejected | Max concurrent |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| All 7; 3 positions, 3x leverage, 1.5x crypto notional | +6.75% | 3.19% | 71 | 12 | 2 |
+| All 7; 2 positions, 2x leverage, 1.0x crypto notional | +1.78% | 2.28% | 57 | 26 | 1 |
+| Training-positive 5; 3 positions, 3x leverage, 1.5x crypto notional | +9.20% | 1.55% | 45 | 8 | 2 |
+| Training-positive 5; 2 positions, 2x leverage, 1.0x crypto notional | +4.05% | 1.55% | 37 | 16 | 1 |
+
+The all-symbol result is effectively no better than BTC alone (+6.77%); SOL and
+BNB dilute the portfolio. The BTC/XRP/ADA/DOGE/LINK subset is stronger, but was
+selected from the same training results and is therefore in-sample research,
+not validation. Strict 1.0x correlated exposure rejects too many opportunities
+and materially reduces return. No portfolio passes the project's return target
+or evidence requirements.
+
+## Global research conclusion
+
+Experiments 1–6 found a small, low-frequency flat-regime long mean-reversion
+effect. BTC is the strongest single candidate; multi-timeframe confirmation
+improves profit factor but reduces frequency; the effect transfers weakly to a
+few altcoins; and more elaborate exits do not help. Shared-capital replay raises
+the best in-sample return to +9.20% over two years, roughly 4.5% annualized before
+considering unrealized portfolio drawdown. This is nowhere near the aspirational
+60% annual return and no candidate meets the minimum trade-count acceptance
+criterion. Increasing leverage would magnify an insufficiently established edge
+rather than solve the evidence problem.
+
 ## Next step
 
-Proceed to return-improvement experiment 5: compare improved exit structures
-without changing the entry logic. Keep validation and final test closed.
+1. Upgrade the portfolio engine to event-driven mark-to-market equity, including
+   simultaneous stops, daily loss limits, and measured rolling correlations.
+2. Freeze two candidates before opening validation: BTC flat-long as the simple
+   benchmark and BTC/XRP/ADA/DOGE/LINK with the moderate 1.5x crypto-notional cap
+   as the portfolio hypothesis. Do not change them after seeing validation.
+3. Run the single six-month validation period once. Reject candidates that lose,
+   violate prop limits, or show materially worse execution/stability.
+4. If validation is promising, obtain a larger independent sample through older
+   data or additional liquid symbols before touching the final-test period.
+5. Keep the final six-month test locked until the implementation, universe, and
+   risk limits are frozen after validation.
 
 The first experiment-4 import universe is SOLUSDT, XRPUSDT, BNBUSDT, ADAUSDT,
 DOGEUSDT, and LINKUSDT. LTCUSDT, AVAXUSDT, BCHUSDT, TRXUSDT, AAVEUSDT,

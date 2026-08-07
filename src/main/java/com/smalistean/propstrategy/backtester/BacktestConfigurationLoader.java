@@ -65,7 +65,17 @@ public final class BacktestConfigurationLoader {
                 new PropRuleEngine.PropRules(
                         decimal(engine, "prop.maxTotalDrawdownPercent"),
                         decimal(engine, "prop.maxDailyLossPercent"),
-                        decimal(engine, "prop.profitTargetPercent")));
+                        decimal(engine, "prop.profitTargetPercent")),
+                new BacktestEngine.ExitConfig(
+                        bool(engine, "exit.partialEnabled", false),
+                        decimal(engine, "exit.partialTriggerR", "1.0"),
+                        decimal(engine, "exit.partialFraction", "0.5"),
+                        bool(engine, "exit.trailingEnabled", false),
+                        decimal(engine, "exit.trailingTriggerR", "1.0"),
+                        decimal(engine, "exit.trailingDistanceR", "1.0"),
+                        bool(engine, "exit.lackOfProgressEnabled", false),
+                        integer(engine, "exit.lackOfProgressBars", "8"),
+                        decimal(engine, "exit.minimumProgressR", "0.25")));
 
         Map<String, String> parameters = new HashMap<>();
         for (String name : strategy.stringPropertyNames()) {
@@ -108,6 +118,11 @@ public final class BacktestConfigurationLoader {
         }
     }
 
+    private static BigDecimal decimal(Properties properties, String name, String defaultValue) {
+        return new BigDecimal(System.getProperty(name,
+                properties.getProperty(name, defaultValue)).trim());
+    }
+
     private static int integer(Properties properties, String name) {
         try {
             int value = Integer.parseInt(required(properties, name));
@@ -121,12 +136,22 @@ public final class BacktestConfigurationLoader {
         }
     }
 
+    private static int integer(Properties properties, String name, String defaultValue) {
+        return Integer.parseInt(System.getProperty(name,
+                properties.getProperty(name, defaultValue)).trim());
+    }
+
     private static boolean bool(Properties properties, String name) {
         String value = required(properties, name);
         if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")) {
             throw new IllegalArgumentException("Configuration property must be true or false: " + name);
         }
         return Boolean.parseBoolean(value);
+    }
+
+    private static boolean bool(Properties properties, String name, boolean defaultValue) {
+        return Boolean.parseBoolean(System.getProperty(name,
+                properties.getProperty(name, Boolean.toString(defaultValue))).trim());
     }
 
     private static BacktestDataset.Type datasetType(Properties properties) {

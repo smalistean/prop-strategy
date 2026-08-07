@@ -173,7 +173,7 @@ public final class BacktestApplication {
                         execution.takerSlippageBps().multiply(costMultiplier),
                         execution.makerOffsetBps(), execution.makerOrderLifetimeMinutes(),
                         execution.strategyExitTakerFallback(), execution.breakEvenEnabled(),
-                        execution.breakEvenTriggerRiskMultiple()), base.propRules());
+                        execution.breakEvenTriggerRiskMultiple()), base.propRules(), base.exits());
         PerformanceReport.Report stressed = reportGenerator.generate(
                 new BacktestEngine(stressedConfig).run(
                         strategySupplier.get(), bars, funding, minuteCandles));

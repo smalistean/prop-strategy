@@ -90,6 +90,24 @@ public final class Account {
         }
     }
 
+    public void improveStop(BigDecimal stopPrice) {
+        Position current = requirePosition();
+        boolean improvesStop = current.side == Side.LONG
+                ? stopPrice.compareTo(current.stopPrice) > 0
+                : stopPrice.compareTo(current.stopPrice) < 0;
+        if (improvesStop) {
+            current.stopPrice = stopPrice;
+        }
+    }
+
+    public boolean partialProfitTaken() {
+        return requirePosition().partialProfitTaken;
+    }
+
+    public void markPartialProfitTaken() {
+        requirePosition().partialProfitTaken = true;
+    }
+
     public List<Trade> closedTrades() {
         return List.copyOf(closedTrades);
     }
@@ -128,19 +146,50 @@ public final class Account {
     }
 
     public Trade close(Instant time, ExecutionModel.Fill fill, String reason) {
+        return closeQuantity(time, fill, reason, true);
+    }
+
+    public Trade closePartial(Instant time, BigDecimal quantity, ExecutionModel.Fill fill,
+                              String reason) {
+        if (quantity.signum() <= 0 || quantity.compareTo(quantity()) >= 0) {
+            throw new IllegalArgumentException("Partial close quantity must be positive and smaller than position");
+        }
+        return closeQuantity(time, quantity, fill, reason, false);
+    }
+
+    private Trade closeQuantity(Instant time, ExecutionModel.Fill fill, String reason,
+                                boolean closeEntirePosition) {
+        return closeQuantity(time, quantity(), fill, reason, closeEntirePosition);
+    }
+
+    private Trade closeQuantity(Instant time, BigDecimal requestedQuantity,
+                                ExecutionModel.Fill fill, String reason,
+                                boolean closeEntirePosition) {
         Position current = requirePosition();
+        BigDecimal closingQuantity = closeEntirePosition ? current.quantity : requestedQuantity;
+        BigDecimal fraction = closingQuantity.divide(current.quantity, MC);
+        BigDecimal allocatedEntryFee = current.entryFee.multiply(fraction, MC);
+        BigDecimal allocatedFunding = current.fundingPnl.multiply(fraction, MC);
         BigDecimal grossPnl = current.side == Side.LONG
-                ? fill.fillPrice().subtract(current.entryPrice, MC).multiply(current.quantity, MC)
-                : current.entryPrice.subtract(fill.fillPrice(), MC).multiply(current.quantity, MC);
+                ? fill.fillPrice().subtract(current.entryPrice, MC).multiply(closingQuantity, MC)
+                : current.entryPrice.subtract(fill.fillPrice(), MC).multiply(closingQuantity, MC);
         balance = balance.add(grossPnl, MC).subtract(fill.fee(), MC);
-        BigDecimal netPnl = grossPnl.subtract(current.entryFee, MC)
-                .subtract(fill.fee(), MC).add(current.fundingPnl, MC);
+        BigDecimal netPnl = grossPnl.subtract(allocatedEntryFee, MC)
+                .subtract(fill.fee(), MC).add(allocatedFunding, MC);
         Trade trade = new Trade(
-                current.entryTime, time, current.entryPrice, fill.fillPrice(), current.quantity,
-                current.side, grossPnl, current.entryFee, fill.fee(), current.fundingPnl,
-                current.entrySlippageCost, fill.slippageCost(), netPnl, reason);
+                current.entryTime, time, current.entryPrice, fill.fillPrice(), closingQuantity,
+                current.side, grossPnl, allocatedEntryFee, fill.fee(), allocatedFunding,
+                current.entrySlippageCost.multiply(fraction, MC), fill.slippageCost(), netPnl, reason);
         closedTrades.add(trade);
-        position = null;
+        if (closeEntirePosition) {
+            position = null;
+        } else {
+            current.quantity = current.quantity.subtract(closingQuantity, MC);
+            current.entryFee = current.entryFee.subtract(allocatedEntryFee, MC);
+            current.fundingPnl = current.fundingPnl.subtract(allocatedFunding, MC);
+            current.entrySlippageCost = current.entrySlippageCost
+                    .multiply(BigDecimal.ONE.subtract(fraction, MC), MC);
+        }
         return trade;
     }
 
@@ -168,14 +217,15 @@ public final class Account {
         private final Side side;
         private final Instant entryTime;
         private final BigDecimal entryPrice;
-        private final BigDecimal quantity;
+        private BigDecimal quantity;
         private BigDecimal stopPrice;
         private final BigDecimal targetPrice;
         private final BigDecimal initialRiskDistance;
-        private final BigDecimal entryFee;
-        private final BigDecimal entrySlippageCost;
+        private BigDecimal entryFee;
+        private BigDecimal entrySlippageCost;
         private BigDecimal fundingPnl = BigDecimal.ZERO;
         private boolean breakEvenActive;
+        private boolean partialProfitTaken;
         private int barsHeld;
 
         private Position(Side side, Instant entryTime, BigDecimal entryPrice,
