@@ -1,4 +1,4 @@
-# Course-derived strategy research
+# Gerchik course-derived strategy research
 
 ## Review scope
 
@@ -49,14 +49,49 @@ Execution:
 - A pivot cluster is an objective proxy for BSU/BPU semantics. It cannot reproduce discretionary chart reading exactly.
 - The initial parameters are hypotheses frozen before the first training run. They must not be tuned using the testing period.
 
+## Volume-profile level reactions (v1)
+
+Three reactions consume causal 72-hour profiles built from historical aggregate trades.
+Each requires an unchanged POC for at least eight 15-minute buckets and a merged zone containing
+at least 2% of the profile's traded notional. Price bins are $10 wide; adjacent bins qualify
+when they contain at least 50% of the POC bin's notional.
+
+- `volume-profile-breakout`: close outside the stable zone; stop behind the entire zone plus
+  0.15 ATR and target at 3R. A next external volume node is not yet exposed, so breakout uses
+  the frozen risk multiple rather than pretending an arbitrary price is a structural target.
+- `volume-profile-false-breakout`: one candle closes beyond the zone and the next reclaims it;
+  stop is beyond the excursion plus 0.15 ATR and target is the opposite zone boundary. Trades
+  without 3R of structural room are rejected.
+- `volume-profile-channel`: rejection at one zone boundary toward the opposite boundary, with
+  the same structural stop and 3R room requirement.
+
+### Frozen BTCUSDT training results
+
+All runs use `[2023-08-07, 2025-08-07)`, aggregate-trade maker trade-through, 1.8 bps maker
+fees, 4.5 bps taker fees, and 2 bps taker slippage. Validation and final test remain unopened.
+
+| Reaction | Trades | Return | Win rate | Profit factor | Max drawdown | Conclusion |
+|---|---:|---:|---:|---:|---:|---|
+| Breakout | 849 | -13.61% | 26.50% | 0.802 | 13.79% | Closest of the three, but crossings do not establish genuine acceptance; every six-month period lost. |
+| False breakout | 81 | -5.45% | 17.28% | 0.483 | 5.45% | Structural room controls frequency and drawdown, but most simple reclaims fail. |
+| Channel | 788 | -63.28% | 13.96% | 0.386 | 63.28% | A high-volume zone is not automatically a mean-reverting channel; reject this rule. |
+
+All three passed average win/loss ratio but failed profitability, profit factor, subperiod
+stability, and stressed-cost acceptance. The 1:3 constraint is working; the missing edge is
+entry selection. The next justified experiment should combine stable volume zones with clean
+approach/repeated-penetration diagnostics and aggregate-trade absorption or delta confirmation.
+Do not tune these v1 thresholds against validation data.
+
 ## Next research iterations
 
-1. Add aggregate-trade volume-at-price levels. Raw historical `aggTrades` permit the same
+1. [Completed infrastructure] Add aggregate-trade volume-at-price levels. Raw historical `aggTrades` permit the same
    idea as the live WebSocket implementation: group traded notional into price bins, treat the
    highest-volume bin as the point of control (POC), and retain aggressor delta as context.
    `HistoricalVolumeProfileApplication` now provides a non-persistent analyzer for this purpose.
    Strategy tests must use a rolling profile whose window ends before the signal candle; using a
    full-day or full-month profile inside that same period would leak future trades.
+   BTCUSDT training data is now stored as 1,728,422 15-minute × $10 bins. The
+   rolling generator produces prior-only 24h, 72h, and 168h POC/zone metrics.
 2. Add alternating, time-separated BPU confirmations and penalize repeated level penetration.
 3. Add the nearest opposing structural or volume-profile level as the target/room filter instead
    of ATR-only targets.

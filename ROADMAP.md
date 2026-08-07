@@ -1,5 +1,8 @@
 # Trading Strategy Research Project - Data Collection Roadmap
 
+The prioritized forward plan and stopping rules are maintained in
+`NEXT_RESEARCH_PLAN.md`. This roadmap remains the detailed implementation history.
+
 ## Objective
 
 Build a historical market database and backtesting framework to develop
@@ -122,6 +125,52 @@ of calculating the entire original wish list upfront.
 -   [x] Wilder RSI 14 and ATR 14.
 -   [x] Rolling 20-period volatility and volume ratio.
 -   [x] Body, upper-wick, and lower-wick percentages.
+-   [x] Aggregate raw historical trades into reusable 15-minute price bins.
+-   [x] Persist BTCUSDT training-period volume-at-price bins in PostgreSQL.
+-   [x] Generate causal 1-day, 3-day, and 7-day rolling volume profiles.
+-   [x] Expose POC, merged high-volume zone, zone share, aggressor delta, and
+    POC stability without current-candle look-ahead.
+
+The initial volume-profile strategy parameters were frozen for the v1 reaction runs.
+Any later comparison of price-bin width, rolling horizon, or adjacent-bin threshold
+must be recorded as a new training experiment rather than rewriting the v1 result.
+
+## Volume-profile reaction experiments
+
+-   [x] Add a stable-zone breakout with the stop behind the complete zone.
+-   [x] Add a two-candle false-breakout/reclaim with the opposite zone edge as target.
+-   [x] Add a channel-boundary rejection requiring at least 3R to the opposite edge.
+-   [x] Run all three on BTCUSDT training data with aggregate-trade maker fills.
+-   [x] Reject all three v1 rules; retain the shared level infrastructure.
+-   [ ] Add approach-quality, repeated-penetration, and order-flow absorption diagnostics
+    before proposing another entry rule. Do not optimize using validation/final data.
+
+## Apollo methodology translation
+
+-   [x] Review all 44 pages, including annotated chart examples.
+-   [x] Document source rules separately from mechanical interpretations.
+-   [x] Implement base + POC + confirmed break + first-retest entries.
+-   [x] Apply the liquidity-zone-plus-25% stop and minimum 3R target.
+-   [x] Run frozen BTCUSDT training diagnostics without opening later datasets.
+-   [x] Replace rolling POC with an exact profile over each fixed-window detected base;
+    reject the result because the fixed base detector admits ordinary trend pauses.
+-   [ ] Implement variable-length horizontal bases with body containment, limited drift,
+    explicit entrance, and a clean volume-supported exit.
+-   [ ] Predeclare and test higher-timeframe direction and long-only sensitivities only
+    after base construction is credible.
+
+## Three-level range and adverse scratch
+
+-   [x] Construct L1/L2/L3 from confirmed historical pivot clusters.
+-   [x] Buy L2, target 30-40% of L2-L3, and retain the structural L1 stop.
+-   [x] Activate a persistent maker scratch after 20% adverse L2-L1 movement and
+    require a later 1m aggregate-trade fill.
+-   [x] Test 15m and a 5m version reaching approximately one trade per day.
+-   [x] Test waiting for the adverse sweep and L2 reclaim before entry.
+-   [x] Reject the family: all variants have negative raw expectancy and every 5m
+    month lost. Do not optimize thresholds.
+-   [ ] Research frequency through a frozen cross-sectional strategy over multiple
+    liquid symbols rather than forcing additional BTCUSDT entries.
 
 ## Futures context
 

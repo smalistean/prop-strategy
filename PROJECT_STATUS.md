@@ -3,13 +3,32 @@
 ## Course-derived level strategies (2026-08-07)
 
 - Audited all user-requested course assets: 34 PDFs / 655 rendered pages and 298 PNGs. JPG/video assets were outside scope.
-- Added `COURSE_STRATEGY_RESEARCH.md` with source-derived concepts, explicit crypto formalizations, limitations, and frozen BTCUSDT training results.
+- Added `GERCHIK_COURSE_STRATEGY_RESEARCH.md` with source-derived concepts, explicit crypto formalizations, limitations, and frozen BTCUSDT training results.
 - Added configurable `gerchik-level` reactions: bounce, breakout, and false-breakout, with pivot-cluster BSU/BPU proxy, ATR level tolerance, structural stop, and >=3R target.
 - Frozen v1 BTCUSDT 15m training results: bounce -0.76% (3 trades); false breakout -48.64% (2,637); corrected breakout 0.00% (0 trades). An earlier permissive breakout-compression defect produced -98.52% / 5,271 trades and is retained only as a rejected diagnostic result.
 - Conclusion: one/two-bar price-pattern proxies are insufficient. Next iteration should add strict compression/reclaim semantics, opposing-level room, higher-timeframe context, and rejection-reason diagnostics before any parameter search.
 - Verification: 69 tests pass on JDK 25.
 
-Last updated: 2026-08-06
+Last updated: 2026-08-07
+
+### Latest research gate: multi-timeframe expansion rejected
+
+The frozen eight-symbol 2023-2025 run produced 76 trades, pooled PF 1.45, positive raw/net PnL,
+and positive 1.5x-cost stress. A backward BTC/ETH extension to 2021 raised the combined unique
+sample to only 90 trades and exposed weak stability and BTC profit concentration. It failed the
+predeclared Stage-1 gate and was not promoted. Validation and final-test periods remain unopened.
+
+### Apollo v3 variable-base gate: rejected
+
+Variable 12-48 candle base selection, selected-window aggregate-trade POC, first-retest execution,
+and completed-1h EMA alignment are implemented. The final predeclared sensitivity returned -5.38%,
+PF 0.78, and 54 trades before drawdown termination; only one half-year was profitable and 1.5x
+cost stress remained negative. The Apollo standalone branch is closed without opening validation.
+
+The evidence-based forward plan is consolidated in `NEXT_RESEARCH_PLAN.md`. It ranks
+multi-timeframe BTC flat-long first, Apollo base/POC research second, and a new
+cross-sectional multi-symbol strategy as the preferred path to 1-2 daily portfolio
+opportunities. Rejected branches are explicitly closed to prevent threshold churn.
 
 ## Current position
 
@@ -189,13 +208,53 @@ unopened.
   results and conclusions are consolidated below rather than split between this
   status file and the roadmap.
 - Validation and final-test periods have not been run.
+- Historical volume-at-price infrastructure is complete for BTCUSDT training data.
+  Flyway V6 stores actual aggregate-trade notional in 15-minute × $10 price bins,
+  including aggressive buy/sell quote volume. All 30 existing archives covering
+  `[2023-08-07, 2025-08-07)` were imported idempotently into 1,728,422 rows.
+- Rolling volume profiles calculate 24-hour, 72-hour, and 168-hour POC and merged
+  high-volume zones, zone share, aggressor delta, and exact-bin POC stability.
+  The profile at a candle timestamp uses completed earlier buckets only; deterministic
+  tests prove that volume from the current bucket cannot affect its own signal.
+- The first end-to-end preview at 2025-07-31 23:45 UTC found different prior-only
+  POCs by horizon: $118,370 (24h), $117,500 (72h), and $118,000 (168h). Lookback,
+  price step, and adjacent-bin threshold remain training hypotheses, not optimized
+  or validated parameters.
+- Volume-profile strategy steps 5–7 are complete for three distinct reactions. The
+  frozen 72h BTCUSDT training runs rejected breakout (-13.61%, PF 0.802, 849 trades),
+  false breakout (-5.45%, PF 0.483, 81 trades), and channel (-63.28%, PF 0.386,
+  788 trades). All maintained greater than 2.2 average win/loss ratios, confirming
+  that structural stops/targets and the 3R filter work mechanically; poor signal
+  selection and execution costs cause the losses. Validation/final data stayed closed.
+- The complete 44-page Apollo Crypto `методичка 2,0.pdf` was visually and textually
+  reviewed. `apollo-base-poc-retest` translates its base, trend-break, fixed-volume
+  POC, first-retest, breakout-volume, structural-stop, and minimum-3R principles into
+  explicit rules. Its frozen BTC training result was -0.61% with PF 0.957, 186 trades,
+  and 2.97% drawdown. Raw price PnL was +1,856.50; longs were +1,078.49 net while
+  shorts lost -1,688.45. The candidate fails acceptance but is a credible follow-up
+  for exact-base POC and predeclared higher-timeframe/long-only experiments.
+- Apollo experiment 2 replaced the 72h proxy with an exact profile over the preceding
+  fixed 16-candle base while holding other rules constant. It was decisively worse:
+  -21.17%, PF 0.641, 619 trades, 21.92% drawdown, and -3,003.44 raw price PnL.
+  Every subperiod lost. This rejects the fixed-window base detector: exact volume over
+  an incorrectly identified base creates excessive narrow-zone signals. Variable-length
+  base semantics must be solved before direction or higher-timeframe sensitivities.
+- A three-level long-range strategy now models L2 entry, partial-channel target, L1
+  structural stop, and a persistent fee-adjusted maker scratch activated 20% into
+  the L2-L1 channel. The execution model does not allow a same-minute fictional fill.
+  The 15m version produced 274 trades and -6.16% (PF 0.531). The 5m frequency version
+  reached 696 trades, approximately 0.95/day, but lost -33.39% (PF 0.243). Waiting
+  for an adverse sweep and L2 reclaim still lost -31.24% across 533 trades. Every
+  month and subperiod lost in both 5m runs, with negative raw PnL, so this family is
+  rejected rather than threshold-tuned.
 
 ## Current database
 
 - PostgreSQL: 17.10
 - Service: `postgresql@17`
 - Database: `prop_strategy`
-- Schema version: Flyway V5
+- Schema version: Flyway V6
+- BTCUSDT training volume-profile bins (15m × $10): 1,728,422 rows
 - BTCUSDC Futures contract metadata onboarded at 2024-01-03 12:30 UTC; its first
   actual 1m candle is 2024-01-04 12:31 UTC.
 - BTCUSDC 1m: 1,362,009 rows

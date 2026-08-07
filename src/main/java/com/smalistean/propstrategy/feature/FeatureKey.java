@@ -22,6 +22,10 @@ public record FeatureKey(String name, int period, int lookback) {
         return new FeatureKey("close", 0);
     }
 
+    public static FeatureKey open() {
+        return new FeatureKey("open", 0);
+    }
+
     public static FeatureKey high() {
         return new FeatureKey("high", 0);
     }
@@ -101,4 +105,53 @@ public record FeatureKey(String name, int period, int lookback) {
     public static FeatureKey priceFlowDivergence(int period) {
         return new FeatureKey("priceFlowDivergence", period);
     }
+
+    public static FeatureKey volumeProfilePoc(int lookbackBuckets) {
+        return new FeatureKey("volumeProfilePoc", lookbackBuckets);
+    }
+
+    public static FeatureKey volumeProfileZoneLow(int lookbackBuckets) {
+        return new FeatureKey("volumeProfileZoneLow", lookbackBuckets);
+    }
+
+    public static FeatureKey volumeProfileZoneHigh(int lookbackBuckets) {
+        return new FeatureKey("volumeProfileZoneHigh", lookbackBuckets);
+    }
+
+    public static FeatureKey volumeProfileZoneShare(int lookbackBuckets) {
+        return new FeatureKey("volumeProfileZoneShare", lookbackBuckets);
+    }
+
+    public static FeatureKey volumeProfileZoneDelta(int lookbackBuckets) {
+        return new FeatureKey("volumeProfileZoneDelta", lookbackBuckets);
+    }
+
+    public static FeatureKey volumeProfilePocStability(int lookbackBuckets) {
+        return new FeatureKey("volumeProfilePocStability", lookbackBuckets);
+    }
+
+    public static FeatureKey exactBasePoc(int baseBars) {
+        return new FeatureKey("exactBasePoc", baseBars);
+    }
+
+    public static FeatureKey exactBaseZoneLow(int baseBars) {
+        return new FeatureKey("exactBaseZoneLow", baseBars);
+    }
+
+    public static FeatureKey exactBaseZoneHigh(int baseBars) {
+        return new FeatureKey("exactBaseZoneHigh", baseBars);
+    }
+
+    public static FeatureKey exactBaseZoneShare(int baseBars) {
+        return new FeatureKey("exactBaseZoneShare", baseBars);
+    }
+
+    public static FeatureKey selectedBaseBars() { return new FeatureKey("selectedBaseBars", 0); }
+    public static FeatureKey selectedBaseLow() { return new FeatureKey("selectedBaseLow", 0); }
+    public static FeatureKey selectedBaseHigh() { return new FeatureKey("selectedBaseHigh", 0); }
+    public static FeatureKey selectedBaseZoneLow() { return new FeatureKey("selectedBaseZoneLow", 0); }
+    public static FeatureKey selectedBaseZoneHigh() { return new FeatureKey("selectedBaseZoneHigh", 0); }
+    public static FeatureKey selectedBaseZoneShare() { return new FeatureKey("selectedBaseZoneShare", 0); }
+    public static FeatureKey completedHourClose() { return new FeatureKey("completedHourClose", 0); }
+    public static FeatureKey completedHourEma(int period) { return new FeatureKey("completedHourEma", period); }
 }

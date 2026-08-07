@@ -79,6 +79,10 @@ public final class Account {
         return requirePosition().breakEvenActive;
     }
 
+    public BigDecimal scratchTriggerPrice() { return requirePosition().scratchTriggerPrice; }
+    public boolean scratchExitActive() { return requirePosition().scratchExitActive; }
+    public void activateScratchExit() { requirePosition().scratchExitActive = true; }
+
     public void activateBreakEven(BigDecimal stopPrice) {
         Position current = requirePosition();
         boolean improvesStop = current.side == Side.LONG
@@ -130,7 +134,16 @@ public final class Account {
         }
         balance = balance.subtract(fill.fee(), MC);
         position = new Position(side, time, fill.fillPrice(), quantity,
-                stopPrice, targetPrice, fill.fee(), fill.slippageCost());
+                stopPrice, targetPrice, null, fill.fee(), fill.slippageCost());
+    }
+
+    public void openWithScratch(Instant time, Side side, BigDecimal quantity,
+                                BigDecimal stopPrice, BigDecimal targetPrice,
+                                BigDecimal scratchTriggerPrice, ExecutionModel.Fill fill) {
+        if (hasOpenPosition()) throw new IllegalStateException("Position already open");
+        balance = balance.subtract(fill.fee(), MC);
+        position = new Position(side, time, fill.fillPrice(), quantity, stopPrice, targetPrice,
+                scratchTriggerPrice, fill.fee(), fill.slippageCost());
     }
 
     public void incrementBarsHeld() {
@@ -220,23 +233,27 @@ public final class Account {
         private BigDecimal quantity;
         private BigDecimal stopPrice;
         private final BigDecimal targetPrice;
+        private final BigDecimal scratchTriggerPrice;
         private final BigDecimal initialRiskDistance;
         private BigDecimal entryFee;
         private BigDecimal entrySlippageCost;
         private BigDecimal fundingPnl = BigDecimal.ZERO;
         private boolean breakEvenActive;
         private boolean partialProfitTaken;
+        private boolean scratchExitActive;
         private int barsHeld;
 
         private Position(Side side, Instant entryTime, BigDecimal entryPrice,
                          BigDecimal quantity, BigDecimal stopPrice, BigDecimal targetPrice,
-                         BigDecimal entryFee, BigDecimal entrySlippageCost) {
+                         BigDecimal scratchTriggerPrice, BigDecimal entryFee,
+                         BigDecimal entrySlippageCost) {
             this.side = side;
             this.entryTime = entryTime;
             this.entryPrice = entryPrice;
             this.quantity = quantity;
             this.stopPrice = stopPrice;
             this.targetPrice = targetPrice;
+            this.scratchTriggerPrice = scratchTriggerPrice;
             this.initialRiskDistance = entryPrice.subtract(stopPrice).abs();
             this.entryFee = entryFee;
             this.entrySlippageCost = entrySlippageCost;

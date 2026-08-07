@@ -23,20 +23,27 @@ public final class BtcHistoricalImportApplication {
     public static void main(String[] args) {
         String symbol = System.getProperty("symbol", SYMBOL).trim().toUpperCase();
         String configuredStart = System.getProperty("start", "").trim();
+        String configuredEnd = System.getProperty("end", "").trim();
         Instant start = configuredStart.isEmpty() ? null : Instant.parse(configuredStart);
-        importSymbol(symbol, start);
+        Instant end = configuredEnd.isEmpty() ? null : Instant.parse(configuredEnd);
+        importSymbol(symbol, start, end);
     }
 
     static void importSymbol(String symbol, Instant fixedStartInclusive) {
+        importSymbol(symbol, fixedStartInclusive, null);
+    }
+
+    static void importSymbol(String symbol, Instant fixedStartInclusive,
+                             Instant fixedEndExclusive) {
         DatabaseConfig config = DatabaseConfig.fromEnvironment();
         DatabaseMigrator.migrate(config);
 
         BinanceKlineClient client = new BinanceKlineClient();
         PostgresKlineRepository repository = new PostgresKlineRepository(config);
-        Instant now = Instant.now();
+        Instant end = fixedEndExclusive == null ? Instant.now() : fixedEndExclusive;
 
         for (KlineInterval interval : KlineInterval.values()) {
-            importInterval(symbol, fixedStartInclusive, client, repository, interval, now);
+            importInterval(symbol, fixedStartInclusive, client, repository, interval, end);
         }
         System.out.printf("%s Futures import completed and verified.%n", symbol);
     }

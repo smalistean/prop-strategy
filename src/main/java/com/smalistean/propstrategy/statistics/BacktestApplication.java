@@ -10,11 +10,16 @@ import com.smalistean.propstrategy.database.PostgresFundingRateRepository;
 import com.smalistean.propstrategy.database.PostgresAggregateTradeMinuteRepository;
 import com.smalistean.propstrategy.database.PostgresKlineRepository;
 import com.smalistean.propstrategy.database.PostgresOrderFlowFeatureRepository;
+import com.smalistean.propstrategy.database.PostgresVolumeProfileBinRepository;
 import com.smalistean.propstrategy.feature.FeatureSnapshot;
 import com.smalistean.propstrategy.feature.ParameterizedFeatureGenerator;
 import com.smalistean.propstrategy.feature.MultiTimeframeFeatureAssembler;
+import com.smalistean.propstrategy.feature.VolumeProfileFeatureAssembler;
 import com.smalistean.propstrategy.strategy.Strategy;
 import com.smalistean.propstrategy.strategy.StrategyRegistry;
+import com.smalistean.propstrategy.strategy.VolumeProfileAwareStrategy;
+import com.smalistean.propstrategy.strategy.ApolloBasePocRetestStrategy;
+import com.smalistean.propstrategy.strategy.ApolloVariableBasePocStrategy;
 
 import java.nio.file.Path;
 import java.math.BigDecimal;
@@ -49,7 +54,13 @@ public final class BacktestApplication {
         PostgresKlineRepository klineRepository = new PostgresKlineRepository(database);
         boolean multiTimeframe = loaded.strategyType().equals("multi-timeframe-flat-long");
         boolean orderFlow = loaded.strategyType().equals("order-flow-exhaustion");
-        int warmupCandles = multiTimeframe ? 1
+        boolean volumeProfile = strategy instanceof VolumeProfileAwareStrategy;
+        int warmupCandles = multiTimeframe ? 1 : volumeProfile
+                ? strategy.requiredFeatures().stream()
+                .filter(key -> !key.name().startsWith("volumeProfile")
+                        && !key.name().startsWith("exactBase")
+                        && !key.name().startsWith("selectedBase"))
+                .mapToInt(key -> key.period() + key.lookback()).max().orElse(0) + 1
                 : featureGenerator.requiredWarmupCandles(strategy.requiredFeatures());
         List<Kline> candles = klineRepository.findRangeWithWarmup(marketSymbol, loaded.interval(),
                 loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), warmupCandles);
@@ -76,6 +87,43 @@ public final class BacktestApplication {
                     .findFiveMinuteSnapshots(marketSymbol, loaded.dataset().startInclusive(),
                             loaded.dataset().endExclusive());
             generatedSnapshots = merge(technical, flow);
+        } else if (volumeProfile) {
+            if (!loaded.interval().equals("15m")) {
+                throw new IllegalArgumentException("Volume-profile strategy requires market.interval=15m");
+            }
+            VolumeProfileAwareStrategy typed = (VolumeProfileAwareStrategy) strategy;
+            int lookback = typed.profileLookbackBuckets();
+            java.util.Set<com.smalistean.propstrategy.feature.FeatureKey> technicalKeys =
+                    strategy.requiredFeatures().stream()
+                            .filter(key -> !key.name().startsWith("volumeProfile")
+                                    && !key.name().startsWith("exactBase")
+                                    && !key.name().startsWith("selectedBase")
+                                    && !key.name().startsWith("completedHour"))
+                            .collect(java.util.stream.Collectors.toSet());
+            List<FeatureSnapshot> technical = featureGenerator.generate(candles, technicalKeys);
+            if (strategy instanceof ApolloVariableBasePocStrategy variable
+                    && variable.requiredFeatures().stream().anyMatch(key -> key.name().equals("completedHourClose"))) {
+                List<Kline> hourly = klineRepository.findRangeWithWarmup(marketSymbol, "1h",
+                        loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), 55);
+                technical = new VolumeProfileFeatureAssembler().mergeCompletedHourlyTrend(
+                        technical, hourly, 50);
+            }
+            int bucketMinutes = Integer.getInteger("profileBucketMinutes", 15);
+            BigDecimal priceStep = new BigDecimal(System.getProperty("profilePriceStep", "10"));
+            BigDecimal neighborFraction = new BigDecimal(System.getProperty(
+                    "profileNeighborMinimumPocFraction", "0.50"));
+            Instant profileStart = loaded.dataset().startInclusive().minusSeconds(
+                    (long) lookback * bucketMinutes * 60 * 2);
+            var bins = new PostgresVolumeProfileBinRepository(database).findRange(
+                    marketSymbol, bucketMinutes, priceStep, profileStart,
+                    loaded.dataset().endExclusive());
+            VolumeProfileFeatureAssembler assembler = new VolumeProfileFeatureAssembler();
+            generatedSnapshots = strategy instanceof ApolloBasePocRetestStrategy apollo
+                    ? assembler.mergeExactBase(technical, bins, apollo.baseBars(), neighborFraction)
+                    : strategy instanceof ApolloVariableBasePocStrategy variable
+                    ? assembler.mergeSelectedBases(technical, bins, variable.atrKey(),
+                            variable.detectorConfig(), neighborFraction)
+                    : assembler.merge(technical, bins, lookback, neighborFraction);
         } else {
             generatedSnapshots = featureGenerator.generate(candles, strategy.requiredFeatures());
         }
@@ -116,6 +164,9 @@ public final class BacktestApplication {
                 loaded.interval(), candles.size(), bars.size());
         PerformanceReport.Report report = new PerformanceReport().generate(result);
         System.out.println(report);
+        if (strategy instanceof ApolloVariableBasePocStrategy variable) {
+            System.out.println(variable.diagnosticSummary());
+        }
         if (loaded.engine().execution().makerEnabled()) {
             System.out.printf("Maker trade-through source: %s (%,d minute rows)%n",
                     tradeThroughSource, minuteCandles.size());
