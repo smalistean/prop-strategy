@@ -60,6 +60,8 @@ public final class VolumeProfileFeatureAssembler {
                     values.put(FeatureKey.selectedBaseZoneLow(), profile[0]);
                     values.put(FeatureKey.selectedBaseZoneHigh(), profile[1]);
                     values.put(FeatureKey.selectedBaseZoneShare(), profile[2]);
+                    values.put(FeatureKey.selectedBasePocShare(), profile[3]);
+                    values.put(FeatureKey.selectedBaseTotalQuote(), profile[4]);
                 }
             }
             result.add(new FeatureSnapshot(snapshot.candleOpenTime(), snapshot.availableAt(),
@@ -85,7 +87,8 @@ public final class VolumeProfileFeatureAssembler {
         BigDecimal zone = totals.subMap(low, true, high, false).values().stream()
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         return new BigDecimal[]{low, high, zone.divide(total,
-                new java.math.MathContext(20, java.math.RoundingMode.HALF_UP))};
+                new java.math.MathContext(20, java.math.RoundingMode.HALF_UP)),
+                totals.get(poc).divide(total, new java.math.MathContext(20, java.math.RoundingMode.HALF_UP)), total};
     }
 
     public List<FeatureSnapshot> merge(List<FeatureSnapshot> technical,

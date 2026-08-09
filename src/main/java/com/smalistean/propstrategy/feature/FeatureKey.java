@@ -152,10 +152,14 @@ public record FeatureKey(String name, int period, int lookback) {
     public static FeatureKey selectedBaseZoneLow() { return new FeatureKey("selectedBaseZoneLow", 0); }
     public static FeatureKey selectedBaseZoneHigh() { return new FeatureKey("selectedBaseZoneHigh", 0); }
     public static FeatureKey selectedBaseZoneShare() { return new FeatureKey("selectedBaseZoneShare", 0); }
+    public static FeatureKey selectedBasePocShare() { return new FeatureKey("selectedBasePocShare", 0); }
+    public static FeatureKey selectedBaseTotalQuote() { return new FeatureKey("selectedBaseTotalQuote", 0); }
     public static FeatureKey completedHourClose() { return new FeatureKey("completedHourClose", 0); }
     public static FeatureKey completedHourEma(int period) { return new FeatureKey("completedHourEma", period); }
     public static FeatureKey crossSectionRank() { return new FeatureKey("crossSectionRank", 0); }
     public static FeatureKey btcMarketHealthy() { return new FeatureKey("btcMarketHealthy", 0); }
     public static FeatureKey higherTimeframeSupport() { return new FeatureKey("higherTimeframeSupport", 0); }
     public static FeatureKey higherTimeframeResistance() { return new FeatureKey("higherTimeframeResistance", 0); }
+    public static FeatureKey completedFourHourClose() { return new FeatureKey("completedFourHourClose", 0); }
+    public static FeatureKey completedFourHourEma(int period) { return new FeatureKey("completedFourHourEma", period); }
 }

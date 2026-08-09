@@ -23,7 +23,7 @@ public final class HigherTimeframeLiquidityMapAssembler {
                                         BigDecimal toleranceAtr) {
         List<Kline> fourHour = aggregate(hourly);
         List<FeatureSnapshot> features = new ParameterizedFeatureGenerator().generate(fourHour,
-                java.util.Set.of(FeatureKey.close(), FeatureKey.high(), FeatureKey.low(), ATR));
+                java.util.Set.of(FeatureKey.close(), FeatureKey.high(), FeatureKey.low(), ATR, FeatureKey.ema(50)));
         NavigableMap<Instant, Levels> map = new TreeMap<>();
         for (int i = 0; i < features.size(); i++) {
             if (i < lookbackBars + pivotStrength) continue;
@@ -41,6 +41,10 @@ public final class HigherTimeframeLiquidityMapAssembler {
                     ? BigDecimal.ZERO : levels.support);
             values.put(FeatureKey.higherTimeframeResistance(), levels == null || levels.resistance == null
                     ? BigDecimal.ZERO : levels.resistance);
+            FeatureSnapshot trend = entry == null ? null : features.stream()
+                    .filter(feature -> feature.availableAt().equals(entry.getKey())).findFirst().orElse(null);
+            values.put(FeatureKey.completedFourHourClose(), trend == null ? BigDecimal.ZERO : trend.require(FeatureKey.close()));
+            values.put(FeatureKey.completedFourHourEma(50), trend == null ? BigDecimal.ZERO : trend.require(FeatureKey.ema(50)));
             return new FeatureSnapshot(item.candleOpenTime(), item.availableAt(), item.earliestExecutionTime(), values);
         }).toList();
     }

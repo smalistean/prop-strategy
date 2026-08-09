@@ -33,6 +33,11 @@ public record StrategyParameters(Map<String, String> values) {
         return Boolean.parseBoolean(value);
     }
 
+    public boolean booleanOrDefault(String name, boolean defaultValue) {
+        String value = values.get(name);
+        return value == null || value.isBlank() ? defaultValue : requiredBoolean(name);
+    }
+
     public String requiredString(String name) {
         return required(name);
     }

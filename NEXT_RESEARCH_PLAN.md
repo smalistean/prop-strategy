@@ -2,6 +2,69 @@
 
 Last updated: 2026-08-09
 
+## Apollo expanded-universe result — rejected
+
+The frozen B5 and C1 variants were evaluated on seven newly imported, previously
+unused symbols. B5 lost $5,504.70 across 53 trades and C1 lost $2,502.55 across
+38. The original eight-symbol performance does not generalize; stop threshold
+search and validation for this proxy family.
+
+## Apollo v3 assumption-test protocol
+
+The user authorized exploratory one-variable tests to increase the Apollo v3
+sample. Each run must keep the eight-symbol training universe, period,
+execution model, and every non-tested property fixed; it must be recorded in
+`APOLLO_V3_ASSUMPTION_TESTS.md`. B1 changed only the mapped-area proxy from
+four to three pivot touches: 10 to 12 filled trades and -$2,296.85 to
+$1,281.92 aggregate independent-account net PnL. It is too small to select a
+configuration. Run no validation/final test and make no compounded parameter
+change until a separately labelled next one-variable comparison is reviewed.
+
+B2 then shortened the untouched-level requirement from 12 hours to four hours
+while retaining B1. It raised filled trades to 35 but returned -$9,009.06,
+therefore it is rejected. Subsequent one-variable comparisons retain 12-hour
+freshness and the B1 three-touch map unless explicitly stated otherwise.
+
+B3 widened only the mapped-area tolerance from 0.50 to 0.75 ATR while retaining
+B1: 16 filled trades and +$756.13. The extra four observations reduced aggregate
+profit and three lost, so it is inconclusive and the 0.50-ATR map tolerance
+remains the reference for the next isolated comparison.
+
+B4 extended only the reclaim deadline from six to eight 15-minute bars while
+retaining B1. It produced 14 filled trades and +$234.96; both incremental
+trades stopped out. It is rejected, and the six-bar reclaim deadline remains
+the reference for the next isolated comparison.
+
+B5 changed only the acceptance-count proxy from two to one full-bodied
+reclaim candle while retaining the 0.20-ATR body threshold and B1's other
+settings. It produced 52 filled trades and +$1,646.98. This is a lead rather
+than a selection: it is below the 60-trade low-frequency evidence floor, has
+negative BTC/SOL results, and remains entirely in training. Keep B5 isolated;
+do not compound parameters or open validation before reviewing the next
+one-variable comparison.
+
+B6 initially revealed a configuration coupling: local-break length also
+changed sweep-search length. This was corrected by making `sweepSearchBars=10`
+explicit. The corrected two-bar-break-only comparison returned 18 filled trades
+and +$137.78, so it is rejected and the three-bar break remains the reference.
+
+B7 changed only the mapped-target room from 3R to 2.5R. It increased filled
+trades to 27 but returned -$1,063.12, so it is rejected and the 3R target-room
+requirement remains the reference.
+
+B8 raised only break-volume confirmation to 1.20× the 20-bar average. It
+returned +$4,739.19 but only six filled trades, concentrated in ADA and XRP.
+It is an insufficient-sample quality lead, not a selected threshold or a basis
+to open validation.
+
+B9 raised only sweep depth from 0.10 to 0.20 ATR. It returned nine filled
+trades and +$469.10, below B1, so it is rejected and the 0.10-ATR sweep depth
+remains the reference.
+
+B10 reduced only 4h pivot confirmation from two neighboring bars to one. It
+produced three trades and -$1,836.74 because denser pivots changed map
+selection; it is rejected.
+
 ## Objective
 
 Find a reproducible crypto Futures portfolio capable of at least 15-20% annualized net return

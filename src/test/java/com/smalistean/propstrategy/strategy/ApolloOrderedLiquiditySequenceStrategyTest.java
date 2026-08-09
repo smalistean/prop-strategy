@@ -15,10 +15,10 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 class ApolloOrderedLiquiditySequenceStrategyTest {
     private final ApolloOrderedLiquiditySequenceStrategy strategy =
             new ApolloOrderedLiquiditySequenceStrategy(
-                    new ApolloOrderedLiquiditySequenceStrategy.Config(14, 20, 4, 2, 1, 2,
+                    new ApolloOrderedLiquiditySequenceStrategy.Config(14, 20, 4, 2, 1, 2, 5,
                             new BigDecimal("0.15"), new BigDecimal("0.10"), new BigDecimal("0.20"),
                             new BigDecimal("1.20"), new BigDecimal("0.25"),
-                            BigDecimal.valueOf(3), 96));
+                            BigDecimal.valueOf(3), 96, false));
 
     @Test
     void entersOnlyAfterFreshSweepReclaimAndSeparateLocalBreak() {

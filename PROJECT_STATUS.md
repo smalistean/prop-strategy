@@ -11,6 +11,133 @@
 
 Last updated: 2026-08-09
 
+### Apollo expanded-universe transfer test: B5 and C1 rejected
+
+Seven deferred symbols (LTC, AVAX, BCH, TRX, AAVE, DOT, ETC) were imported with
+verified 1m/5m/15m/1h Futures histories. The frozen B5 variant returned
+-$5,504.70 across 53 new-symbol trades; the C1 B5+B8 combination returned
+-$2,502.55 across 38. The earlier eight-symbol positives therefore did not
+transfer to a previously unused liquid universe. Neither may proceed to
+validation; this proxy family is rejected as a broad systematic strategy.
+
+### Apollo V4 direction: base POC revisit, then confirmation
+
+The user clarified the intended course pattern: a selected flat base provides a
+base-only POC; after breakout and later revisit, POC is an alert zone and entry
+requires sweep/reclaim plus local trend-break confirmation in the original
+breakout direction. `APOLLO_V4_DESIGN.md` freezes this state machine and starts
+with labelled base examples, avoiding the rejected fixed-window POC retest and
+pivot-cluster proxy.
+
+### Apollo V4 BTC-only first diagnostic: base detector rejected
+
+The new BTC-only V4 uses stored aggregate-trade base profiles and requires
+breakout, first POC-zone revisit/reclaim, and separate local continuation break.
+Its initial mechanical base detector nevertheless produced 64 trades, -$5,617.25
+net, PF 0.724, and maximum-drawdown termination. V4's entry sequence is now
+testable, but the automatic base-selection proxy is too permissive; next work is
+labelled base/map comparison, not threshold tuning or validation.
+
+### Apollo v3 one-variable test B1: three touches — insufficient sample
+
+At the user's request, a single exploratory training-only comparison reduced
+only the mapped 4h pivot-touch proxy from four to three; all other Book 2.0,
+entry, risk, and execution assumptions were unchanged. Across the full eight-
+symbol universe, filled trades increased from 10 to 12 and independent-account
+aggregate net PnL changed from -$2,296.85 to +$1,281.92. Every symbol except
+ADA was identical; the two additional ADA observations were one TP and one
+maximum-holding-period exit. This is a hypothesis lead, not an edge: 12 trades
+cannot establish profitability. The auditable configuration and comparison are
+in `apollo-ordered-liquidity-sequence-v3-map-3-touches.properties` and
+`APOLLO_V3_ASSUMPTION_TESTS.md`. No validation or further data was opened.
+
+### Apollo v3 one-variable test B2: four-hour freshness — rejected
+
+Keeping the B1 three-touch map but shortening the untouched-level proxy from
+12 hours to four hours increased filled trades from 12 to 35, but aggregate
+independent-account net PnL collapsed from +$1,281.92 to -$9,009.06. Six of
+eight symbols lost, and the added observations were predominantly stop-outs.
+The 12-hour freshness rule remains fixed for the next isolated comparison.
+The complete per-symbol result is recorded in `APOLLO_V3_ASSUMPTION_TESTS.md`;
+no validation/final data was opened.
+
+### Apollo v3 one-variable test B3: 0.75-ATR map tolerance — inconclusive
+
+Keeping B1's three-touch, 12-hour-fresh setup but widening only the map-area
+cluster tolerance from 0.50 to 0.75 ATR increased filled trades from 12 to 16.
+Aggregate independent-account net PnL fell from +$1,281.92 to +$756.13; three
+of four added trades lost. With this sample it neither validates nor rules out
+the broader map proxy, but does not justify replacing the 0.50-ATR reference.
+No validation/final data was opened.
+
+### Apollo v3 one-variable test B4: eight-bar reclaim deadline — rejected
+
+Keeping B1's settings but allowing eight rather than six 15-minute bars for
+the reclaim increased filled trades from 12 to 14 and reduced aggregate
+independent-account net PnL from +$1,281.92 to +$234.96. The only two added
+trades (SOL and LINK) stopped out. The six-bar deadline remains the reference;
+no validation/final data was opened.
+
+### Apollo v3 one-variable test B5: one acceptance candle — research lead
+
+Keeping B1's three-touch, 12-hour-fresh, 0.50-ATR map and six-bar reclaim
+deadline but requiring one rather than two 0.20-ATR-bodied reclaim candles
+increased filled trades from 12 to 52 and aggregate independent-account net
+PnL from +$1,281.92 to +$1,646.98. This is still below the 60-trade
+low-frequency evidence floor and BTC/SOL remain materially negative, so it is
+not a strategy candidate or a basis to open validation. It is the first
+meaningful Apollo assumption lead and is fully recorded in
+`APOLLO_V3_ASSUMPTION_TESTS.md`.
+
+### Apollo v3 one-variable test B6: two-bar structure break — rejected
+
+The B6 audit found that break length had been coupled to sweep-search range.
+`sweepSearchBars=10` is now explicit, preserving the prior B1 behavior while
+allowing a genuine isolated break-length test. With only the local break reduced
+from three bars to two, filled trades increased from 12 to 18 but aggregate
+independent-account net PnL declined to +$137.78. The three-bar break remains
+the reference; no validation/final data was opened.
+
+### Apollo v3 one-variable test B7: 2.5R target room — rejected
+
+Keeping B1's entry logic but lowering only the opposing mapped-target room from
+3R to 2.5R increased filled trades from 12 to 27, but aggregate
+independent-account net PnL was -$1,063.12. The 3R room requirement remains
+the reference; no validation/final data was opened.
+
+### Apollo v3 one-variable test B8: 1.20× break-volume confirmation — insufficient sample
+
+Keeping B1 but raising only structural-break volume from 1.00× to 1.20× the
+20-bar average reduced filled trades from 12 to 6 and returned +$4,739.19.
+The apparent result is concentrated in two ADA observations and one XRP trade,
+so it is not evidence for the threshold or a basis to open validation. The
+complete comparison is in `APOLLO_V3_ASSUMPTION_TESTS.md`.
+
+### Apollo v3 one-variable test B9: 0.20-ATR sweep — rejected
+
+Raising only minimum sweep depth from 0.10 to 0.20 ATR reduced filled trades
+from 12 to 9 and aggregate independent-account net PnL from +$1,281.92 to
++$469.10, including filtering the XRP winner. The 0.10-ATR sweep remains the
+reference; no validation/final data was opened.
+
+### Apollo v3 one-variable test B10: one-bar pivots — rejected
+
+Reducing only 4h pivot confirmation from two neighboring bars to one did not
+broaden the selected map: it yielded only three filled trades and -$1,836.74.
+The denser pivots changed map selection, so two-bar pivots remain the reference.
+
+### Apollo v3 one-variable test B11: 96-bar map lookback — rejected
+
+Extending only the 4h map from 72 to 96 bars produced the same 12 filled trades
+and +$1,266.87 versus B1's +$1,281.92. It did not increase the sample and is
+rejected; 72 bars remains the reference.
+
+### Apollo v3 one-variable test B12: 0.30-ATR acceptance bodies — insufficient sample
+
+Raising only acceptance body size from 0.20 to 0.30 ATR selected six trades
+and +$4,739.19—the same six trades as the B8 volume filter. This is an
+overlapping insufficient-sample subset, not independent threshold evidence.
+
 ### Latest research gate: multi-timeframe expansion rejected
 
 The frozen eight-symbol 2023-2025 run produced 76 trades, pooled PF 1.45, positive raw/net PnL,

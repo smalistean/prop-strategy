@@ -21,6 +21,7 @@ import com.smalistean.propstrategy.strategy.StrategyRegistry;
 import com.smalistean.propstrategy.strategy.VolumeProfileAwareStrategy;
 import com.smalistean.propstrategy.strategy.ApolloBasePocRetestStrategy;
 import com.smalistean.propstrategy.strategy.ApolloVariableBasePocStrategy;
+import com.smalistean.propstrategy.strategy.ApolloV4BasePocContinuationStrategy;
 
 import java.nio.file.Path;
 import java.math.BigDecimal;
@@ -144,6 +145,9 @@ public final class BacktestApplication {
                     : strategy instanceof ApolloVariableBasePocStrategy variable
                     ? assembler.mergeSelectedBases(technical, bins, variable.atrKey(),
                             variable.detectorConfig(), neighborFraction)
+                    : strategy instanceof ApolloV4BasePocContinuationStrategy v4
+                    ? assembler.mergeSelectedBases(technical, bins, v4.atrKey(),
+                            v4.detectorConfig(), neighborFraction)
                     : assembler.merge(technical, bins, lookback, neighborFraction);
         } else {
             generatedSnapshots = featureGenerator.generate(candles, strategy.requiredFeatures());

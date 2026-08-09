@@ -14,10 +14,10 @@ import java.util.Set;
  */
 public final class ApolloOrderedLiquiditySequenceStrategy implements Strategy {
     public record Config(int atrPeriod, int volumePeriod, int freshnessBars, int reclaimWindowBars,
-                         int minimumAcceptanceBars, int localBreakBars, BigDecimal sweepAtr,
+                         int minimumAcceptanceBars, int localBreakBars, int sweepSearchBars, BigDecimal sweepAtr,
                          BigDecimal levelBufferAtr, BigDecimal minimumBodyAtr,
                          BigDecimal minConfirmationVolumeRatio, BigDecimal stopBufferAtr,
-                         BigDecimal minRewardRisk, int maxHoldingBars) { }
+                         BigDecimal minRewardRisk, int maxHoldingBars, boolean higherTimeframeAlignment) { }
 
     private static final MathContext MC = new MathContext(16, RoundingMode.HALF_UP);
     private final Config config;
@@ -69,6 +69,8 @@ public final class ApolloOrderedLiquiditySequenceStrategy implements Strategy {
 
     private StrategyDecision longEntry(List<FeatureSnapshot> history, int index, FeatureSnapshot current,
                                        BigDecimal currentAtr, BigDecimal support, BigDecimal target) {
+        if (config.higherTimeframeAlignment() && current.require(FeatureKey.completedFourHourClose())
+                .compareTo(current.require(FeatureKey.completedFourHourEma(50))) <= 0) return StrategyDecision.hold();
         int sweep = mostRecentSweep(history, index, support, currentAtr, true);
         if (sweep < 0 || !freshBeforeSweep(history, sweep, support, currentAtr, true)
                 || !reclaimed(history, sweep, index, support, true)
@@ -80,6 +82,8 @@ public final class ApolloOrderedLiquiditySequenceStrategy implements Strategy {
 
     private StrategyDecision shortEntry(List<FeatureSnapshot> history, int index, FeatureSnapshot current,
                                         BigDecimal currentAtr, BigDecimal resistance, BigDecimal target) {
+        if (config.higherTimeframeAlignment() && current.require(FeatureKey.completedFourHourClose())
+                .compareTo(current.require(FeatureKey.completedFourHourEma(50))) >= 0) return StrategyDecision.hold();
         int sweep = mostRecentSweep(history, index, resistance, currentAtr, false);
         if (sweep < 0 || !freshBeforeSweep(history, sweep, resistance, currentAtr, false)
                 || !reclaimed(history, sweep, index, resistance, false)
@@ -92,7 +96,7 @@ public final class ApolloOrderedLiquiditySequenceStrategy implements Strategy {
     private int mostRecentSweep(List<FeatureSnapshot> history, int index, BigDecimal level,
                                 BigDecimal currentAtr, boolean longSide) {
         BigDecimal threshold = currentAtr.multiply(config.sweepAtr(), MC);
-        int from = Math.max(0, index - config.reclaimWindowBars() - config.localBreakBars() - 1);
+        int from = Math.max(0, index - config.sweepSearchBars());
         // The first breach starts the sequence. A later wick during the reclaim must not be
         // misclassified as a separate, non-fresh sweep.
         for (int i = from; i < index; i++) {
