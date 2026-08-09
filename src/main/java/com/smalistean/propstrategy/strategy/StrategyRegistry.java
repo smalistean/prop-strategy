@@ -29,7 +29,11 @@ public final class StrategyRegistry {
                 new ApolloBasePocRetestStrategyFactory(),
                 new ApolloVariableBasePocStrategyFactory(),
                 new ThreeLevelRangeStrategyFactory(),
-                new IntradayFlatMeanReversionStrategyFactory()));
+                new IntradayFlatMeanReversionStrategyFactory(),
+                new CrossSectionalLongPullbackStrategyFactory(),
+                new LiquiditySweepReversalStrategyFactory(),
+                new HigherTimeframeLiquiditySweepStrategyFactory(),
+                new ApolloOrderedLiquiditySequenceStrategyFactory()));
     }
 
     public Strategy create(String type, StrategyParameters parameters) {

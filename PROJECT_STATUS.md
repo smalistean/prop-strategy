@@ -9,7 +9,7 @@
 - Conclusion: one/two-bar price-pattern proxies are insufficient. Next iteration should add strict compression/reclaim semantics, opposing-level room, higher-timeframe context, and rejection-reason diagnostics before any parameter search.
 - Verification: 69 tests pass on JDK 25.
 
-Last updated: 2026-08-07
+Last updated: 2026-08-09
 
 ### Latest research gate: multi-timeframe expansion rejected
 
@@ -29,6 +29,66 @@ The evidence-based forward plan is consolidated in `NEXT_RESEARCH_PLAN.md`. It r
 multi-timeframe BTC flat-long first, Apollo base/POC research second, and a new
 cross-sectional multi-symbol strategy as the preferred path to 1-2 daily portfolio
 opportunities. Rejected branches are explicitly closed to prevent threshold churn.
+
+### Cross-sectional long-pullback v1: rejected
+
+The frozen eight-symbol training-only run ranked completed 1h 24-hour returns, required a
+healthy BTC 1h regime, and entered 15m EMA-20 pullback reclaims only in the top three assets.
+It produced 957 trades with -32,337.46 pooled net PnL, -507.66 raw price-plus-funding PnL,
+and PF 0.835. The two-position, 1.5x-correlated-notional portfolio replay returned -16.60%
+with 32.28% realized drawdown. DOGE and XRP were positive, but the remaining six symbols lost;
+1.5x-cost independent-account net PnL was -42,384.77. The failure begins before execution costs,
+so this exact rule family is closed without validation or final testing.
+
+### Apollo liquidity-sweep reversal v1: insufficient sample
+
+The new causal proxy detects an unswept pivot-cluster pool, a sweep beyond it, a reclaim, a
+three-bar local structural break, and above-average confirmation volume; it requires the nearest
+opposing pool to leave at least 3R. Its frozen BTCUSDT 15m training run made zero entry decisions
+and therefore zero trades. This is not a performance result. It rejects the numerical proxy as too
+restrictive to evaluate; no thresholds were loosened and validation/final data remain unopened.
+
+### Apollo higher-timeframe liquidity-sweep v2: rejected
+
+V2 replaced the 15m-only map with a causal 4h pivot-cluster liquidity map derived from stored 1h
+candles; 15m supplied the sweep, reclaim, local-break, and volume-confirmation trigger, while the
+4h map supplied the target. The complete eight-symbol training run was not stable: BTC +10.13%
+(65 trades, PF 1.381) and XRP +10.11% (78 trades, PF 1.342), while ETH, SOL, BNB, ADA, DOGE, and
+LINK lost between 3.03% and 10.01%; five reached the 10% drawdown termination. The independent
+account aggregate net PnL was -28,498.42. This is not a portfolio candidate and must not be
+rescued by selecting BTC/XRP after inspecting the same training set.
+
+### Apollo ordered-liquidity-sequence v3: insufficient sample
+
+V3 is a stricter source-derived proxy, distinct from the earlier variable-base experiment also
+called v3: it requires a recently untouched mapped 4h level, a separate 15m sweep, a directional
+reclaim within four bars, and only then a completed 15m three-bar structural break with 1.20x volume
+and 3R room to the opposing mapped level. Across the unselected eight-symbol training universe it
+made only 9 filled trades: BTC 0, ETH 1 (-0.54%), SOL 2 (-0.13%), XRP 0, BNB 2 (+0.04%), ADA 2
+(-0.25%), DOGE 1 (-0.52%), and LINK 1 (-0.51%). Aggregate independent-account net PnL was
+-1,904.53. This is far below the evidence floor, so it is not evidence of an edge or of its absence;
+the automatic proxy is too restrictive to evaluate and must not be loosened by threshold searching.
+The next legitimate Apollo work is labelled visual examples/base selection.
+
+### Apollo Book 2.0 assumption set A: insufficient sample
+
+`Книга 2.0.pdf` was fully reviewed and its durable rules are recorded in
+`APOLLO_COURSE_SOURCE_NOTES.md`. With the user's authorization to make ambiguity assumptions,
+Apollo's configurable v3 proxy was rerun using four 4h clustered pivot touches over 12 days as the
+base proxy, 12-hour freshness, a 0.10 ATR sweep, two 15m 0.20-ATR-bodied acceptance candles within
+six bars, a three-bar local break, and 3R opposing-map room. The all-symbol training result was
+10 filled trades: BTC +0.30% (1), ETH 0 (0), SOL -1.07% (2), XRP +1.91% (1), BNB -0.73% (1), ADA
+-0.55% (1), DOGE -0.55% (1), LINK -1.61% (3). Independent-account aggregate net PnL was
+-2,296.85. This set is not a strategy candidate; it is a documented insufficient-sample result.
+All assumptions are configuration properties, so a later alternate assumption set can be compared
+without silently changing the implementation.
+
+### Dataset-discipline exception: final-test examples opened
+
+At the user's explicit request on 2026-08-09, BTCUSDT and ETHUSDT hourly candles around 2026-08-04
+were read from the reserved final-test period solely to interpret supplied 4h Apollo chart examples.
+The final-test period can no longer be described as unopened or used as an unbiased final evaluation
+of an Apollo version informed by these examples. No performance backtest was run over it.
 
 ## Current position
 
@@ -208,6 +268,9 @@ unopened.
   results and conclusions are consolidated below rather than split between this
   status file and the roadmap.
 - Validation and final-test periods have not been run.
+- The frozen cross-sectional 1h-strength/15m-pullback v1 was rejected on the complete eight-symbol
+  training universe: 957 trades, -32,337.46 net pooled PnL, PF 0.835, and negative raw PnL.
+  Its two-position portfolio replay returned -16.60%; validation and final-test periods remain closed.
 - Historical volume-at-price infrastructure is complete for BTCUSDT training data.
   Flyway V6 stores actual aggregate-trade notional in 15-minute × $10 price bins,
   including aggressive buy/sell quote volume. All 30 existing archives covering
@@ -233,6 +296,10 @@ unopened.
   and 2.97% drawdown. Raw price PnL was +1,856.50; longs were +1,078.49 net while
   shorts lost -1,688.45. The candidate fails acceptance but is a credible follow-up
   for exact-base POC and predeclared higher-timeframe/long-only experiments.
+- A second source-grounded review is recorded in `APOLLO_COURSE_SOURCE_NOTES.md`. It clarifies
+  the distinction between global, local, and early (`крючок`) breaks; defines liquidity as a base
+  / unfilled-order concentration rather than simply high volume; and documents the missing
+  hierarchy, acceptance, consumed-liquidity, and opposing-level-room rules in the prior proxy.
 - Apollo experiment 2 replaced the 72h proxy with an exact profile over the preceding
   fixed 16-candle base while holding other rules constant. It was decisively worse:
   -21.17%, PF 0.641, 619 trades, 21.92% drawdown, and -3,003.44 raw price PnL.

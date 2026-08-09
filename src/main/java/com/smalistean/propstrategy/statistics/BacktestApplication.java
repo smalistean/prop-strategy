@@ -15,6 +15,7 @@ import com.smalistean.propstrategy.feature.FeatureSnapshot;
 import com.smalistean.propstrategy.feature.ParameterizedFeatureGenerator;
 import com.smalistean.propstrategy.feature.MultiTimeframeFeatureAssembler;
 import com.smalistean.propstrategy.feature.VolumeProfileFeatureAssembler;
+import com.smalistean.propstrategy.feature.HigherTimeframeLiquidityMapAssembler;
 import com.smalistean.propstrategy.strategy.Strategy;
 import com.smalistean.propstrategy.strategy.StrategyRegistry;
 import com.smalistean.propstrategy.strategy.VolumeProfileAwareStrategy;
@@ -54,6 +55,8 @@ public final class BacktestApplication {
         PostgresKlineRepository klineRepository = new PostgresKlineRepository(database);
         boolean multiTimeframe = loaded.strategyType().equals("multi-timeframe-flat-long");
         boolean orderFlow = loaded.strategyType().equals("order-flow-exhaustion");
+        boolean htfLiquidity = loaded.strategyType().equals("apollo-higher-timeframe-liquidity-sweep")
+                || loaded.strategyType().equals("apollo-ordered-liquidity-sequence-v3");
         boolean volumeProfile = strategy instanceof VolumeProfileAwareStrategy;
         int warmupCandles = multiTimeframe ? 1 : volumeProfile
                 ? strategy.requiredFeatures().stream()
@@ -75,6 +78,24 @@ public final class BacktestApplication {
                     loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), 25);
             generatedSnapshots = new MultiTimeframeFeatureAssembler()
                     .assemble(candles, fifteen, hourly, 200, 14, 14);
+        } else if (htfLiquidity) {
+            if (!loaded.interval().equals("15m")) throw new IllegalArgumentException("Apollo higher-timeframe liquidity strategy requires 15m");
+            java.util.Set<com.smalistean.propstrategy.feature.FeatureKey> technicalKeys = strategy.requiredFeatures().stream()
+                    .filter(key -> !key.name().startsWith("higherTimeframe")).collect(java.util.stream.Collectors.toSet());
+            List<FeatureSnapshot> technical = featureGenerator.generate(candles, technicalKeys);
+            List<Kline> hourly = klineRepository.findRangeWithWarmup(marketSymbol, "1h",
+                    loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), 260);
+            int mapLookbackBars = loaded.strategyType().equals("apollo-ordered-liquidity-sequence-v3")
+                    ? loaded.strategyParameters().requiredInt("mapLookbackBars") : 48;
+            int mapPivotStrength = loaded.strategyType().equals("apollo-ordered-liquidity-sequence-v3")
+                    ? loaded.strategyParameters().requiredInt("mapPivotStrength") : 2;
+            int mapMinimumTouches = loaded.strategyType().equals("apollo-ordered-liquidity-sequence-v3")
+                    ? loaded.strategyParameters().requiredInt("mapMinimumTouches") : 2;
+            BigDecimal mapToleranceAtr = loaded.strategyType().equals("apollo-ordered-liquidity-sequence-v3")
+                    ? loaded.strategyParameters().requiredDecimal("mapToleranceAtr")
+                    : new BigDecimal("0.30");
+            generatedSnapshots = new HigherTimeframeLiquidityMapAssembler().attach(technical, hourly,
+                    mapLookbackBars, mapPivotStrength, mapMinimumTouches, mapToleranceAtr);
         } else if (orderFlow) {
             if (!loaded.interval().equals("5m")) {
                 throw new IllegalArgumentException("Order-flow strategy requires market.interval=5m");

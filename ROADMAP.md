@@ -154,6 +154,13 @@ must be recorded as a new training experiment rather than rewriting the v1 resul
 -   [x] Run frozen BTCUSDT training diagnostics without opening later datasets.
 -   [x] Replace rolling POC with an exact profile over each fixed-window detected base;
     reject the result because the fixed base detector admits ordinary trend pauses.
+-   [x] Run the causal 4h-map / 15m sweep-reclaim proxy across all symbols; reject it because
+    results were negative and unstable across the unselected universe.
+-   [x] Run the stricter fresh-level → sweep → reclaim → separate local-break proxy across all
+    symbols; retain it only as an insufficient-sample diagnostic, not an edge.
+-   [x] Review `Книга 2.0.pdf`, preserve its base/profile/trap rules in the Apollo notes, and run
+    its first explicit configurable-assumption set across all symbols; retain the 10-trade result as
+    insufficient evidence rather than tuning it after inspection.
 -   [ ] Implement variable-length horizontal bases with body containment, limited drift,
     explicit entrance, and a clean volume-supported exit.
 -   [ ] Predeclare and test higher-timeframe direction and long-only sensitivities only
@@ -169,8 +176,9 @@ must be recorded as a new training experiment rather than rewriting the v1 resul
 -   [x] Test waiting for the adverse sweep and L2 reclaim before entry.
 -   [x] Reject the family: all variants have negative raw expectancy and every 5m
     month lost. Do not optimize thresholds.
--   [ ] Research frequency through a frozen cross-sectional strategy over multiple
-    liquid symbols rather than forcing additional BTCUSDT entries.
+-   [x] Research frequency through a frozen cross-sectional strategy over multiple
+    liquid symbols rather than forcing additional BTCUSDT entries; reject the v1 1h-strength /
+    15m-pullback rule because it lost before costs across the full universe.
 
 ## Futures context
 
@@ -273,6 +281,11 @@ keys, and tracked experiment file without changing the execution engine.
     filter, volatility-expansion guard, and RSI mean exit.
 -   [x] Add and reject an intraday flat-market mean-reversion baseline designed
     for higher frequency with RSI 7, EMA 20, ATR, and real maker fills.
+-   [x] Add and reject a frozen long-only cross-sectional strategy: completed 1h relative-strength
+    ranking, a BTC market-regime filter, and 15m EMA pullback/reclaim entries across eight symbols.
+-   [x] Implement and run a frozen BTC liquidity-sweep reversal proxy with confirmed pivot pools,
+    sweep/reclaim, local-break and volume confirmation, an unswept-pool constraint, and a 3R
+    opposing-pool target; reject it as too restrictive after it generated zero training entries.
 -   [x] Add diagnostic reports by side, exit reason, calendar period, market
     regime, and gross-versus-cost performance.
 -   [x] Add and evaluate a cost-adjusted break-even stop using conservative 1m

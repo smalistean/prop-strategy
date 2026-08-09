@@ -1,6 +1,6 @@
 # Evidence-based research plan
 
-Last updated: 2026-08-07
+Last updated: 2026-08-09
 
 ## Objective
 
@@ -99,21 +99,21 @@ Promotion gate:
 - positive at 1.5x execution costs;
 - no single symbol or segment supplies more than 50% of profit.
 
-### Stage 2 - Apollo base/POC v3
+### Stage 2 - Apollo labelled base/POC research
 
-Implement a variable-length base detector before another performance run:
+Both variable-base POC variants and the strict ordered liquidity-sequence proxy are closed: the
+former was negative and the latter produced only nine all-symbol trades. Do not create another
+threshold variation. Before another performance run:
 
-1. Detect 12-48 candle horizontal candidates.
-2. Require most candle bodies to remain inside stable upper/lower boundaries.
-3. Reject excessive center-line drift, slope, and repeated boundary penetration.
-4. Require a distinct entrance, minimum residence time, and clean volume-supported exit.
-5. Calculate aggregate-trade POC over the selected base timestamps only.
-6. Trade only the first return; preserve the liquidity-zone-plus-25% stop and 3R minimum.
-7. Predeclare two sensitivities: both directions and long-only with 1h structural alignment.
+1. Label source-style examples with 4h base boundaries, base-only fixed profile, POC/internal
+   volume wave, freshness, sweep, reclaim, local/global break, and next target.
+2. Measure whether a causal detector agrees with the labels before evaluating PnL.
+3. Freeze the detector and run all symbols only if it produces sufficient labelled agreement and
+   enough candidate setups.
 
-Stop the branch unless v3 has positive raw PnL, PF >= 1.10 before cost-focused work, at least
-100 trades, and two or more profitable six-month segments. Do not open validation data merely
-because one training segment looks exceptional.
+Stop the branch unless the frozen detector has positive raw PnL, PF >= 1.10 before cost-focused
+work, at least 100 trades, and two or more profitable six-month segments. Do not open validation
+data merely because one training segment looks exceptional.
 
 ### Stage 3 - build frequency through cross-sectional opportunities
 
@@ -167,8 +167,14 @@ A candidate is deployable only if it demonstrates:
 
 ## Immediate next action
 
-Stage 1 is closed below. Proceed to Stage 2 by implementing the predeclared variable-length
-Apollo base detector and exact selected-window POC without revisiting Stage-1 thresholds.
+Stages 1-3 are closed below. Do not optimize any of their thresholds. The next research proposal
+must use a materially independent source of edge; a cost-aware funding/basis hypothesis is the
+most natural candidate because it requires different data and does not depend on directional
+pullback prediction.
+
+Apollo remains closed as a fully automatic all-symbol candidate: the later 4h-map/15m-trigger v2
+produced positive BTC/XRP training results but a negative unselected eight-symbol result. Reopen it
+only as a labelled-example / semi-discretionary research workflow, not through more threshold tuning.
 
 ## Stage 1 result — closed, not promoted
 
@@ -195,3 +201,18 @@ completed-1h EMA alignment sensitivity all failed. The aligned version returned 
 0.78, 54 trades, 10.11% drawdown, one profitable half-year, and negative 1.5x-cost stress. Its
 small positive raw price PnL was insufficient to cover execution. Do not tune this branch further;
 proceed to the independent cross-sectional portfolio hypothesis in Stage 3.
+
+## Stage 3 result — closed, not promoted
+
+The frozen v1 ranked the entire eight-symbol universe by completed 1h 24-hour return, admitted
+only the top three assets while BTC was above its completed 1h EMA-50 and its 24-hour move was no
+larger than 10%, then entered a 15m EMA-20 pullback/reclaim with RSI 45-65 and at-least-average
+volume. It used a 1.5 ATR stop, 2R target, 32-bar maximum hold, real maker entry simulation, and
+a two-position portfolio cap with 1.5x correlated-notional limit.
+
+It generated 957 training trades with -32,337.46 pooled net PnL, -507.66 raw price-plus-funding
+PnL, PF 0.835, and -33.79 average net PnL per trade. The capped portfolio replay accepted 825
+trades and returned -16.60% with 32.28% realized drawdown. Only DOGE (+10,024.61 net) and XRP
+(+2,372.07) were positive; that is in-sample selection evidence, not a basis to retain the rule.
+The 1.5x-cost independent-account result was -42,384.77. V1 is rejected before costs and must not
+be tuned or validated.
