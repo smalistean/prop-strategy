@@ -29,6 +29,7 @@ public final class StrategyRegistry {
                 new ApolloBasePocRetestStrategyFactory(),
                 new ApolloVariableBasePocStrategyFactory(),
                 new ApolloV4BasePocContinuationStrategyFactory(),
+                new ApolloV5BasePocContinuationStrategyFactory(),
                 new ThreeLevelRangeStrategyFactory(),
                 new IntradayFlatMeanReversionStrategyFactory(),
                 new CrossSectionalLongPullbackStrategyFactory(),

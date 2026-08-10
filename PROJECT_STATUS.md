@@ -9,7 +9,39 @@
 - Conclusion: one/two-bar price-pattern proxies are insufficient. Next iteration should add strict compression/reclaim semantics, opposing-level room, higher-timeframe context, and rejection-reason diagnostics before any parameter search.
 - Verification: 69 tests pass on JDK 25.
 
-Last updated: 2026-08-09
+Last updated: 2026-08-10
+
+### Apollo V5: multi-day map search, volume-first base ranking, third-touch discount
+
+A separate, parallel strategy alongside V4 (`apollo-v5-base-poc-continuation`,
+`ApolloV5BasePocContinuationStrategy`, `VariableBaseDetectorV5`,
+`VolumeProfileFeatureAssemblerV5`; `APOLLO_V5_DESIGN.md`). V4's own code,
+config, and frozen results below are unchanged. Following a source review that
+watched the labelled concept clips and sampled daily BTC/ETH chart videos
+alongside the two PDFs, V5 fixes three gaps versus the course material: the
+base detector now searches up to `baseMapLookbackDays` (7) days back instead
+of only the 12-48 candle window ending immediately before a breakout; among
+geometrically valid candidates the map prefers the one with the strongest
+volume concentration (highest POC share) rather than the largest flat shape,
+with the multi-day tier preferred over the short one whenever it qualifies
+(a raw POC-share comparison always favors a shorter window, so ranking across
+scales rather than within one silently makes the wider search a no-op); and a
+boundary already approached three or more times before its own breakout is
+discounted, per Книга 2.0 p.98 and the `xrp.mp4` example.
+
+Instrumented verification (not part of the frozen run) confirmed the map does
+real work: over the two-year BTC training window the wider search evaluates
+22,269 geometrically valid multi-day candidates versus 31,868 short-scale;
+2,796 pass breakout confirmation, 1,225 survive the third-touch filter and
+produce a valid profile. Frozen re-run on `[2023-05-07, 2025-05-07)`: 2
+trades, +$329.80 net (+0.33%), PF 1.63, 0.63% maximum drawdown — far below the
+60-trade evidence floor. Re-run on the post-final-test 2026-05-07–2026-08-01
+video-review window (86 days, where V4.1 produced a flat zero-entry false
+negative): 126 bases mapped (10 multi-day) and 118 consumed, but still 0
+completed trades — the map now functions where it previously produced
+nothing, but the swing-reversal and reward/risk gates downstream remain the
+bottleneck. Neither run justifies threshold tuning; the next step is
+labelled-base comparison against the now-functioning map.
 
 ### Apollo V4.1 persistent-base implementation: training diagnostic rejected
 

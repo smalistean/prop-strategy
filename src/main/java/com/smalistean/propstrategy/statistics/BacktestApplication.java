@@ -15,6 +15,7 @@ import com.smalistean.propstrategy.feature.FeatureSnapshot;
 import com.smalistean.propstrategy.feature.ParameterizedFeatureGenerator;
 import com.smalistean.propstrategy.feature.MultiTimeframeFeatureAssembler;
 import com.smalistean.propstrategy.feature.VolumeProfileFeatureAssembler;
+import com.smalistean.propstrategy.feature.VolumeProfileFeatureAssemblerV5;
 import com.smalistean.propstrategy.feature.HigherTimeframeLiquidityMapAssembler;
 import com.smalistean.propstrategy.strategy.Strategy;
 import com.smalistean.propstrategy.strategy.StrategyRegistry;
@@ -22,6 +23,7 @@ import com.smalistean.propstrategy.strategy.VolumeProfileAwareStrategy;
 import com.smalistean.propstrategy.strategy.ApolloBasePocRetestStrategy;
 import com.smalistean.propstrategy.strategy.ApolloVariableBasePocStrategy;
 import com.smalistean.propstrategy.strategy.ApolloV4BasePocContinuationStrategy;
+import com.smalistean.propstrategy.strategy.ApolloV5BasePocContinuationStrategy;
 
 import java.nio.file.Path;
 import java.math.BigDecimal;
@@ -149,6 +151,11 @@ public final class BacktestApplication {
                     ? assembler.mergePersistentBases(technical, bins, v4.atrKey(),
                             com.smalistean.propstrategy.feature.FeatureKey.volumeRatio(v4.volumePeriod()),
                             v4.detectorConfig(), neighborFraction, v4.breakoutAtr(), v4.reclaimWindowBars())
+                    : strategy instanceof ApolloV5BasePocContinuationStrategy v5
+                    ? new VolumeProfileFeatureAssemblerV5().mergePersistentBases(technical, bins, v5.atrKey(),
+                            com.smalistean.propstrategy.feature.FeatureKey.volumeRatio(v5.volumePeriod()),
+                            v5.detectorConfig(), neighborFraction, v5.breakoutAtr(), v5.reclaimWindowBars(),
+                            v5.referenceBars(), v5.maximumBoundaryTouches())
                     : assembler.merge(technical, bins, lookback, neighborFraction);
         } else {
             generatedSnapshots = featureGenerator.generate(candles, strategy.requiredFeatures());
