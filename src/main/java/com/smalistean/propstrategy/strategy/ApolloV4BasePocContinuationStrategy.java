@@ -6,51 +6,96 @@ import com.smalistean.propstrategy.feature.VariableBaseDetector;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/** BTC-only V4: base profile POC revisit is an alert; entry needs reclaim then a separate break. */
+/** Persistent-map V4.1: a first POC revisit is only an alert; structure break and retest are required. */
 public final class ApolloV4BasePocContinuationStrategy implements VolumeProfileAwareStrategy {
     public record Config(int atrPeriod, int volumePeriod, int minimumBaseBars, int maximumBaseBars,
                          BigDecimal minimumBaseRangeAtr, BigDecimal maximumBaseRangeAtr,
                          BigDecimal maximumCenterDriftAtr, BigDecimal maximumSlopeAtrPerBar,
                          BigDecimal maximumPenetrationFraction, BigDecimal boundaryPenetrationAtr,
                          BigDecimal entranceDistanceAtr, int breakoutSearchBars, int reclaimWindowBars,
-                         int localBreakBars, BigDecimal breakoutAtr, BigDecimal minimumBreakoutVolumeRatio,
-                         BigDecimal minimumZoneShare, BigDecimal minimumPocShare, BigDecimal pocTouchAtr,
+                         int swingPivotStrength, BigDecimal minimumSwingSizeAtr,
+                         BigDecimal breakoutAtr, BigDecimal minimumBreakoutVolumeRatio,
+                         BigDecimal minimumZoneShare, BigDecimal minimumPocShare, BigDecimal minimumBaseVolumeRatio, BigDecimal pocTouchAtr,
                          BigDecimal stopBaseHeightFraction, BigDecimal minimumRewardRisk,
                          int maximumHoldingBars) { }
     private static final MathContext MC = new MathContext(20, RoundingMode.HALF_UP);
     private final Config c; private final FeatureKey atr, volume;
     public ApolloV4BasePocContinuationStrategy(Config c) { this.c=c; atr=FeatureKey.atr(c.atrPeriod()); volume=FeatureKey.volumeRatio(c.volumePeriod()); }
-    @Override public String name(){return "apollo-v4-base-poc-continuation";}
+    @Override public String name(){return "apollo-v4.1-persistent-base-poc";}
     @Override public int profileLookbackBuckets(){return c.maximumBaseBars();}
     public VariableBaseDetector.Config detectorConfig(){return new VariableBaseDetector.Config(c.minimumBaseBars(),c.maximumBaseBars(),c.minimumBaseRangeAtr(),c.maximumBaseRangeAtr(),c.maximumCenterDriftAtr(),c.maximumSlopeAtrPerBar(),c.maximumPenetrationFraction(),c.boundaryPenetrationAtr(),c.entranceDistanceAtr());}
     public FeatureKey atrKey(){return atr;}
-    @Override public Set<FeatureKey> requiredFeatures(){return Set.of(FeatureKey.open(),FeatureKey.close(),FeatureKey.high(),FeatureKey.low(),atr,volume,FeatureKey.selectedBaseBars(),FeatureKey.selectedBaseLow(),FeatureKey.selectedBaseHigh(),FeatureKey.selectedBaseZoneLow(),FeatureKey.selectedBaseZoneHigh(),FeatureKey.selectedBaseZoneShare(),FeatureKey.selectedBasePocShare(),FeatureKey.selectedBaseTotalQuote());}
+    public int volumePeriod(){ return c.volumePeriod(); }
+    public BigDecimal breakoutAtr(){ return c.breakoutAtr(); }
+    public int reclaimWindowBars(){ return c.reclaimWindowBars(); }
+    @Override public Set<FeatureKey> requiredFeatures(){return Set.of(FeatureKey.open(),FeatureKey.close(),FeatureKey.high(),FeatureKey.low(),atr,volume,FeatureKey.selectedBaseId(),FeatureKey.selectedBaseBars(),FeatureKey.selectedBaseLow(),FeatureKey.selectedBaseHigh(),FeatureKey.selectedBaseZoneLow(),FeatureKey.selectedBaseZoneHigh(),FeatureKey.selectedBaseZoneShare(),FeatureKey.selectedBasePocShare(),FeatureKey.selectedBaseTotalQuote(),FeatureKey.selectedBaseVolumeRatio(),FeatureKey.selectedBaseBreakoutSide(),FeatureKey.selectedBaseBreakoutVolumeRatio(),FeatureKey.selectedBaseFirstRevisit(),FeatureKey.selectedBaseTarget());}
     @Override public StrategyDecision evaluate(List<FeatureSnapshot> h,int index,PositionView p){
         if(p.isOpen()) return p.barsHeld()>=c.maximumHoldingBars()?new StrategyDecision.Exit("Apollo V4 holding period expired"):StrategyDecision.hold();
-        for(int b=Math.max(0,index-c.breakoutSearchBars()); b<=index-c.reclaimWindowBars()-c.localBreakBars()-1;b++) {
-            var d=candidate(h,index,b,Side.LONG); if(!(d instanceof StrategyDecision.Hold)) return d;
-            d=candidate(h,index,b,Side.SHORT); if(!(d instanceof StrategyDecision.Hold)) return d;
-        } return StrategyDecision.hold();
+        return candidate(h,index);
     }
-    private StrategyDecision candidate(List<FeatureSnapshot> h,int i,int b,Side s){
-        var x=h.get(b); if(!x.values().containsKey(FeatureKey.selectedBaseBars())||x.require(volume).compareTo(c.minimumBreakoutVolumeRatio())<0||x.require(FeatureKey.selectedBaseZoneShare()).compareTo(c.minimumZoneShare())<0||x.require(FeatureKey.selectedBasePocShare()).compareTo(c.minimumPocShare())<0)return StrategyDecision.hold();
-        var lo=x.require(FeatureKey.selectedBaseLow()); var hi=x.require(FeatureKey.selectedBaseHigh()); var t=x.require(atr).multiply(c.breakoutAtr(),MC);
-        boolean up=x.require(FeatureKey.close()).compareTo(hi.add(t,MC))>0&&h.get(b+1).require(FeatureKey.close()).compareTo(hi)>0;
-        boolean down=x.require(FeatureKey.close()).compareTo(lo.subtract(t,MC))<0&&h.get(b+1).require(FeatureKey.close()).compareTo(lo)<0;
-        if(s==Side.LONG?!up:!down)return StrategyDecision.hold();
-        var zl=x.require(FeatureKey.selectedBaseZoneLow());var zh=x.require(FeatureKey.selectedBaseZoneHigh()); var touch=h.get(i).require(atr).multiply(c.pocTouchAtr(),MC);
-        int revisit=-1; for(int j=b+2;j<i;j++){boolean hit=s==Side.LONG?h.get(j).require(FeatureKey.low()).compareTo(zh.add(touch,MC))<=0:h.get(j).require(FeatureKey.high()).compareTo(zl.subtract(touch,MC))>=0;if(hit){revisit=j;break;}}
-        if(revisit<0||i-revisit>c.reclaimWindowBars()+c.localBreakBars())return StrategyDecision.hold();
+    private StrategyDecision candidate(List<FeatureSnapshot> h,int i){
+        var x=h.get(i); if(!x.values().containsKey(FeatureKey.selectedBaseId())||!x.values().containsKey(FeatureKey.selectedBaseTarget())||x.require(FeatureKey.selectedBaseBreakoutVolumeRatio()).compareTo(c.minimumBreakoutVolumeRatio())<0||x.require(FeatureKey.selectedBaseZoneShare()).compareTo(c.minimumZoneShare())<0||x.require(FeatureKey.selectedBasePocShare()).compareTo(c.minimumPocShare())<0||x.require(FeatureKey.selectedBaseVolumeRatio()).compareTo(c.minimumBaseVolumeRatio())<0)return StrategyDecision.hold();
+        Side s=x.require(FeatureKey.selectedBaseBreakoutSide()).signum()>0?Side.LONG:Side.SHORT;
+        int revisit=-1; BigDecimal id=x.require(FeatureKey.selectedBaseId());
+        for(int j=Math.max(0,i-c.reclaimWindowBars()+1);j<=i;j++) if(h.get(j).values().containsKey(FeatureKey.selectedBaseId())&&h.get(j).require(FeatureKey.selectedBaseId()).compareTo(id)==0&&h.get(j).require(FeatureKey.selectedBaseFirstRevisit()).signum()>0){revisit=j;break;}
+        if(revisit<0)return StrategyDecision.hold();
+        var lo=x.require(FeatureKey.selectedBaseLow()); var hi=x.require(FeatureKey.selectedBaseHigh());
+        var zl=x.require(FeatureKey.selectedBaseZoneLow());var zh=x.require(FeatureKey.selectedBaseZoneHigh());
         var r=h.get(revisit); boolean reclaim=s==Side.LONG?r.require(FeatureKey.close()).compareTo(zh)>0:r.require(FeatureKey.close()).compareTo(zl)<0;
-        if(!reclaim)return StrategyDecision.hold();
-        BigDecimal bound=s==Side.LONG?h.get(i-c.localBreakBars()).require(FeatureKey.high()):h.get(i-c.localBreakBars()).require(FeatureKey.low());
-        for(int j=i-c.localBreakBars()+1;j<i;j++) bound=s==Side.LONG?bound.max(h.get(j).require(FeatureKey.high())):bound.min(h.get(j).require(FeatureKey.low()));
-        var now=h.get(i); if(s==Side.LONG?now.require(FeatureKey.close()).compareTo(bound)<=0:now.require(FeatureKey.close()).compareTo(bound)>=0)return StrategyDecision.hold();
+        if(!reclaim || !hasBrokenAndRetested(h, revisit, i, s)) return StrategyDecision.hold();
+        var now=h.get(i);
         var buffer=hi.subtract(lo,MC).multiply(c.stopBaseHeightFraction(),MC); var stop=s==Side.LONG?lo.subtract(buffer,MC):hi.add(buffer,MC);var risk=s==Side.LONG?now.require(FeatureKey.close()).subtract(stop,MC):stop.subtract(now.require(FeatureKey.close()));
-        if(risk.signum()<=0)return StrategyDecision.hold();var target=s==Side.LONG?now.require(FeatureKey.close()).add(risk.multiply(c.minimumRewardRisk(),MC)):now.require(FeatureKey.close()).subtract(risk.multiply(c.minimumRewardRisk(),MC));return new StrategyDecision.EnterAtLevels(s,stop,target);
+        BigDecimal target=x.require(FeatureKey.selectedBaseTarget());
+        BigDecimal reward=s==Side.LONG?target.subtract(now.require(FeatureKey.close()),MC):now.require(FeatureKey.close()).subtract(target,MC);
+        if(risk.signum()<=0||reward.signum()<=0||reward.divide(risk,MC).compareTo(c.minimumRewardRisk())<0)return StrategyDecision.hold();return new StrategyDecision.EnterAtLevels(s,stop,target);
+    }
+
+    /** A completed lower-timeframe swing reversal, not a raw N-bar breakout. */
+    private boolean hasBrokenAndRetested(List<FeatureSnapshot> h, int revisit, int now, Side side) {
+        int strength = c.swingPivotStrength();
+        int lastConfirmedPivot = now - strength;
+        if (lastConfirmedPivot < revisit + strength + 2) return false;
+        FeatureKey firstKey = side == Side.LONG ? FeatureKey.high() : FeatureKey.low();
+        FeatureKey secondKey = side == Side.LONG ? FeatureKey.low() : FeatureKey.high();
+        BigDecimal sweepExtreme = h.get(revisit).require(secondKey);
+        BigDecimal minimumMove = h.get(now).require(atr).multiply(c.minimumSwingSizeAtr(), MC);
+        for (int first = revisit + strength; first <= lastConfirmedPivot - 1; first++) {
+            if (!isPivot(h, first, strength, firstKey)) continue;
+            BigDecimal firstPrice = h.get(first).require(firstKey);
+            boolean initialMove = side == Side.LONG
+                    ? firstPrice.subtract(sweepExtreme, MC).compareTo(minimumMove) >= 0
+                    : sweepExtreme.subtract(firstPrice, MC).compareTo(minimumMove) >= 0;
+            if (!initialMove) continue;
+            for (int second = first + 1; second <= lastConfirmedPivot; second++) {
+                if (!isPivot(h, second, strength, secondKey)) continue;
+                BigDecimal secondPrice = h.get(second).require(secondKey);
+                boolean changedStructure = side == Side.LONG
+                        ? secondPrice.subtract(sweepExtreme, MC).compareTo(minimumMove) >= 0
+                        : sweepExtreme.subtract(secondPrice, MC).compareTo(minimumMove) >= 0;
+                if (!changedStructure) continue;
+                int broken=-1;
+                for(int j=second+strength;j<=now;j++) if(side==Side.LONG?h.get(j).require(FeatureKey.close()).compareTo(firstPrice)>0:h.get(j).require(FeatureKey.close()).compareTo(firstPrice)<0){broken=j;break;}
+                if(broken<0) continue;
+                for(int j=broken+1;j<=now;j++) {
+                    boolean retest=side==Side.LONG?h.get(j).require(FeatureKey.low()).compareTo(firstPrice)<=0&&h.get(j).require(FeatureKey.close()).compareTo(firstPrice)>=0:h.get(j).require(FeatureKey.high()).compareTo(firstPrice)>=0&&h.get(j).require(FeatureKey.close()).compareTo(firstPrice)<=0;
+                    if(retest) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean isPivot(List<FeatureSnapshot> h, int index, int strength, FeatureKey key) {
+        BigDecimal price = h.get(index).require(key);
+        boolean high = key.equals(FeatureKey.high());
+        for (int j = index - strength; j <= index + strength; j++) {
+            if (j == index) continue;
+            int comparison = price.compareTo(h.get(j).require(key));
+            if (high ? comparison <= 0 : comparison >= 0) return false;
+        }
+        return true;
     }
 }

@@ -54,6 +54,9 @@ public final class VolumeProfileFeatureAssembler {
                 var profile = profile(byTime.subMap(from, true, snapshot.candleOpenTime(), false),
                         bins.getFirst().priceStep(), neighborMinimumPocFraction);
                 if (profile != null) {
+                    Instant priorFrom = from.minus(Duration.ofMinutes((long) selected.bars()
+                            * bins.getFirst().bucketMinutes()));
+                    BigDecimal priorTotal = quoteTotal(byTime.subMap(priorFrom, true, from, false));
                     values.put(FeatureKey.selectedBaseBars(), BigDecimal.valueOf(selected.bars()));
                     values.put(FeatureKey.selectedBaseLow(), selected.low());
                     values.put(FeatureKey.selectedBaseHigh(), selected.high());
@@ -62,6 +65,9 @@ public final class VolumeProfileFeatureAssembler {
                     values.put(FeatureKey.selectedBaseZoneShare(), profile[2]);
                     values.put(FeatureKey.selectedBasePocShare(), profile[3]);
                     values.put(FeatureKey.selectedBaseTotalQuote(), profile[4]);
+                    values.put(FeatureKey.selectedBaseVolumeRatio(), priorTotal.signum() == 0
+                            ? BigDecimal.ZERO : profile[4].divide(priorTotal,
+                            new java.math.MathContext(20, java.math.RoundingMode.HALF_UP)));
                 }
             }
             result.add(new FeatureSnapshot(snapshot.candleOpenTime(), snapshot.availableAt(),
@@ -69,6 +75,108 @@ public final class VolumeProfileFeatureAssembler {
         }
         return List.copyOf(result);
     }
+
+    /**
+     * Builds a causal map of bases which survive the breakout and are consumed on
+     * their first later POC-zone visit.  Only the first visit is exposed to the
+     * strategy, followed by a short confirmation window; no future candle is
+     * consulted when creating or consuming a map item.
+     */
+    public List<FeatureSnapshot> mergePersistentBases(List<FeatureSnapshot> technical,
+                                                       List<VolumeProfileBin> bins,
+                                                       FeatureKey atr, FeatureKey volume,
+                                                       VariableBaseDetector.Config detectorConfig,
+                                                       BigDecimal neighborMinimumPocFraction,
+                                                       BigDecimal breakoutAtr,
+                                                       int confirmationWindowBars) {
+        if (bins.isEmpty()) return List.of();
+        java.util.NavigableMap<Instant, List<VolumeProfileBin>> byTime = new java.util.TreeMap<>();
+        bins.forEach(bin -> byTime.computeIfAbsent(bin.bucketTime(), ignored -> new ArrayList<>()).add(bin));
+        record MappedBase(int id, int breakout, int side, VariableBaseDetector.Base base,
+                          BigDecimal zoneLow, BigDecimal zoneHigh, BigDecimal zoneShare,
+                          BigDecimal pocShare, BigDecimal totalQuote, BigDecimal volumeRatio,
+                          BigDecimal breakoutVolume) { }
+        record Active(MappedBase base, int revisit) { }
+        VariableBaseDetector detector = new VariableBaseDetector();
+        List<MappedBase> mapped = new ArrayList<>();
+        java.util.Set<Integer> consumed = new java.util.HashSet<>();
+        List<Active> active = new ArrayList<>();
+        List<FeatureSnapshot> result = new ArrayList<>();
+        int nextId = 1;
+        for (int index = 0; index < technical.size(); index++) {
+            FeatureSnapshot snapshot = technical.get(index);
+            // A map item is known only after the breakout close and one acceptance close.
+            if (index >= 2) {
+                int breakout = index - 1;
+                var detected = detector.detect(technical, breakout, atr, detectorConfig);
+                if (detected.isPresent()) {
+                    VariableBaseDetector.Base base = detected.orElseThrow();
+                    FeatureSnapshot breakoutSnapshot = technical.get(breakout);
+                    BigDecimal threshold = breakoutSnapshot.require(atr).multiply(breakoutAtr);
+                    int side = breakoutSnapshot.require(FeatureKey.close()).compareTo(base.high().add(threshold)) > 0
+                            && snapshot.require(FeatureKey.close()).compareTo(base.high()) > 0 ? 1
+                            : breakoutSnapshot.require(FeatureKey.close()).compareTo(base.low().subtract(threshold)) < 0
+                            && snapshot.require(FeatureKey.close()).compareTo(base.low()) < 0 ? -1 : 0;
+                    if (side != 0) {
+                        Instant from = technical.get(base.startIndex()).candleOpenTime();
+                        BigDecimal[] p = profile(byTime.subMap(from, true, snapshot.candleOpenTime(), false),
+                                bins.getFirst().priceStep(), neighborMinimumPocFraction);
+                        if (p != null) {
+                            Instant priorFrom = from.minus(Duration.ofMinutes((long) base.bars() * bins.getFirst().bucketMinutes()));
+                            BigDecimal prior = quoteTotal(byTime.subMap(priorFrom, true, from, false));
+                            mapped.add(new MappedBase(nextId++, breakout, side, base, p[0], p[1], p[2], p[3], p[4],
+                                    prior.signum() == 0 ? BigDecimal.ZERO : p[4].divide(prior,
+                                            new java.math.MathContext(20, java.math.RoundingMode.HALF_UP)),
+                                    breakoutSnapshot.require(volume)));
+                        }
+                    }
+                }
+            }
+            // Find and consume first visits.  A revisit cannot occur on the breakout/acceptance bars.
+            for (MappedBase base : mapped) {
+                if (consumed.contains(base.id()) || index <= base.breakout() + 1) continue;
+                boolean touched = base.side() > 0
+                        ? snapshot.require(FeatureKey.low()).compareTo(base.zoneHigh()) <= 0
+                        : snapshot.require(FeatureKey.high()).compareTo(base.zoneLow()) >= 0;
+                if (touched) { consumed.add(base.id()); active.add(new Active(base, index)); }
+            }
+            int currentIndex = index;
+            active.removeIf(base -> currentIndex - base.revisit() >= confirmationWindowBars);
+            Map<FeatureKey, BigDecimal> values = new HashMap<>(snapshot.values());
+            if (!active.isEmpty()) {
+                // Prefer the newest revisited base.  It is the one the trader can act on now.
+                Active activeBase = active.getLast();
+                MappedBase base = activeBase.base();
+                values.put(FeatureKey.selectedBaseId(), BigDecimal.valueOf(base.id()));
+                values.put(FeatureKey.selectedBaseBars(), BigDecimal.valueOf(base.base().bars()));
+                values.put(FeatureKey.selectedBaseLow(), base.base().low());
+                values.put(FeatureKey.selectedBaseHigh(), base.base().high());
+                values.put(FeatureKey.selectedBaseZoneLow(), base.zoneLow());
+                values.put(FeatureKey.selectedBaseZoneHigh(), base.zoneHigh());
+                values.put(FeatureKey.selectedBaseZoneShare(), base.zoneShare());
+                values.put(FeatureKey.selectedBasePocShare(), base.pocShare());
+                values.put(FeatureKey.selectedBaseTotalQuote(), base.totalQuote());
+                values.put(FeatureKey.selectedBaseVolumeRatio(), base.volumeRatio());
+                values.put(FeatureKey.selectedBaseBreakoutSide(), BigDecimal.valueOf(base.side()));
+                values.put(FeatureKey.selectedBaseBreakoutVolumeRatio(), base.breakoutVolume());
+                values.put(FeatureKey.selectedBaseFirstRevisit(), activeBase.revisit() == index
+                        ? BigDecimal.ONE : BigDecimal.ZERO);
+                BigDecimal target = null;
+                for (MappedBase other : mapped) {
+                    if (other.id() == base.id() || consumed.contains(other.id())) continue;
+                    BigDecimal candidate = other.side() > 0 ? other.zoneLow() : other.zoneHigh();
+                    boolean ahead = base.side() > 0 ? candidate.compareTo(snapshot.require(FeatureKey.close())) > 0
+                            : candidate.compareTo(snapshot.require(FeatureKey.close())) < 0;
+                    if (ahead && (target == null || (base.side() > 0 ? candidate.compareTo(target) < 0 : candidate.compareTo(target) > 0))) target = candidate;
+                }
+                if (target != null) values.put(FeatureKey.selectedBaseTarget(), target);
+            }
+            result.add(new FeatureSnapshot(snapshot.candleOpenTime(), snapshot.availableAt(),
+                    snapshot.earliestExecutionTime(), Map.copyOf(values)));
+        }
+        return List.copyOf(result);
+    }
+
 
     private static BigDecimal[] profile(Map<Instant, List<VolumeProfileBin>> selected,
                                         BigDecimal step, BigDecimal neighborFraction) {
@@ -89,6 +197,11 @@ public final class VolumeProfileFeatureAssembler {
         return new BigDecimal[]{low, high, zone.divide(total,
                 new java.math.MathContext(20, java.math.RoundingMode.HALF_UP)),
                 totals.get(poc).divide(total, new java.math.MathContext(20, java.math.RoundingMode.HALF_UP)), total};
+    }
+
+    private static BigDecimal quoteTotal(Map<Instant, List<VolumeProfileBin>> selected) {
+        return selected.values().stream().flatMap(List::stream).map(VolumeProfileBin::quoteNotional)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public List<FeatureSnapshot> merge(List<FeatureSnapshot> technical,

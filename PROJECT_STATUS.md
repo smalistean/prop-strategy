@@ -11,6 +11,28 @@
 
 Last updated: 2026-08-09
 
+### Apollo V4.1 persistent-base implementation: training diagnostic rejected
+
+V4.1 replaces the immediate-breakout-only feature path with a causal map of
+profiled bases. A base is published only after its breakout and acceptance
+candle; it remains fresh until its first later POC-zone touch, then is consumed
+and exposed for one lower-timeframe confirmation window. An entry now requires
+sweep/reclaim, a completed named swing break, a retest/hold, and sufficient room
+to the nearest still-fresh mapped node. The map target replaces the former
+fixed 3R target. This is an initial automatic detector, not the video-labelled
+map promised by the course.
+
+On shifted BTC training `[2023-05-07, 2025-05-07)`, it completed 3 trades for
+-$218.61, PF 0.80 (1.07% maximum drawdown). ETH over the same window completed
+8 trades for -$1,914.73, PF 0.14 (2.23% drawdown). Both are rejected as a
+performance candidate: negative and far below the minimum evidence sample.
+The BTC post-final video-review diagnostic `[2026-05-07, 2026-08-01)` made no
+entries. It is not a validation result; it directly confirms that the current
+automatic base detector does not yet reproduce enough of the bases visible in
+the videos. ETH has no May-August 2026 aggregate-trade/profile coverage yet,
+so its equivalent recent run is pending data import rather than reported as a
+zero-trade strategy result.
+
 ### Apollo expanded-universe transfer test: B5 and C1 rejected
 
 Seven deferred symbols (LTC, AVAX, BCH, TRX, AAVE, DOT, ETC) were imported with
@@ -37,6 +59,64 @@ Its initial mechanical base detector nevertheless produced 64 trades, -$5,617.25
 net, PF 0.724, and maximum-drawdown termination. V4's entry sequence is now
 testable, but the automatic base-selection proxy is too permissive; next work is
 labelled base/map comparison, not threshold tuning or validation.
+
+### Apollo V4 BTC-only base-volume quality gate: still negative
+
+The automatic V4 base proxy now requires a principal POC share of at least 5%
+of base volume and total base quote volume at least 1.20x the immediately prior
+same-duration window. This reduced the old training diagnostic from 64 to 13
+trades and avoided drawdown termination, but remained negative: -$2,504.15 net,
+PF 0.45, four wins and nine losses. The result diagnoses base selection; it is
+not a validation result and no more threshold tuning is justified before labels.
+
+### Active research calendar moved three months earlier
+
+At the user's request, the active default calendar is now training
+`[2023-05-07, 2025-05-07)`, validation `[2025-05-07, 2025-11-07)`, and final
+`[2025-11-07, 2026-05-07)`. Frozen historical experiment configurations retain
+their original dates so their recorded results remain reproducible. BTC aggregate
+trade archives and 15-minute profile bins were extended through the added
+May–July 2023 history.
+
+### Apollo V4 shifted-window BTC training: rejected diagnostic
+
+With the unchanged V4 volume-quality settings over the shifted two-year training
+period, the result was 20 trades, -$2,697.22 net, PF 0.60, and 4.05% maximum
+drawdown. Only one of four six-month subperiods was profitable; 1.5x-cost stress
+was -$3,162.46. This remains training-only and confirms that the current
+automatic base detector is not a viable implementation of the course pattern.
+
+### Apollo V4 swing-confirmation revision: nearer breakeven, insufficient
+
+Following the later Apollo videos, V4 no longer treats a three-bar range break
+as “слом тренда.” It requires a completed 15m swing sequence: sweep/reclaim,
+pivot in the reversal direction, a higher low/lower high, then close through the
+intervening pivot. With all other V4 settings fixed, shifted BTC training produced
+16 trades, -$292.03 net, PF 0.945, and 2.75% maximum drawdown; 1.5x-cost stress
+was -$519.72. This is much less negative than the prior -$2,697.22 diagnostic,
+but the sample is far below 60 and only one half-year was profitable. It does not
+justify validation or parameter tuning; it supports moving to labelled bases and
+the course's hierarchical map.
+
+### Apollo V4 May–June 2026 video replay: automatic map false negative
+
+Public Binance BTCUSDT aggregate trades and 15-minute profile bins were imported
+for the supplied 7 May–1 June 2026 video period. The revised V4 produced zero
+entry decisions across its 2,496 15-minute bars. This is not a strategy result:
+the videos identify higher-timeframe bases/ranges that can be days or weeks old,
+whereas V4's current `VariableBaseDetector` accepts only a 12–48 candle base
+ending immediately before breakout. The replay therefore confirms a mismatch in
+our map builder, not that the course setups are absent. Exact price comparisons
+also require care because the videos use CME BTC futures while the code uses
+Binance BTCUSDT perpetual.
+
+### Apollo V4.1 requirements frozen from the May–August video review
+
+The course examples consistently require persistent multi-day base/POC maps,
+first-visit consumption, named-swing break plus retest, and next volume-node or
+liquidity targets. Fixed 3R targets, RSI divergence, and position splitting are
+not to be treated as the core entry edge. `APOLLO_V4_DESIGN.md` records these
+requirements before V4.1 implementation and labelled-video audit.
 
 ### Apollo v3 one-variable test B1: three touches — insufficient sample
 
@@ -310,9 +390,9 @@ unopened.
   maximum drawdown: -9.95% return, 36.73% win rate, and 0.477 profit factor.
   This rejects the default parameters as a strategy candidate while validating
   the end-to-end engine path.
-- Tracked UTC periods are training `[2023-08-07, 2025-08-07)`, validation
-  `[2025-08-07, 2026-02-07)`, and final test
-  `[2026-02-07, 2026-08-07)`.
+- Active UTC periods are training `[2023-05-07, 2025-05-07)`, validation
+  `[2025-05-07, 2025-11-07)`, and final test
+  `[2025-11-07, 2026-05-07)`.
 - Range loading includes only the preceding candles required for indicator
   warm-up; warm-up bars cannot trade or affect period metrics.
 - Final-test mode fails closed unless `-DconfirmFinalTest=true` is supplied.

@@ -18,8 +18,9 @@ not a blind entry level.
 4. **First revisit** — price returns into the POC zone or takes liquidity just
    beyond it. A previously consumed base is invalidated.
 5. **Decision after the revisit** — require reclaim of the POC/selected wave,
-   then a distinct lower-timeframe local trend break in the original breakout
-   direction. No confirmation means no trade.
+   then a distinct lower-timeframe swing reversal in the original breakout
+   direction. For a long: sweep low → pivot high → higher pivot low → close
+   above that pivot high; shorts mirror it. No confirmation means no trade.
 6. **Continuation entry** — execute after that structural confirmation, not at
    the POC touch. Stop is behind the entire base/liquidity zone plus one-quarter
    of its height. Target is the next mapped liquidity/internal volume wave,
@@ -66,6 +67,45 @@ zone, POC/waves, breakout state, and freshness to each later 15m bar.
 Implement the revisit → sweep/reclaim → local-break state machine and use the
 map's next liquidity zone as target. Run it first on labelled examples, then
 freeze a configuration for the 15-symbol training universe.
+
+The first code version uses completed 15-minute pivots with configurable
+two-candle strength and a 0.25-ATR minimum swing. It deliberately waits for the
+right side of each pivot to close, so this confirmation is causal. It is still
+only an automatic base-selection diagnostic, not the labelled-map implementation.
+
+## V4.1 evidence from the May–August 2026 video investigation
+
+The later supplied BTC videos add the following durable requirements:
+
+- A map base can remain relevant for days or weeks after its breakout; a
+  12–48-candle base ending immediately before the current breakout is only a
+  candidate source, not the entire map.
+- The map must retain its POC zone and distinct internal high-volume nodes.
+  The next opposing node/liquidity level is the first target reference; a fixed
+  numerical 3R target is not a course-derived substitute.
+- A zone is a decision area. It may reject, range, or pass through. The first
+  revisit consumes the ordinary setup whether or not a trade is taken.
+- “Слом тренда” is a named prior swing: sweep/reclaim → break a preceding swing
+  → retest that broken swing and hold on the intended side. A raw count of recent
+  candles is not enough.
+- RSI divergence and position splitting are context and execution management,
+  respectively; neither is an entry rule for the initial systematic version.
+
+V4.1 therefore adds persistent map state, named-swing retest confirmation, and
+volume-node target selection. It must be audited against the video labels before
+any performance interpretation.
+
+### V4.1 implementation boundary (2026-08-09)
+
+The implemented map is causal: it detects a mechanically horizontal 15-minute
+candidate base, profiles only its completed aggregate trades, publishes it only
+after the next completed acceptance candle, and permanently consumes it at its
+first later POC-zone touch. While it faithfully implements the lifecycle and
+entry sequence above, its *base detector* still begins with a 12-48 candle
+candidate. That is an explicit known limitation, not a claim that the videos'
+multi-day bases have been fully encoded. The BTC 2026 replay makes no entries,
+so the next research task is labelled-base recall (what visible bases were
+missed/incorrectly mapped), not threshold changes or validation.
 
 ## Existing code to retain or avoid
 

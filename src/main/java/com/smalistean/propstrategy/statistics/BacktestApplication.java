@@ -146,8 +146,9 @@ public final class BacktestApplication {
                     ? assembler.mergeSelectedBases(technical, bins, variable.atrKey(),
                             variable.detectorConfig(), neighborFraction)
                     : strategy instanceof ApolloV4BasePocContinuationStrategy v4
-                    ? assembler.mergeSelectedBases(technical, bins, v4.atrKey(),
-                            v4.detectorConfig(), neighborFraction)
+                    ? assembler.mergePersistentBases(technical, bins, v4.atrKey(),
+                            com.smalistean.propstrategy.feature.FeatureKey.volumeRatio(v4.volumePeriod()),
+                            v4.detectorConfig(), neighborFraction, v4.breakoutAtr(), v4.reclaimWindowBars())
                     : assembler.merge(technical, bins, lookback, neighborFraction);
         } else {
             generatedSnapshots = featureGenerator.generate(candles, strategy.requiredFeatures());

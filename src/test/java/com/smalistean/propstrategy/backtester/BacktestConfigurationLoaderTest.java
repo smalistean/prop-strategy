@@ -31,8 +31,8 @@ class BacktestConfigurationLoaderTest {
                         Path.of("config/backtests/ema-pullback.properties"));
 
         assertEquals(BacktestDataset.Type.TRAINING, loaded.dataset().type());
-        assertEquals(Instant.parse("2023-08-07T00:00:00Z"), loaded.dataset().startInclusive());
-        assertEquals(Instant.parse("2025-08-07T00:00:00Z"), loaded.dataset().endExclusive());
+        assertEquals(Instant.parse("2023-05-07T00:00:00Z"), loaded.dataset().startInclusive());
+        assertEquals(Instant.parse("2025-05-07T00:00:00Z"), loaded.dataset().endExclusive());
     }
 
     @Test

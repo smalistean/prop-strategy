@@ -154,6 +154,13 @@ public record FeatureKey(String name, int period, int lookback) {
     public static FeatureKey selectedBaseZoneShare() { return new FeatureKey("selectedBaseZoneShare", 0); }
     public static FeatureKey selectedBasePocShare() { return new FeatureKey("selectedBasePocShare", 0); }
     public static FeatureKey selectedBaseTotalQuote() { return new FeatureKey("selectedBaseTotalQuote", 0); }
+    public static FeatureKey selectedBaseVolumeRatio() { return new FeatureKey("selectedBaseVolumeRatio", 0); }
+    /** Identity and lifecycle fields for a causal, persistent Apollo base map. */
+    public static FeatureKey selectedBaseId() { return new FeatureKey("selectedBaseId", 0); }
+    public static FeatureKey selectedBaseBreakoutSide() { return new FeatureKey("selectedBaseBreakoutSide", 0); }
+    public static FeatureKey selectedBaseBreakoutVolumeRatio() { return new FeatureKey("selectedBaseBreakoutVolumeRatio", 0); }
+    public static FeatureKey selectedBaseFirstRevisit() { return new FeatureKey("selectedBaseFirstRevisit", 0); }
+    public static FeatureKey selectedBaseTarget() { return new FeatureKey("selectedBaseTarget", 0); }
     public static FeatureKey completedHourClose() { return new FeatureKey("completedHourClose", 0); }
     public static FeatureKey completedHourEma(int period) { return new FeatureKey("completedHourEma", period); }
     public static FeatureKey crossSectionRank() { return new FeatureKey("crossSectionRank", 0); }

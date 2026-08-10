@@ -50,6 +50,12 @@ public final class BinanceArchiveDownloader {
             HttpResponse<InputStream> response = client.send(request.build(),
                     HttpResponse.BodyHandlers.ofInputStream());
             boolean append = existing > 0 && response.statusCode() == 206;
+            if (response.statusCode() == 416 && existing > 0) {
+                // The server rejects a stale/incomplete Range resume. The partial archive
+                // is disposable; retry from byte zero instead of making the import fail.
+                Files.deleteIfExists(partial);
+                return download(archiveUri, directory);
+            }
             if (response.statusCode() != 200 && response.statusCode() != 206) {
                 throw new IllegalStateException("Archive download returned HTTP " + response.statusCode());
             }
