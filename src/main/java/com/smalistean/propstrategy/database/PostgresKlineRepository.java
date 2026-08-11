@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.time.Instant;
+import java.time.Duration;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
@@ -214,6 +215,43 @@ public final class PostgresKlineRepository {
         }
     }
 
+    /** Returns missing internal candle ranges; prefix and suffix are handled by the caller. */
+    public List<KlineRange> internalGaps(String symbol, String interval,
+                                         Instant startInclusive, Instant endExclusive,
+                                         Duration candleDuration) {
+        String sql = """
+                WITH ordered AS (
+                    SELECT open_time, LEAD(open_time) OVER (ORDER BY open_time) AS next_open_time
+                    FROM futures_kline
+                    WHERE symbol = ? AND interval = ? AND open_time >= ? AND open_time < ?
+                )
+                SELECT open_time + (? * INTERVAL '1 millisecond') AS gap_start, next_open_time AS gap_end
+                FROM ordered
+                WHERE next_open_time > open_time + (? * INTERVAL '1 millisecond')
+                ORDER BY gap_start
+                """;
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, symbol);
+            statement.setString(2, interval);
+            statement.setObject(3, OffsetDateTime.ofInstant(startInclusive, ZoneOffset.UTC));
+            statement.setObject(4, OffsetDateTime.ofInstant(endExclusive, ZoneOffset.UTC));
+            statement.setLong(5, candleDuration.toMillis());
+            statement.setLong(6, candleDuration.toMillis());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                var gaps = new java.util.ArrayList<KlineRange>();
+                while (resultSet.next()) {
+                    gaps.add(new KlineRange(
+                            resultSet.getObject("gap_start", OffsetDateTime.class).toInstant(),
+                            resultSet.getObject("gap_end", OffsetDateTime.class).toInstant()));
+                }
+                return List.copyOf(gaps);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to find internal Futures kline gaps", e);
+        }
+    }
+
     private Connection openConnection() throws SQLException {
         return DriverManager.getConnection(config.url(), config.user(), config.password());
     }
@@ -251,5 +289,8 @@ public final class PostgresKlineRepository {
     }
 
     public record KlineRangeStats(long count, Instant firstOpenTime, Instant lastOpenTime) {
+    }
+
+    public record KlineRange(Instant startInclusive, Instant endExclusive) {
     }
 }

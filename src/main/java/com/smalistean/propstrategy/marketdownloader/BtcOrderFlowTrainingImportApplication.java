@@ -112,22 +112,28 @@ public final class BtcOrderFlowTrainingImportApplication {
         LocalDate startDate = start.atZone(ZoneOffset.UTC).toLocalDate();
         LocalDate endDate = end.atZone(ZoneOffset.UTC).toLocalDate();
         if (!start.equals(startDate.atStartOfDay(ZoneOffset.UTC).toInstant())
-                || startDate.getDayOfMonth() != 1
-                || !end.equals(endDate.atStartOfDay(ZoneOffset.UTC).toInstant())
-                || endDate.getDayOfMonth() != 1) {
+                || !end.equals(endDate.atStartOfDay(ZoneOffset.UTC).toInstant())) {
             throw new IllegalArgumentException(
-                    "Generic order-flow import currently requires whole UTC months");
+                    "Generic order-flow import requires whole UTC days");
         }
         List<Archive> result = new ArrayList<>();
-        YearMonth month = YearMonth.from(startDate);
-        YearMonth endMonth = YearMonth.from(endDate);
-        while (month.isBefore(endMonth)) {
-            String period = month.toString();
-            Instant monthStart = month.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-            Instant monthEnd = month.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-            result.add(new Archive(URI.create(ROOT + "/monthly/aggTrades/" + symbol + "/"
-                    + symbol + "-aggTrades-" + period + ".zip"), monthStart, monthEnd));
-            month = month.plusMonths(1);
+        LocalDate cursor = startDate;
+        while (cursor.isBefore(endDate)) {
+            YearMonth month = YearMonth.from(cursor);
+            LocalDate nextMonth = month.plusMonths(1).atDay(1);
+            if (cursor.getDayOfMonth() == 1 && !nextMonth.isAfter(endDate)) {
+                result.add(new Archive(URI.create(ROOT + "/monthly/aggTrades/" + symbol + "/"
+                        + symbol + "-aggTrades-" + month + ".zip"),
+                        cursor.atStartOfDay(ZoneOffset.UTC).toInstant(),
+                        nextMonth.atStartOfDay(ZoneOffset.UTC).toInstant()));
+                cursor = nextMonth;
+            } else {
+                result.add(new Archive(URI.create(ROOT + "/daily/aggTrades/" + symbol + "/"
+                        + symbol + "-aggTrades-" + cursor + ".zip"),
+                        cursor.atStartOfDay(ZoneOffset.UTC).toInstant(),
+                        cursor.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()));
+                cursor = cursor.plusDays(1);
+            }
         }
         return List.copyOf(result);
     }

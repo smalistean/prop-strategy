@@ -66,6 +66,7 @@ public final class BinanceArchiveDownloader {
             }
             String actual = sha256(partial);
             if (!expected.equals(actual)) {
+                Files.deleteIfExists(partial);
                 throw new IllegalStateException("Checksum mismatch for " + filename);
             }
             Files.move(partial, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);

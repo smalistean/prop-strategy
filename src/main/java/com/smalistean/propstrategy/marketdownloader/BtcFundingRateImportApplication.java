@@ -35,10 +35,10 @@ public final class BtcFundingRateImportApplication {
         Instant requestedStart = fixedStartInclusive == null
                 ? ZonedDateTime.ofInstant(endInclusive, ZoneOffset.UTC).minusYears(3).toInstant()
                 : fixedStartInclusive;
-        Instant cursor = repository.latestFundingTime(symbol)
-                .map(value -> value.plusMillis(1))
-                .filter(value -> value.isAfter(requestedStart))
-                .orElse(requestedStart);
+        // Funding is sparse (normally one row per eight hours), so replaying the
+        // requested history is cheap and safely fills an older prefix around an
+        // existing incremental import. The repository upsert is idempotent.
+        Instant cursor = requestedStart;
 
         long imported = 0;
         while (!cursor.isAfter(endInclusive)) {

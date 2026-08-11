@@ -19,7 +19,9 @@ public final class VolumeProfileBinImportApplication {
         Instant start = Instant.parse(System.getProperty("profileStart", "2023-08-07T00:00:00Z"));
         Instant end = Instant.parse(System.getProperty("profileEnd", "2025-08-07T00:00:00Z"));
         int bucketMinutes = Integer.getInteger("profileBucketMinutes", 15);
-        BigDecimal priceStep = new BigDecimal(System.getProperty("profilePriceStep", "10"));
+        BigDecimal priceStep = System.getProperty("profilePriceStep") != null
+                ? new BigDecimal(System.getProperty("profilePriceStep"))
+                : com.smalistean.propstrategy.database.VolumeProfilePriceSteps.defaultFor(symbol);
         Path directory = Path.of(System.getProperty(
                 "profileArchiveDir", "data/order-flow/" + symbol));
         List<Path> archives;

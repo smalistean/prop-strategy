@@ -31,7 +31,9 @@ public final class VolumeProfileFeatureAssemblerV5 {
                                                        BigDecimal breakoutAtr,
                                                        int confirmationWindowBars,
                                                        int referenceBars,
-                                                       int maximumBoundaryTouches) {
+                                                       int maximumBoundaryTouches,
+                                                       BigDecimal pocBinAtrFraction,
+                                                       BigDecimal internalWaveMinimumShare) {
         if (bins.isEmpty()) return List.of();
         java.util.NavigableMap<Instant, List<VolumeProfileBin>> byTime = new java.util.TreeMap<>();
         bins.forEach(bin -> byTime.computeIfAbsent(bin.bucketTime(), ignored -> new ArrayList<>()).add(bin));
@@ -65,8 +67,10 @@ public final class VolumeProfileFeatureAssemblerV5 {
                     int touches = side > 0 ? base.highTouches() : base.lowTouches();
                     if (touches > maximumBoundaryTouches) continue;
                     Instant from = technical.get(base.startIndex()).candleOpenTime();
+                    BigDecimal rawStep = bins.getFirst().priceStep();
+                    BigDecimal analysisStep = aggregationStep(rawStep, breakoutSnapshot.require(atr), pocBinAtrFraction);
                     BigDecimal[] p = profile(byTime.subMap(from, true, snapshot.candleOpenTime(), false),
-                            bins.getFirst().priceStep(), neighborMinimumPocFraction);
+                            analysisStep, rawStep, neighborMinimumPocFraction);
                     if (p == null) continue;
                     boolean longScale = base.bars() > referenceBars;
                     BigDecimal currentBest = longScale ? bestLongPocShare : bestShortPocShare;
@@ -120,6 +124,19 @@ public final class VolumeProfileFeatureAssemblerV5 {
                             : candidate.compareTo(snapshot.require(FeatureKey.close())) < 0;
                     if (ahead && (target == null || (base.side() > 0 ? candidate.compareTo(target) < 0 : candidate.compareTo(target) > 0))) target = candidate;
                 }
+                // Test A (roadmap step 2): the course states an internal volume wave can be a valid,
+                // earlier target than the principal level (Книга 2.0 p.32). When enabled, prefer the
+                // strongest volume concentration lying strictly between price and the mapped zone.
+                if (target != null && internalWaveMinimumShare.signum() > 0) {
+                    BigDecimal analysisStep = aggregationStep(bins.getFirst().priceStep(),
+                            snapshot.require(atr), pocBinAtrFraction);
+                    Instant waveFrom = technical.get(Math.max(0, index - base.base().bars())).candleOpenTime();
+                    BigDecimal wave = strongestWaveBetween(
+                            byTime.subMap(waveFrom, true, snapshot.candleOpenTime(), false),
+                            snapshot.require(FeatureKey.close()), target, analysisStep,
+                            internalWaveMinimumShare);
+                    if (wave != null) target = wave;
+                }
                 if (target != null) values.put(FeatureKey.selectedBaseTarget(), target);
             }
             result.add(new FeatureSnapshot(snapshot.candleOpenTime(), snapshot.availableAt(),
@@ -128,12 +145,35 @@ public final class VolumeProfileFeatureAssemblerV5 {
         return List.copyOf(result);
     }
 
+    /**
+     * The raw stored bin width is deliberately finer than any single analysis needs; this rounds it
+     * up to a whole multiple sized off the current ATR (never finer than the raw data, never a
+     * fraction of a raw bin), so a wide multi-day base and a tight intraday one each get a POC/zone
+     * resolution matched to their own volatility scale instead of one fixed dollar width picked once
+     * at import time - which can't track a symbol's own price appreciating 5-10x over its history,
+     * let alone differ sensibly between a $60,000 and a $0.10 coin.
+     */
+    static BigDecimal aggregationStep(BigDecimal rawStep, BigDecimal atrValue, BigDecimal atrFraction) {
+        BigDecimal target = atrValue.multiply(atrFraction);
+        BigDecimal multiple = target.divide(rawStep, 0, java.math.RoundingMode.HALF_UP);
+        if (multiple.compareTo(BigDecimal.ONE) < 0) multiple = BigDecimal.ONE;
+        return rawStep.multiply(multiple);
+    }
+
+    private static BigDecimal floorToStep(BigDecimal price, BigDecimal step) {
+        return price.divideToIntegralValue(step).multiply(step);
+    }
+
+    private static final java.math.MathContext MC = new java.math.MathContext(20, java.math.RoundingMode.HALF_UP);
+
     private static BigDecimal[] profile(Map<Instant, List<VolumeProfileBin>> selected,
-                                        BigDecimal step, BigDecimal neighborFraction) {
-        java.util.NavigableMap<BigDecimal, BigDecimal> totals = new java.util.TreeMap<>();
+                                        BigDecimal step, BigDecimal rawStep, BigDecimal neighborFraction) {
+        java.util.NavigableMap<BigDecimal, BigDecimal> raw = new java.util.TreeMap<>();
         selected.values().forEach(bucket -> bucket.forEach(bin ->
-                totals.merge(bin.priceFrom(), bin.quoteNotional(), BigDecimal::add)));
-        if (totals.isEmpty()) return null;
+                raw.merge(bin.priceFrom(), bin.quoteNotional(), BigDecimal::add)));
+        if (raw.isEmpty()) return null;
+        java.util.NavigableMap<BigDecimal, BigDecimal> totals = new java.util.TreeMap<>();
+        raw.forEach((price, quote) -> totals.merge(floorToStep(price, step), quote, BigDecimal::add));
         BigDecimal poc = totals.entrySet().stream().max(Map.Entry.comparingByValue()).orElseThrow().getKey();
         BigDecimal threshold = totals.get(poc).multiply(neighborFraction);
         BigDecimal low = poc, high = poc.add(step);
@@ -144,9 +184,42 @@ public final class VolumeProfileFeatureAssemblerV5 {
         BigDecimal total = totals.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal zone = totals.subMap(low, true, high, false).values().stream()
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new BigDecimal[]{low, high, zone.divide(total,
-                new java.math.MathContext(20, java.math.RoundingMode.HALF_UP)),
-                totals.get(poc).divide(total, new java.math.MathContext(20, java.math.RoundingMode.HALF_UP)), total};
+        // A coarser analysis bin mechanically concentrates more volume into fewer, fatter bins even
+        // with zero real structure (merging N raw bins into one multiplies its expected share by
+        // roughly N under a uniform baseline). Dividing by that same multiple keeps minimumPocShare/
+        // minimumZoneShare measuring genuine concentration rather than getting easier to clear simply
+        // because ATR (and therefore the analysis step) was elevated - found 2026-08-10 investigating
+        // why the ATR-scaled step regressed BTCUSDT Family B: it let more, lower-quality candidates
+        // through specifically during high-volatility stretches, exactly when selectivity matters most.
+        BigDecimal multiple = step.divide(rawStep, MC);
+        BigDecimal zoneShare = zone.divide(total, MC).divide(multiple, MC);
+        BigDecimal pocShare = totals.get(poc).divide(total, MC).divide(multiple, MC);
+        return new BigDecimal[]{low, high, zoneShare, pocShare, total};
+    }
+
+    /**
+     * Strongest volume concentration strictly between {@code from} and {@code to}, or null if none
+     * holds at least {@code minimumShare} of the volume traded in that band. Direction-agnostic:
+     * the caller supplies current price and the mapped target in either order.
+     */
+    private static BigDecimal strongestWaveBetween(Map<Instant, List<VolumeProfileBin>> window,
+                                                    BigDecimal from, BigDecimal to, BigDecimal step,
+                                                    BigDecimal minimumShare) {
+        BigDecimal low = from.min(to), high = from.max(to);
+        java.util.NavigableMap<BigDecimal, BigDecimal> band = new java.util.TreeMap<>();
+        for (List<VolumeProfileBin> bucket : window.values()) {
+            for (VolumeProfileBin bin : bucket) {
+                BigDecimal price = bin.priceFrom();
+                if (price.compareTo(low) <= 0 || price.compareTo(high) >= 0) continue;
+                band.merge(floorToStep(price, step), bin.quoteNotional(), BigDecimal::add);
+            }
+        }
+        if (band.isEmpty()) return null;
+        Map.Entry<BigDecimal, BigDecimal> peak = band.entrySet().stream()
+                .max(Map.Entry.comparingByValue()).orElseThrow();
+        BigDecimal total = band.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (total.signum() == 0) return null;
+        return peak.getValue().divide(total, MC).compareTo(minimumShare) >= 0 ? peak.getKey() : null;
     }
 
     private static BigDecimal quoteTotal(Map<Instant, List<VolumeProfileBin>> selected) {

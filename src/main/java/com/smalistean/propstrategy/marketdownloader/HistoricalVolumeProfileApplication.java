@@ -22,7 +22,9 @@ public final class HistoricalVolumeProfileApplication {
                 "profileStart", "2023-08-07T00:00:00Z"));
         Instant end = Instant.parse(System.getProperty(
                 "profileEnd", "2023-09-01T00:00:00Z"));
-        BigDecimal priceStep = new BigDecimal(System.getProperty("profilePriceStep", "10"));
+        BigDecimal priceStep = System.getProperty("profilePriceStep") != null
+                ? new BigDecimal(System.getProperty("profilePriceStep"))
+                : com.smalistean.propstrategy.database.VolumeProfilePriceSteps.defaultFor(symbol);
         int top = Integer.getInteger("profileTop", 15);
         List<Path> archives;
         try (var paths = Files.list(directory)) {

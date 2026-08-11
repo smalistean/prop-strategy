@@ -27,7 +27,8 @@ public final class ApolloV5BasePocContinuationStrategy implements VolumeProfileA
                          BigDecimal breakoutAtr, BigDecimal minimumBreakoutVolumeRatio,
                          BigDecimal minimumZoneShare, BigDecimal minimumPocShare, BigDecimal minimumBaseVolumeRatio, BigDecimal pocTouchAtr,
                          BigDecimal stopBaseHeightFraction, BigDecimal minimumRewardRisk,
-                         int maximumHoldingBars, int baseMapLookbackDays, int maximumBoundaryTouches) { }
+                         int maximumHoldingBars, int baseMapLookbackDays, int maximumBoundaryTouches,
+                         BigDecimal pocBinAtrFraction, BigDecimal internalWaveMinimumShare) { }
     private static final MathContext MC = new MathContext(20, RoundingMode.HALF_UP);
     private static final int BARS_PER_DAY_15M = 96;
     private final Config c; private final FeatureKey atr, volume;
@@ -40,6 +41,8 @@ public final class ApolloV5BasePocContinuationStrategy implements VolumeProfileA
     public FeatureKey atrKey(){return atr;}
     public int volumePeriod(){ return c.volumePeriod(); }
     public BigDecimal breakoutAtr(){ return c.breakoutAtr(); }
+    public BigDecimal pocBinAtrFraction(){ return c.pocBinAtrFraction(); }
+    public BigDecimal internalWaveMinimumShare(){ return c.internalWaveMinimumShare(); }
     public int reclaimWindowBars(){ return c.reclaimWindowBars(); }
     public int referenceBars(){ return c.maximumBaseBars(); }
     public int maximumBoundaryTouches(){ return c.maximumBoundaryTouches(); }

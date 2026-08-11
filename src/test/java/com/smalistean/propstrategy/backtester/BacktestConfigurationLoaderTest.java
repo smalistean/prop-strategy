@@ -30,9 +30,11 @@ class BacktestConfigurationLoaderTest {
                         Path.of("config/backtests/engine.properties"),
                         Path.of("config/backtests/ema-pullback.properties"));
 
+        // Pins the tracked calendar. Shifted three months earlier on 2026-08-11 so the 2026 course
+        // videos fall after the reserved final-test window; see engine.properties for the rationale.
         assertEquals(BacktestDataset.Type.TRAINING, loaded.dataset().type());
-        assertEquals(Instant.parse("2023-05-07T00:00:00Z"), loaded.dataset().startInclusive());
-        assertEquals(Instant.parse("2025-05-07T00:00:00Z"), loaded.dataset().endExclusive());
+        assertEquals(Instant.parse("2023-02-07T00:00:00Z"), loaded.dataset().startInclusive());
+        assertEquals(Instant.parse("2025-02-07T00:00:00Z"), loaded.dataset().endExclusive());
     }
 
     @Test

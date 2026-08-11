@@ -24,6 +24,7 @@ import com.smalistean.propstrategy.strategy.ApolloBasePocRetestStrategy;
 import com.smalistean.propstrategy.strategy.ApolloVariableBasePocStrategy;
 import com.smalistean.propstrategy.strategy.ApolloV4BasePocContinuationStrategy;
 import com.smalistean.propstrategy.strategy.ApolloV5BasePocContinuationStrategy;
+import com.smalistean.propstrategy.strategy.ApolloV5LiquidityLimitStrategy;
 
 import java.nio.file.Path;
 import java.math.BigDecimal;
@@ -133,7 +134,9 @@ public final class BacktestApplication {
                         technical, hourly, 50);
             }
             int bucketMinutes = Integer.getInteger("profileBucketMinutes", 15);
-            BigDecimal priceStep = new BigDecimal(System.getProperty("profilePriceStep", "10"));
+            BigDecimal priceStep = System.getProperty("profilePriceStep") != null
+                    ? new BigDecimal(System.getProperty("profilePriceStep"))
+                    : com.smalistean.propstrategy.database.VolumeProfilePriceSteps.defaultFor(marketSymbol);
             BigDecimal neighborFraction = new BigDecimal(System.getProperty(
                     "profileNeighborMinimumPocFraction", "0.50"));
             Instant profileStart = loaded.dataset().startInclusive().minusSeconds(
@@ -155,7 +158,18 @@ public final class BacktestApplication {
                     ? new VolumeProfileFeatureAssemblerV5().mergePersistentBases(technical, bins, v5.atrKey(),
                             com.smalistean.propstrategy.feature.FeatureKey.volumeRatio(v5.volumePeriod()),
                             v5.detectorConfig(), neighborFraction, v5.breakoutAtr(), v5.reclaimWindowBars(),
-                            v5.referenceBars(), v5.maximumBoundaryTouches())
+                            v5.referenceBars(), v5.maximumBoundaryTouches(),
+                            com.smalistean.propstrategy.database.VolumeProfilePriceSteps
+                                    .pocBinAtrFractionFor(marketSymbol, v5.pocBinAtrFraction()),
+                            v5.internalWaveMinimumShare())
+                    : strategy instanceof ApolloV5LiquidityLimitStrategy vb
+                    ? new VolumeProfileFeatureAssemblerV5().mergePersistentBases(technical, bins, vb.atrKey(),
+                            com.smalistean.propstrategy.feature.FeatureKey.volumeRatio(vb.volumePeriod()),
+                            vb.detectorConfig(), neighborFraction, vb.breakoutAtr(), vb.reclaimWindowBars(),
+                            vb.referenceBars(), vb.maximumBoundaryTouches(),
+                            com.smalistean.propstrategy.database.VolumeProfilePriceSteps
+                                    .pocBinAtrFractionFor(marketSymbol, vb.pocBinAtrFraction()),
+                            vb.internalWaveMinimumShare())
                     : assembler.merge(technical, bins, lookback, neighborFraction);
         } else {
             generatedSnapshots = featureGenerator.generate(candles, strategy.requiredFeatures());

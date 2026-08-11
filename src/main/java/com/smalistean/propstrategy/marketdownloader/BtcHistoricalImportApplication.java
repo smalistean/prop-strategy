@@ -63,10 +63,45 @@ public final class BtcHistoricalImportApplication {
 
         KlineRangeStats initial = repository.rangeStats(
                 symbol, interval.code(), startInclusive, endExclusive);
-        Instant cursor = resumeCursor(initial, startInclusive, interval);
         System.out.printf("%s %s: importing %,d expected candles from %s to %s; %,d already stored.%n",
                 symbol, interval.code(), expected, startInclusive, endExclusive, initial.count());
 
+        // Fill every uncovered contiguous range. This resumes safely after an
+        // interrupted prefix import without replaying valid years of candles.
+        if (initial.count() == 0) {
+            importRange(symbol, interval, startInclusive, endExclusive, expected, client, repository);
+        } else {
+            if (startInclusive.isBefore(initial.firstOpenTime())) {
+                importRange(symbol, interval, startInclusive, initial.firstOpenTime(), expected,
+                        client, repository);
+            }
+            for (PostgresKlineRepository.KlineRange gap : repository.internalGaps(
+                    symbol, interval.code(), startInclusive, endExclusive, interval.duration())) {
+                importRange(symbol, interval, gap.startInclusive(), gap.endExclusive(), expected,
+                        client, repository);
+            }
+            Instant afterLast = initial.lastOpenTime().plus(interval.duration());
+            if (afterLast.isBefore(endExclusive)) {
+                importRange(symbol, interval, afterLast, endExclusive, expected, client, repository);
+            }
+        }
+
+        KlineRangeStats result = repository.rangeStats(
+                symbol, interval.code(), startInclusive, endExclusive);
+        Instant expectedLast = endExclusive.minus(interval.duration());
+        if (result.count() != expected
+                || !startInclusive.equals(result.firstOpenTime())
+                || !expectedLast.equals(result.lastOpenTime())) {
+            throw new IllegalStateException("Verification failed for %s: expected %,d rows [%s, %s], got %s"
+                    .formatted(interval.code(), expected, startInclusive, expectedLast, result));
+        }
+        System.out.printf("%s %s: verified %,d candles.%n", symbol, interval.code(), result.count());
+    }
+
+    private static void importRange(String symbol, KlineInterval interval, Instant startInclusive,
+                                    Instant endExclusive, long totalExpected,
+                                    BinanceKlineClient client, PostgresKlineRepository repository) {
+        Instant cursor = startInclusive;
         long startedAt = System.nanoTime();
         int batches = 0;
         while (cursor.isBefore(endExclusive)) {
@@ -93,36 +128,13 @@ public final class BtcHistoricalImportApplication {
             if (batches % 10 == 0 || !cursor.isBefore(endExclusive)) {
                 long completedPrefix = Duration.between(startInclusive, cursor)
                         .dividedBy(interval.duration());
-                double percent = completedPrefix * 100.0 / expected;
+                double percent = completedPrefix * 100.0 / totalExpected;
                 long elapsedSeconds = Duration.ofNanos(System.nanoTime() - startedAt).toSeconds();
                 System.out.printf("%s %s: %,d / %,d (%.2f%%), last=%s, elapsed=%ds%n",
-                        symbol, interval.code(), completedPrefix, expected, percent,
+                        symbol, interval.code(), completedPrefix, totalExpected, percent,
                         cursor.minus(interval.duration()), elapsedSeconds);
             }
         }
 
-        KlineRangeStats result = repository.rangeStats(
-                symbol, interval.code(), startInclusive, endExclusive);
-        Instant expectedLast = endExclusive.minus(interval.duration());
-        if (result.count() != expected
-                || !startInclusive.equals(result.firstOpenTime())
-                || !expectedLast.equals(result.lastOpenTime())) {
-            throw new IllegalStateException("Verification failed for %s: expected %,d rows [%s, %s], got %s"
-                    .formatted(interval.code(), expected, startInclusive, expectedLast, result));
-        }
-        System.out.printf("%s %s: verified %,d candles.%n",
-                symbol, interval.code(), result.count());
-    }
-
-    private static Instant resumeCursor(KlineRangeStats existing, Instant startInclusive,
-                                        KlineInterval interval) {
-        if (existing.count() == 0 || !startInclusive.equals(existing.firstOpenTime())) {
-            return startInclusive;
-        }
-        long prefixCount = Duration.between(startInclusive, existing.lastOpenTime())
-                .dividedBy(interval.duration()) + 1;
-        return existing.count() == prefixCount
-                ? existing.lastOpenTime().plus(interval.duration())
-                : startInclusive;
     }
 }

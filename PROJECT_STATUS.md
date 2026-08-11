@@ -11,6 +11,33 @@
 
 Last updated: 2026-08-10
 
+### 15-symbol historical cutoff extended to 2022-10-01 (2026-08-11)
+
+All importable historical data for BTC, ETH, SOL, XRP, BNB, ADA, DOGE, LINK,
+LTC, AVAX, BCH, TRX, AAVE, DOT, and ETC USDT perpetuals now starts at
+2022-10-01 UTC: 1m/5m/15m/1h candles, funding rates, aggregate-trade-minute
+records, and their import metadata. The completed aggregate-trade cutoff is
+2026-08-09 23:59 UTC (the final fully archived UTC day); candles and funding
+are additionally current into 2026-08-11. No `futures_volume_profile_bin` rows
+were created or modified for this backfill: that table's earliest row remains
+2023-01-01. Open-interest and trader-ratio statistics remain unavailable for
+historical backfill because Binance exposes only the latest 30 days.
+
+### Full 15-symbol history import in progress (2026-08-10)
+
+The requested universe is BTC, ETH, SOL, XRP, BNB, ADA, DOGE, LINK, LTC,
+AVAX, BCH, TRX, AAVE, DOT, and ETC against USDT perpetuals. Funding-rate
+history is complete for all 15: 3,953 events per symbol from 2023-01-01 through
+the latest available event. A gap-aware, idempotent candle backfill is actively
+filling 1m/5m/15m/1h from 2023-01-01 and the current suffix without replaying
+already valid data. Aggregate-trade-minute and 15-minute volume-profile-bin
+imports remain the large next stage.
+
+Binance only exposes the most recent 30 days of open-interest and trader-ratio
+statistics, and no `BINANCE_API_KEY` is configured locally. Those supporting
+tables cannot be backfilled to 2023 from the documented API; this is a source
+availability limit, not a missing import loop.
+
 ### Apollo V5: multi-day map search, volume-first base ranking, third-touch discount
 
 A separate, parallel strategy alongside V4 (`apollo-v5-base-poc-continuation`,
@@ -42,6 +69,163 @@ completed trades — the map now functions where it previously produced
 nothing, but the swing-reversal and reward/risk gates downstream remain the
 bottleneck. Neither run justifies threshold tuning; the next step is
 labelled-base comparison against the now-functioning map.
+
+### Apollo V5 nine-symbol training run and improvement roadmap (2026-08-10)
+
+BTC, ETH, SOL, XRP, BNB, ADA, DOGE, TRX, and LINK were the first nine symbols
+with complete aggregate-trade and volume-profile-bin coverage (the remaining
+six — LTC, AVAX, BCH, AAVE, DOT, ETC — are still being imported). Each ran
+independently over `[2023-05-07, 2025-05-07)`: 15 trades pooled, -$273.51 net.
+Only BTC (+$329.80, 2 trades) and BNB (+$67.40, 3 trades) were positive; SOL
+was a clean loser (0/3, PF 0); XRP, ADA, DOGE, TRX, and LINK produced zero
+entries over the full two years. No symbol clears the evidence floor, and
+extending the universe repeated the project's established pattern (e.g. the
+B5/C1 rejection): a BTC-calibrated proxy does not transfer broadly. Full
+per-symbol table in `APOLLO_V5_DESIGN.md`.
+
+This result, together with the instrumented finding above that the
+swing-reversal/reward-risk gates (not the base map) are now the binding
+constraint, sets a four-step improvement roadmap recorded in
+`APOLLO_V5_DESIGN.md`: (1) build a labelled base/entry dataset from the course
+videos and check the detector against it — the step `APOLLO_COURSE_SOURCE_NOTES.md`
+has called for since it was written and that has still never been done; (2)
+implement the liquidity/POC-limit entry family (source Family B), which does
+not depend on the swing-reversal gate; (3) implement the hook-trigger entry
+family (source Family C); (4) add an explicit 1h/4h swing-hierarchy filter,
+since the current swing-reversal check only ever reasons about 15m pivots.
+Widening `minimumRewardRisk` or the volume-ratio thresholds to manufacture
+more trades is explicitly out of scope, per this project's standing rule that
+post-hoc threshold changes are not evidence.
+
+### Apollo V5 labelled dataset and touch-filter re-scoping (2026-08-10)
+
+`APOLLO_LABELLED_EXAMPLES.md` records a first batch of 20 source-derived examples and checks the
+V5 detector against the two with exact prices/dates: it finds candidates matching the labelled
+ETHUSDT and BTCUSDT August-2026 boxes to within a few dollars, over windows only reachable via the
+new multi-day search — the first time any Apollo version has been checked against ground truth
+rather than just backtested. Dumping the ETH match's touch detail found its 3rd counted low-boundary
+touch (2026-08-03, extreme 1,827.18) is the documented course entry trigger itself, not noise;
+`maximumBoundaryTouches` was scoped to pre-breakout base formation, which isn't what Книга 2.0
+p.98's warning is about, and that risk is already handled post-breakout by "first revisit consumes
+the base." The filter is disabled (`strategy.maximumBoundaryTouches=999`) on this conceptual
+finding. Re-running the nine-symbol diagnostic with it disabled produced nominally worse aggregate
+numbers on BTC/ETH/SOL; this is recorded rather than acted on, since every affected sample (3-7
+trades) is far below the evidence floor and reversing on that swing would repeat the same
+post-hoc-tuning mistake in the other direction.
+
+### Apollo V5 Family B (liquidity/POC-limit entry): first candidate past the trade-count floor (2026-08-10)
+
+`apollo-v5-liquidity-limit` reuses V5's exact map unchanged and differs from Family A only in the
+entry decision: it acts on a zone's first revisit and reclaim directly, without waiting for the
+completed swing reversal Family A requires. This confirms the swing-reversal gate was the dominant
+bottleneck: ETHUSDT went from 7 trades to 92, BNBUSDT from 3 to 37, BTCUSDT from 2-3 to 34.
+**ETHUSDT passes 6 of 8 acceptance criteria** — net profit +$4,408.26, PF 1.13, 6.57% max drawdown,
+**trade count 92 (>=60, the first Apollo variant ever to clear this floor)**, average win/loss
+2.33, and positive stressed-cost profit — but fails subperiod stability (2 of 4 profitable) and
+concentration (83.5% of profit from one subperiod). BNBUSDT is similarly strong (+$5,566.56, PF
+1.56, 37 trades) but short of the trade-count floor. BTCUSDT is negative (34 trades, -$835.21).
+XRP, ADA, DOGE, TRX, and LINK remain at zero trades under both families — the block for those is
+upstream, at the map/volume-quality gates, not the entry-timing choice. Not a validation candidate:
+concentration/stability failure is this project's standing signal a result isn't robust yet, and
+validation/final-test data remain unopened. Full detail in `APOLLO_V5_DESIGN.md`.
+
+### Volume-profile price-bin fix and first-ever training acceptance pass (2026-08-10)
+
+The zero-trade-symbol block (XRP, ADA, DOGE, TRX under both Apollo V5 entry families) traced to a
+degenerate volume-profile price bin: a single hardcoded `profilePriceStep=$10` for every symbol
+meant XRP/ADA/DOGE/TRX's entire training-window price history (all under $10) collapsed into one
+bin, making the mapped zone always exactly `[0, 10)` and a reclaim beyond it mathematically
+impossible. Fixed with a declared per-symbol step table (`VolumeProfilePriceSteps`), wired as the
+default everywhere `profilePriceStep` is read; the five affected symbols' stale bins were deleted
+and re-imported at 402-674 distinct price levels each instead of 1-4.
+
+Re-running both Apollo V5 entry families on the fixed data: **XRPUSDT Family B (liquidity/POC-limit)
+passes all 8 training acceptance criteria** - net +$10,146.42, PF 1.55, 60 trades, 3 of 4 profitable
+subperiods, 54.3% concentration (cap 60%). This is the first strategy of any kind in this project's
+history to fully pass. It is treated as a promising lead, not a validated result: the account hit
+`PROFIT_TARGET_REACHED` and stopped trading with the last ~3 months of the training window
+untested, the edge is almost entirely short-side ($9,857 short vs. $290 long net), subperiod 4's
+12.66 PF is 70% one calendar month, and subperiod 3 lost -$6,039 at PF 0.12. Validation/final-test
+remain closed. DOGE and LINK Family B both hit `MAX_DRAWDOWN` termination and are rejected; ADA (9
+trades) and TRX (37 trades, -$6,060.82) are also below the evidence floor or negative. Full detail
+in `APOLLO_V5_DESIGN.md`.
+
+### Apollo V5 review and fresh roadmap (2026-08-10)
+
+`APOLLO_V5_ROADMAP.md` supersedes the four-point "Next research steps" list in
+`APOLLO_V5_DESIGN.md`. Its key finding is methodological: **56 backtests were run against the same
+training window in one session**, and across five bin-granularity configurations the same
+symbol/family flips sign repeatedly (BNBUSDT Family B: +$5,567 → -$732 → +$835 → -$1,880 →
+-$3,013). A real edge does not flip sign five times on bin width, so most of these differences are
+noise at 3-92 trade samples, and the XRPUSDT all-criteria training pass must be treated as a
+best-of-56 result rather than a validation candidate.
+
+Three findings do survive: the swing-reversal gate (not base detection) was the binding constraint;
+the multi-day search matches real course-labelled structures to within a few dollars (the only
+result immune to the multiple-testing problem, since it is checked against ground truth rather than
+P&L); and a coarser analysis bin mechanically inflates POC/zone share, whose correction fixed a real
+BTC regression.
+
+New highest-value lead: across every profitable Family B run, roughly half the profit comes from the
+**24-hour maximum-holding-period timeout**, not from reaching the mapped target (ETH: 21
+holding-period exits win 100% for +$18,444 against 62 stop-losses for -$34,699). The strategy is not
+doing what it is nominally designed to do, target selection is the likely cause, and this has never
+been investigated. Roadmap order is therefore: freeze granularity → exit/target structure →
+extend labelled entries → multi-timeframe hierarchy → hook-trigger (deprioritized: 0 of 20 labelled
+examples show it) → fix the evidence standard (pre-registration, winner-count floor, walk-forward)
+before opening validation.
+
+### Apollo V5 exit/target tests: motivating hypothesis refuted, step 2 closed (2026-08-10)
+
+Roadmap step 2 executed with a **predeclared** design (`APOLLO_V5_EXIT_TESTS.md`, written before any
+result was inspected — the response to the 56-run multiple-testing problem). 21 backtests across
+ETHUSDT/XRPUSDT/BTCUSDT:
+
+- **Test C (partial exit at 1R): consistent, real.** All three symbols lose profit (ETH +$4,408 →
+  +$445, XRP +$9,479 → +$7,522, BTC +$2,411 → +$626) and all three gain drawdown protection
+  (6.57%→4.90%, 7.21%→5.60%, 5.61%→3.60%). Confirms the edge lives in a long tail; partial exits
+  are a legitimate risk tool with a known profit cost, not an improvement.
+- **Test B (holding period 12/24/36/48h): inconsistent.** ETH flat (PF 1.106-1.127 across a 4x
+  range), XRP U-shaped, BTC improving. The underlying mechanism *is* confirmed — longer holds
+  genuinely convert timeout exits into target hits with stable per-trade economics (XRP 96→144:
+  timeouts 23→12, take-profits 7→11) — but the net balance differs by symbol.
+- **Test A (internal volume-wave target): inconsistent and confounded.** ETH strongly worse, BTC
+  better, XRP mixed. Trade counts also collapse (ETH 92→21) because a nearer target fails the
+  unchanged 3R gate, so the test silently filters the entry set rather than isolating target choice.
+
+**Conclusion: exits/targets are not the lever, and the motivating observation was a selection
+effect.** Trades hitting stop or target exit early; what remains open at 24h is disproportionately
+the set drifting favourably but slowly, so those exits winning 86-100% is near-tautological rather
+than evidence the timeout creates value. The frozen baseline is retained unchanged and verified
+byte-identical (ETH 92 trades, +$4,408, PF 1.127). Next open items are roadmap steps 3 (extend
+labelled dataset to entry decisions) and 4 (multi-timeframe hierarchy) — both target entry quality,
+which matters more given the profit lives in a minority of far-running trades.
+
+### Research calendar shifted three months earlier (2026-08-11)
+
+At the user's request, the active calendar moved from training `[2023-05-07, 2025-05-07)` /
+validation `[2025-05-07, 2025-11-07)` / final `[2025-11-07, 2026-05-07)` to **training
+`[2023-02-07, 2025-02-07)` / validation `[2025-02-07, 2025-08-07)` / final
+`[2025-08-07, 2026-02-07)`**. Purpose: place every 2026 course review video *after* the reserved
+final-test window, so the ~77 ETHUSDT.P daily videos (and a further Feb-May 2026 set the user can
+supply) can be used for labelling without burning held-out data. Everything from 2026-02-07 onward
+is now post-final-test. Volume-profile bins start 2023-01-01, so the new training start retains
+map-lookback runway. Frozen historical experiment configs keep their original dates per existing
+convention; **results produced before this change are not directly comparable to results after it.**
+
+Family B re-baselined on the new window (old → new): ETH 92 tr/+$4,408/PF 1.127 → 98 tr/+$3,099/PF
+1.086; XRP 73 tr/+$9,479/PF 1.378 → **92 tr/+$13,319/PF 1.475**; BTC 34 tr/+$2,411/PF 1.174 →
+**40 tr/-$3,791/PF 0.776**; SOL 14 tr/+$3,999 → 23 tr/+$3,643/PF 1.418; BNB 5 tr/-$3,013 → 6
+tr/-$3,680. BTC flipping from +$2,411 to -$3,791 on a three-month window shift, with no code change,
+is another instance of the instability documented in `APOLLO_V5_ROADMAP.md` §3 and should be read
+that way rather than as a BTC-specific result.
+
+XRPUSDT Family B now passes **7 of 8** acceptance criteria on the new window (net +$13,319, PF 1.475,
+8.82% drawdown, 92 trades, 51.7% concentration, 2.00 win/loss, positive cost-stress), failing only
+profitable-subperiod count (2 of 4, needs 3). This is *not* treated as progress toward validation:
+it is the same candidate re-measured on a different window after ~80 training runs, which is exactly
+the best-of-N problem roadmap §3 warns about. Roadmap step 6 (pre-registration, revised evidence
+floor, walk-forward) still gates any validation attempt.
 
 ### Apollo V4.1 persistent-base implementation: training diagnostic rejected
 
