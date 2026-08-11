@@ -23,6 +23,75 @@ import java.util.Map;
  * than trusted.
  */
 public final class VolumeProfileFeatureAssemblerV5 {
+    /** Below this, a fixed profile is not meaningful. Declared in APOLLO_V7_PREREGISTRATION.md. */
+    private static final int MINIMUM_PROFILE_CANDLES = 3;
+
+    /**
+     * The course's fixed-profile selection rule, which no Apollo version had implemented.
+     *
+     * <p><i>"Determine the greatest body high and body low of the visually selected horizontal candle
+     * cluster, then include only candles fully inside those body bounds. The entrance and exit
+     * candles are excluded"</i> (pp. 25, 33).
+     *
+     * <p>V5 instead stretched the profile over every bucket from base start through the current bar,
+     * which included the entrance candle, every candle whose wick left the body bounds, and the
+     * breakout candle itself - the exit candle the source names explicitly. Those candles are
+     * systematically the volatile ones at the base edges and the breakout impulse, and they carry
+     * disproportionate volume, so including them biases the POC toward the edges and toward the
+     * breakout rather than toward where price actually spent time.
+     *
+     * <p>{@code base.low()}/{@code base.high()} are already body bounds, computed by
+     * {@code VariableBaseDetectorV5.exactBounds()} from open/close.
+     */
+    private static java.util.NavigableMap<Instant, List<VolumeProfileBin>> bodyBoundedWindow(
+            List<FeatureSnapshot> technical, VariableBaseDetectorV5.Base base,
+            java.util.NavigableMap<Instant, List<VolumeProfileBin>> byTime) {
+        java.util.TreeMap<Instant, List<VolumeProfileBin>> selected = new java.util.TreeMap<>();
+        // Starts one past the entrance candle; ends before the breakout, which is the exit candle.
+        for (int i = base.startIndex() + 1; i < base.endExclusive(); i++) {
+            FeatureSnapshot candle = technical.get(i);
+            if (candle.require(FeatureKey.high()).compareTo(base.high()) > 0) continue;
+            if (candle.require(FeatureKey.low()).compareTo(base.low()) < 0) continue;
+            List<VolumeProfileBin> atCandle = byTime.get(candle.candleOpenTime());
+            if (atCandle != null) selected.put(candle.candleOpenTime(), atCandle);
+        }
+        return selected;
+    }
+
+    /**
+     * Acceptance beyond a broken base must be made of impulse candles, not wicks.
+     *
+     * <p>Source: <i>"a breakout/retest entry requires real acceptance beyond the base: several
+     * full-bodied candles, not one or two wick-like candles"</i> (p. 53), and <i>"several
+     * full-bodied candles there, or a pair of impulse candles"</i> (p. 3). Until now the two
+     * acceptance candles were tested only for where they closed, so a pair of long-wicked dojis
+     * qualified exactly as a pair of impulse candles - the case p. 53 explicitly rejects.
+     *
+     * <p>A candle counts when its body is at least {@code minimumBodyFraction} of its high-low range
+     * <em>and</em> closes in the direction of the break, which is what "impulse" implies. The book
+     * does not specify the number or body size (see {@code APOLLO_COURSE_SOURCE_NOTES.md}); both are
+     * declared in {@code APOLLO_V7_ACCEPTANCE_PREREGISTRATION.md} rather than searched for.
+     *
+     * <p>A zero {@code minimumBodyFraction} disables the test and reproduces the frozen V5 baseline.
+     */
+    private static boolean acceptanceIsFullBodied(FeatureSnapshot breakout, FeatureSnapshot acceptance,
+                                                  int side, BigDecimal minimumBodyFraction,
+                                                  int minimumCandles) {
+        if (minimumBodyFraction.signum() <= 0) return true;
+        int impulses = 0;
+        for (FeatureSnapshot candle : List.of(breakout, acceptance)) {
+            BigDecimal open = candle.require(FeatureKey.open());
+            BigDecimal close = candle.require(FeatureKey.close());
+            BigDecimal range = candle.require(FeatureKey.high()).subtract(candle.require(FeatureKey.low()));
+            if (range.signum() <= 0) continue;
+            if (close.subtract(open).signum() != side) continue;
+            BigDecimal bodyFraction = close.subtract(open).abs()
+                    .divide(range, new java.math.MathContext(20, java.math.RoundingMode.HALF_UP));
+            if (bodyFraction.compareTo(minimumBodyFraction) >= 0) impulses++;
+        }
+        return impulses >= minimumCandles;
+    }
+
     public List<FeatureSnapshot> mergePersistentBases(List<FeatureSnapshot> technical,
                                                        List<VolumeProfileBin> bins,
                                                        FeatureKey atr, FeatureKey volume,
@@ -33,14 +102,18 @@ public final class VolumeProfileFeatureAssemblerV5 {
                                                        int referenceBars,
                                                        int maximumBoundaryTouches,
                                                        BigDecimal pocBinAtrFraction,
-                                                       BigDecimal internalWaveMinimumShare) {
+                                                       BigDecimal internalWaveMinimumShare,
+                                                       boolean consumedBasesRemainTargets,
+                                                       BigDecimal acceptanceMinimumBodyFraction,
+                                                       int acceptanceMinimumBodyCandles,
+                                                       boolean profileBodyBoundedSelection) {
         if (bins.isEmpty()) return List.of();
         java.util.NavigableMap<Instant, List<VolumeProfileBin>> byTime = new java.util.TreeMap<>();
         bins.forEach(bin -> byTime.computeIfAbsent(bin.bucketTime(), ignored -> new ArrayList<>()).add(bin));
         record MappedBase(int id, int breakout, int side, VariableBaseDetectorV5.Base base,
                           BigDecimal zoneLow, BigDecimal zoneHigh, BigDecimal zoneShare,
                           BigDecimal pocShare, BigDecimal totalQuote, BigDecimal volumeRatio,
-                          BigDecimal breakoutVolume) { }
+                          BigDecimal breakoutVolume, BigDecimal zoneDelta) { }
         record Active(MappedBase base, int revisit) { }
         VariableBaseDetectorV5 detector = new VariableBaseDetectorV5();
         List<MappedBase> mapped = new ArrayList<>();
@@ -64,23 +137,38 @@ public final class VolumeProfileFeatureAssemblerV5 {
                             : breakoutSnapshot.require(FeatureKey.close()).compareTo(base.low().subtract(threshold)) < 0
                             && snapshot.require(FeatureKey.close()).compareTo(base.low()) < 0 ? -1 : 0;
                     if (side == 0) continue;
+                    if (!acceptanceIsFullBodied(breakoutSnapshot, snapshot, side,
+                            acceptanceMinimumBodyFraction, acceptanceMinimumBodyCandles)) continue;
                     int touches = side > 0 ? base.highTouches() : base.lowTouches();
                     if (touches > maximumBoundaryTouches) continue;
                     Instant from = technical.get(base.startIndex()).candleOpenTime();
                     BigDecimal rawStep = bins.getFirst().priceStep();
                     BigDecimal analysisStep = aggregationStep(rawStep, breakoutSnapshot.require(atr), pocBinAtrFraction);
-                    BigDecimal[] p = profile(byTime.subMap(from, true, snapshot.candleOpenTime(), false),
-                            analysisStep, rawStep, neighborMinimumPocFraction);
+                    java.util.NavigableMap<Instant, List<VolumeProfileBin>> window =
+                            profileBodyBoundedSelection
+                                    ? bodyBoundedWindow(technical, base, byTime)
+                                    : byTime.subMap(from, true, snapshot.candleOpenTime(), false);
+                    if (profileBodyBoundedSelection && window.size() < MINIMUM_PROFILE_CANDLES) continue;
+                    BigDecimal[] p = profile(window, analysisStep, rawStep, neighborMinimumPocFraction);
                     if (p == null) continue;
                     boolean longScale = base.bars() > referenceBars;
                     BigDecimal currentBest = longScale ? bestLongPocShare : bestShortPocShare;
                     if (currentBest != null && p[3].compareTo(currentBest) <= 0) continue;
                     Instant priorFrom = from.minus(Duration.ofMinutes((long) base.bars() * bins.getFirst().bucketMinutes()));
                     BigDecimal prior = quoteTotal(byTime.subMap(priorFrom, true, from, false));
+                    // The volume ratio asks whether the base was built on more volume than the
+                    // period before it - a property of the base, not of profile geometry. It must
+                    // therefore always use the full base window. Feeding it the body-bounded total
+                    // would divide a reduced numerator by an unreduced denominator and deflate every
+                    // ratio, silently failing the minimumBaseVolumeRatio gate for reasons that have
+                    // nothing to do with the rule under test.
+                    BigDecimal totalForRatio = profileBodyBoundedSelection
+                            ? quoteTotal(byTime.subMap(from, true, snapshot.candleOpenTime(), false))
+                            : p[4];
                     MappedBase candidate = new MappedBase(nextId, breakout, side, base, p[0], p[1], p[2], p[3], p[4],
-                            prior.signum() == 0 ? BigDecimal.ZERO : p[4].divide(prior,
+                            prior.signum() == 0 ? BigDecimal.ZERO : totalForRatio.divide(prior,
                                     new java.math.MathContext(20, java.math.RoundingMode.HALF_UP)),
-                            breakoutSnapshot.require(volume));
+                            breakoutSnapshot.require(volume), p[5]);
                     if (longScale) { bestLong = candidate; bestLongPocShare = p[3]; }
                     else { bestShort = candidate; bestShortPocShare = p[3]; }
                 }
@@ -112,13 +200,20 @@ public final class VolumeProfileFeatureAssemblerV5 {
                 values.put(FeatureKey.selectedBasePocShare(), base.pocShare());
                 values.put(FeatureKey.selectedBaseTotalQuote(), base.totalQuote());
                 values.put(FeatureKey.selectedBaseVolumeRatio(), base.volumeRatio());
+                values.put(FeatureKey.selectedBaseDelta(), base.zoneDelta());
                 values.put(FeatureKey.selectedBaseBreakoutSide(), BigDecimal.valueOf(base.side()));
                 values.put(FeatureKey.selectedBaseBreakoutVolumeRatio(), base.breakoutVolume());
                 values.put(FeatureKey.selectedBaseFirstRevisit(), activeBase.revisit() == index
                         ? BigDecimal.ONE : BigDecimal.ZERO);
                 BigDecimal target = null;
                 for (MappedBase other : mapped) {
-                    if (other.id() == base.id() || consumed.contains(other.id())) continue;
+                    if (other.id() == base.id()) continue;
+                    // A consumed base can no longer generate an ENTRY (the course's "first revisit
+                    // consumes the setup"), but the source treats the price itself as a durable map
+                    // reference: APOLLO_LABELLED_EXAMPLES.md records 2,440.87 marked on both
+                    // 2026-03-04 and 2026-05-12, ten weeks apart and long after first contact.
+                    // When enabled, consumption therefore stops entries but not target eligibility.
+                    if (!consumedBasesRemainTargets && consumed.contains(other.id())) continue;
                     BigDecimal candidate = other.side() > 0 ? other.zoneLow() : other.zoneHigh();
                     boolean ahead = base.side() > 0 ? candidate.compareTo(snapshot.require(FeatureKey.close())) > 0
                             : candidate.compareTo(snapshot.require(FeatureKey.close())) < 0;
@@ -169,8 +264,13 @@ public final class VolumeProfileFeatureAssemblerV5 {
     private static BigDecimal[] profile(Map<Instant, List<VolumeProfileBin>> selected,
                                         BigDecimal step, BigDecimal rawStep, BigDecimal neighborFraction) {
         java.util.NavigableMap<BigDecimal, BigDecimal> raw = new java.util.TreeMap<>();
-        selected.values().forEach(bucket -> bucket.forEach(bin ->
-                raw.merge(bin.priceFrom(), bin.quoteNotional(), BigDecimal::add)));
+        BigDecimal deltaSum = BigDecimal.ZERO;
+        for (List<VolumeProfileBin> bucket : selected.values()) {
+            for (VolumeProfileBin bin : bucket) {
+                raw.merge(bin.priceFrom(), bin.quoteNotional(), BigDecimal::add);
+                deltaSum = deltaSum.add(bin.deltaQuote());
+            }
+        }
         if (raw.isEmpty()) return null;
         java.util.NavigableMap<BigDecimal, BigDecimal> totals = new java.util.TreeMap<>();
         raw.forEach((price, quote) -> totals.merge(floorToStep(price, step), quote, BigDecimal::add));
@@ -194,7 +294,12 @@ public final class VolumeProfileFeatureAssemblerV5 {
         BigDecimal multiple = step.divide(rawStep, MC);
         BigDecimal zoneShare = zone.divide(total, MC).divide(multiple, MC);
         BigDecimal pocShare = totals.get(poc).divide(total, MC).divide(multiple, MC);
-        return new BigDecimal[]{low, high, zoneShare, pocShare, total};
+        // Slot 5: net aggressor delta over the base, normalised by its own traded volume, so it is
+        // comparable across symbols and periods. Positive = buyers aggressed into the zone;
+        // negative = sellers aggressed. The classic absorption reading is that a zone which HELD
+        // while one side aggressed was absorbed by passive flow on the other side.
+        BigDecimal normalizedDelta = total.signum() == 0 ? BigDecimal.ZERO : deltaSum.divide(total, MC);
+        return new BigDecimal[]{low, high, zoneShare, pocShare, total, normalizedDelta};
     }
 
     /**

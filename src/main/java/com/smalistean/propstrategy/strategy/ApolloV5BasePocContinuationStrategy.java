@@ -28,7 +28,11 @@ public final class ApolloV5BasePocContinuationStrategy implements VolumeProfileA
                          BigDecimal minimumZoneShare, BigDecimal minimumPocShare, BigDecimal minimumBaseVolumeRatio, BigDecimal pocTouchAtr,
                          BigDecimal stopBaseHeightFraction, BigDecimal minimumRewardRisk,
                          int maximumHoldingBars, int baseMapLookbackDays, int maximumBoundaryTouches,
-                         BigDecimal pocBinAtrFraction, BigDecimal internalWaveMinimumShare) { }
+                         BigDecimal pocBinAtrFraction, BigDecimal internalWaveMinimumShare,
+                         int consumedBasesRemainTargets,
+                         BigDecimal acceptanceMinimumBodyFraction,
+                         int acceptanceMinimumBodyCandles,
+                         int profileBodyBoundedSelection) { }
     private static final MathContext MC = new MathContext(20, RoundingMode.HALF_UP);
     private static final int BARS_PER_DAY_15M = 96;
     private final Config c; private final FeatureKey atr, volume;
@@ -43,6 +47,10 @@ public final class ApolloV5BasePocContinuationStrategy implements VolumeProfileA
     public BigDecimal breakoutAtr(){ return c.breakoutAtr(); }
     public BigDecimal pocBinAtrFraction(){ return c.pocBinAtrFraction(); }
     public BigDecimal internalWaveMinimumShare(){ return c.internalWaveMinimumShare(); }
+    public boolean consumedBasesRemainTargets(){ return c.consumedBasesRemainTargets() != 0; }
+    public boolean profileBodyBoundedSelection(){ return c.profileBodyBoundedSelection() != 0; }
+    public BigDecimal acceptanceMinimumBodyFraction(){ return c.acceptanceMinimumBodyFraction(); }
+    public int acceptanceMinimumBodyCandles(){ return c.acceptanceMinimumBodyCandles(); }
     public int reclaimWindowBars(){ return c.reclaimWindowBars(); }
     public int referenceBars(){ return c.maximumBaseBars(); }
     public int maximumBoundaryTouches(){ return c.maximumBoundaryTouches(); }

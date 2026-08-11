@@ -227,6 +227,100 @@ it is the same candidate re-measured on a different window after ~80 training ru
 the best-of-N problem roadmap §3 warns about. Roadmap step 6 (pre-registration, revised evidence
 floor, walk-forward) still gates any validation attempt.
 
+### Volume-profile bins backfilled to 2022-10-01 (2026-08-11)
+
+The user extended klines and aggregate-trade minutes to 2022-10-01 for all 15 symbols;
+`futures_volume_profile_bin` was the remaining gap. Backfilled from local archives (no downloads)
+for ADAUSDT, BNBUSDT, BTCUSDT, DOGEUSDT, ETHUSDT, LINKUSDT, SOLUSDT, TRXUSDT and XRPUSDT — each on
+its active declared step from `VolumeProfilePriceSteps`; superseded steps were left at 2023-01-01
+since they are unused. No errors.
+
+**This removes the map-lookback constraint introduced by the calendar shift.** With bins from
+2022-10-01 and training starting 2023-02-07 there is a 129-day runway, and the bin query reaches
+back twice the lookback, so `strategy.baseMapLookbackDays` up to **~64 days** is now supported
+(previously ~18). The ~42-day lookback implied by the six-week level-persistence finding in
+`APOLLO_LABELLED_EXAMPLES.md` is therefore testable.
+
+### Apollo V5 map-lookback raised 7 -> 42 days; ETHUSDT passes all eight criteria (2026-08-11)
+
+Predeclared design in `APOLLO_V5_LOOKBACK_TEST.md`, motivated by ground truth rather than P&L
+scanning: the labelled videos show levels 1,986.11 and 2,011.26 marked on both 2026-06-23 and
+2026-08-05, six weeks apart, while V5 searched only 7 days back. Enabled by the 2022-10-01 bin
+backfill. 20 runs, Family B, four symbols, varying only `baseMapLookbackDays` (7/14/28/42/56).
+
+**The stated hypothesis was refuted.** Trade counts fall on all four symbols (ETH 98→86, XRP 92→67,
+BTC 40→32, SOL 23→17), and the predeclared criterion said explicitly that a longer map must find
+*more* bases to count as confirmation. It finds fewer, larger bases that subsume smaller ones.
+
+**A different effect is confirmed on all four symbols:** profit factor improves (ETH 1.086→1.222,
+XRP 1.475→1.599, BTC 0.776→1.051, SOL 1.418→1.673) and drawdown improves or holds (BTC
+9.15%→5.61%). Fewer trades, materially better ones — the first change in this project to move every
+tested symbol the same way.
+
+**Notable corroboration:** ETHUSDT and BTCUSDT give identical results at 42 and 56 days (to the
+cent) — the search saturates at 42 days, which is exactly the six-week persistence interval measured
+independently from the videos.
+
+**ETHUSDT at 42 days passes all eight acceptance criteria**: +$7,268.82, PF 1.222, 6.20% drawdown,
+86 trades, **3 of 4 profitable subperiods**, **41.2% concentration** (best recorded), 2.40 win/loss,
++$5,392 stressed. Subperiods +$1,603/+$3,543/-$687/+$3,608 — materially more robust than the earlier
+XRPUSDT pass, which fails subperiod stability at every lookback tested. Still a training result
+found among ~100 runs; roadmap step 6 gates validation. `baseMapLookbackDays=42` adopted as the
+frozen default (not 56: indistinguishable on ETH/BTC, slower, and its XRP/SOL edge is within noise).
+
+### Evidence standard built; ETHUSDT candidate rejected at Gate 1; validation still unopened (2026-08-11)
+
+Roadmap step 6 implemented as `APOLLO_V5_PREREGISTRATION.md`, locked before any validation data was
+read: the ETHUSDT/Family B/42-day candidate, its full parameter table, and explicit pass/fail
+thresholds, plus a list of things forbidden after seeing a result (symbol substitution, parameter
+changes, sub-range re-runs, partial passes). A `-DtradeListLimit` property was added to
+`BacktestApplication` so all trades can be exported for resampling; default 5 preserves prior output.
+
+Gate 1 ran on already-spent training data:
+
+- **1a bootstrap — FAIL.** 10,000 resamples of the 86 trades (fixed seed 20260811): 5th percentile
+  **-$10,921**, median +$7,131, 95th +$26,884, and only **73.8% of resamples profitable**. Roughly
+  one in four loses money. The observed +$7,269 is not distinguishable from luck at 95%.
+- **1b winner count — PASS.** 29 winners against a floor of 25 (the raw 86-fill count overstates
+  the evidence; all profit comes from those 29).
+- **1c walk-forward — PASS.** Seven 6-month windows stepped 3 months across training: 5 of 7
+  profitable, worst drawdown 5.00% against the 10% limit.
+
+**Validation `[2025-02-07, 2025-08-07)` was not opened and remains available.** 1a and 1c disagreeing
+is informative rather than contradictory: 1c shows the behaviour is not confined to one lucky
+stretch, while 1a shows the total depends heavily on which of the few large winners landed. That
+combination is the signature of a possibly-real edge measured with too little evidence, not of a
+spurious one — 29 winners cannot establish it either way. The indicated response is more independent
+observations (pooling symbols, earlier history now available from the 2022-10-01 backfill, or a
+source-grounded frequency increase), explicitly **not** re-tuning parameters until the bootstrap
+passes, which would optimise against the evidence test itself.
+
+Also noted: the calendar shift restored final-test cleanliness. All video-derived material is from
+February 2026 onward, after the new final-test window `[2025-08-07, 2026-02-07)`, and no Apollo work
+has read data inside it.
+
+### Labelled-example re-verification: four inherited entries corrected (2026-08-11)
+
+Four rows in `APOLLO_LABELLED_EXAMPLES.md` had been tabulated from the earlier
+`APOLLO_COURSE_SOURCE_NOTES.md` descriptions rather than from first-hand frame analysis, without the
+table distinguishing the two. All four were re-checked frame by frame and **every one needed a
+correction**:
+
+- `profili_obioma.mp4` — instrument confirmed (YFI/TetherUS perpetual, Binance, 1h) but the clip is
+  largely a TradingView **UI tutorial** on locating the Fixed Volume Profile tool, and **no on-screen
+  date exists**; the previously recorded "around 19 June 2025" is unverifiable.
+- `profil_obioma_lovushka.mp4` — the instrument is **EURGBP, a forex pair**, not crypto. The
+  POC-trap teaching holds but cannot be checked against our data.
+- `tbx.mp4` — a **hand-drawn schematic**, not market data; the "candles" are freehand lines.
+- `slom_trenda.mp4` — also a **hand-drawn schematic on a blank chart**. Its captions state two rules
+  explicitly: breaks "must alternate", and do not trade "your 15-minute against the higher
+  timeframe" — direct source support for roadmap step 4 (multi-timeframe hierarchy), stronger than
+  the inference previously drawn from other clips.
+
+**Consequence: none of these four can serve as detector recall test cases**, so the count of
+genuinely testable labelled examples is lower than the table's 20 rows implied. Entries in that file
+now record provenance; inherited descriptions and first-hand analysis are not interchangeable.
+
 ### Apollo V4.1 persistent-base implementation: training diagnostic rejected
 
 V4.1 replaces the immediate-breakout-only feature path with a causal map of

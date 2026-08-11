@@ -37,9 +37,16 @@ public final class AggregateTradePriceBinReader {
                      new InputStreamReader(zip, StandardCharsets.UTF_8), 1 << 20)) {
             ZipEntry entry = zip.getNextEntry();
             if (entry == null || entry.isDirectory()) throw new IllegalArgumentException("Archive contains no CSV");
+            // Binance changed the archive format: monthly files from roughly 2022 onward carry a
+            // "agg_trade_id,price,..." header row, while older ones begin directly with data. Peek
+            // at the first line and rewind if it is data, so both layouts parse identically.
+            reader.mark(1 << 16);
             String line = reader.readLine();
-            if (line == null || !line.startsWith("agg_trade_id,")) {
-                throw new IllegalArgumentException("Unexpected aggregate-trade CSV header");
+            if (line == null) {
+                throw new IllegalArgumentException("Aggregate-trade CSV is empty");
+            }
+            if (!line.startsWith("agg_trade_id,")) {
+                reader.reset();
             }
             long bucketMillis = bucketMinutes * 60_000L;
             while ((line = reader.readLine()) != null) {

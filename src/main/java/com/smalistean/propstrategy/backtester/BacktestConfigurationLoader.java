@@ -47,6 +47,7 @@ public final class BacktestConfigurationLoader {
                 datasetType,
                 date(engine, datasetPrefix + "Start"),
                 date(engine, datasetPrefix + "End"));
+        dataset = applyWindowOverride(dataset, engine);
 
         BacktestEngine.BacktestConfig backtestConfig = new BacktestEngine.BacktestConfig(
                 decimal(engine, "account.initialBalance"),
@@ -160,6 +161,59 @@ public final class BacktestConfigurationLoader {
                     "backtestDataset", required(properties, "backtest.dataset")));
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("backtest.dataset must be TRAINING, VALIDATION, or FINAL_TEST", e);
+        }
+    }
+
+    /**
+     * Optional {@code -DdatasetStart} / {@code -DdatasetEnd} narrowing of the evaluated window, used
+     * by walk-forward and rolling-origin runs so each fold does not need its own engine file.
+     *
+     * <p>The override is deliberately not free-form. It may only address the selected dataset's own
+     * window, or the prehistory that precedes {@code data.trainingStart} - the period that no
+     * calendar window claims. Any overlap with the validation or final-test windows is rejected
+     * unless that dataset type was explicitly selected, so a fold boundary typo can never silently
+     * read reserved data.
+     */
+    private static BacktestDataset applyWindowOverride(BacktestDataset dataset, Properties engine) {
+        String startOverride = System.getProperty("datasetStart");
+        String endOverride = System.getProperty("datasetEnd");
+        if (startOverride == null && endOverride == null) {
+            return dataset;
+        }
+        java.time.Instant start = startOverride == null ? dataset.startInclusive()
+                : parseDate("datasetStart", startOverride);
+        java.time.Instant end = endOverride == null ? dataset.endExclusive()
+                : parseDate("datasetEnd", endOverride);
+        if (!start.isBefore(end)) {
+            throw new IllegalArgumentException("datasetStart must be before datasetEnd, got "
+                    + start + " and " + end);
+        }
+        boolean withinSelectedWindow = !start.isBefore(dataset.startInclusive())
+                && !end.isAfter(dataset.endExclusive());
+        boolean withinPrehistory = dataset.type() == BacktestDataset.Type.TRAINING
+                && !end.isAfter(date(engine, "data.trainingStart"));
+        // Data after the final-test window is unclaimed by any calendar window, exactly like the
+        // prehistory before training. The calendar was shifted on 2026-08-11 specifically so that
+        // recent months fall outside the reserved windows, so refusing to read them would defeat
+        // the reason for the shift. Reserved data stays reachable only by naming its dataset type.
+        boolean afterFinalTest = dataset.type() == BacktestDataset.Type.TRAINING
+                && !start.isBefore(date(engine, "data.finalTestEnd"));
+        if (!withinSelectedWindow && !withinPrehistory && !afterFinalTest) {
+            throw new IllegalStateException("Refusing window [" + start + ", " + end + "): it is "
+                    + "neither inside the selected " + dataset.type() + " window ["
+                    + dataset.startInclusive() + ", " + dataset.endExclusive() + ") nor entirely "
+                    + "before data.trainingStart, nor entirely after data.finalTestEnd. Reserved "
+                    + "validation and final-test data can only be reached by selecting that dataset "
+                    + "type explicitly.");
+        }
+        return new BacktestDataset(dataset.type(), start, end);
+    }
+
+    private static java.time.Instant parseDate(String name, String value) {
+        try {
+            return LocalDate.parse(value.trim()).atStartOfDay(ZoneOffset.UTC).toInstant();
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new IllegalArgumentException("Property must be YYYY-MM-DD: " + name, e);
         }
     }
 

@@ -17,6 +17,7 @@ import com.smalistean.propstrategy.feature.MultiTimeframeFeatureAssembler;
 import com.smalistean.propstrategy.feature.VolumeProfileFeatureAssembler;
 import com.smalistean.propstrategy.feature.VolumeProfileFeatureAssemblerV5;
 import com.smalistean.propstrategy.feature.HigherTimeframeLiquidityMapAssembler;
+import com.smalistean.propstrategy.feature.HigherTimeframeBiasAssembler;
 import com.smalistean.propstrategy.strategy.Strategy;
 import com.smalistean.propstrategy.strategy.StrategyRegistry;
 import com.smalistean.propstrategy.strategy.VolumeProfileAwareStrategy;
@@ -123,7 +124,11 @@ public final class BacktestApplication {
                             .filter(key -> !key.name().startsWith("volumeProfile")
                                     && !key.name().startsWith("exactBase")
                                     && !key.name().startsWith("selectedBase")
-                                    && !key.name().startsWith("completedHour"))
+                                    && !key.name().startsWith("completedHour")
+                                    // supplied by HigherTimeframeBiasAssembler, not the 15m generator
+                                    && !key.name().startsWith("higherTimeframe")
+                                    // supplied by MarketRegimeAssembler from Binance metrics
+                                    && !key.name().startsWith("market"))
                             .collect(java.util.stream.Collectors.toSet());
             List<FeatureSnapshot> technical = featureGenerator.generate(candles, technicalKeys);
             if (strategy instanceof ApolloVariableBasePocStrategy variable
@@ -161,7 +166,9 @@ public final class BacktestApplication {
                             v5.referenceBars(), v5.maximumBoundaryTouches(),
                             com.smalistean.propstrategy.database.VolumeProfilePriceSteps
                                     .pocBinAtrFractionFor(marketSymbol, v5.pocBinAtrFraction()),
-                            v5.internalWaveMinimumShare())
+                            v5.internalWaveMinimumShare(), v5.consumedBasesRemainTargets(),
+                            v5.acceptanceMinimumBodyFraction(), v5.acceptanceMinimumBodyCandles(),
+                            v5.profileBodyBoundedSelection())
                     : strategy instanceof ApolloV5LiquidityLimitStrategy vb
                     ? new VolumeProfileFeatureAssemblerV5().mergePersistentBases(technical, bins, vb.atrKey(),
                             com.smalistean.propstrategy.feature.FeatureKey.volumeRatio(vb.volumePeriod()),
@@ -169,8 +176,29 @@ public final class BacktestApplication {
                             vb.referenceBars(), vb.maximumBoundaryTouches(),
                             com.smalistean.propstrategy.database.VolumeProfilePriceSteps
                                     .pocBinAtrFractionFor(marketSymbol, vb.pocBinAtrFraction()),
-                            vb.internalWaveMinimumShare())
+                            vb.internalWaveMinimumShare(), vb.consumedBasesRemainTargets(),
+                            vb.acceptanceMinimumBodyFraction(), vb.acceptanceMinimumBodyCandles(),
+                            vb.profileBodyBoundedSelection())
                     : assembler.merge(technical, bins, lookback, neighborFraction);
+            if (strategy instanceof ApolloV5LiquidityLimitStrategy hb && hb.requiresHigherTimeframeAlignment()) {
+                List<Kline> hourlyForBias = klineRepository.findRangeWithWarmup(marketSymbol, "1h",
+                        loaded.dataset().startInclusive(), loaded.dataset().endExclusive(), 240);
+                generatedSnapshots = new HigherTimeframeBiasAssembler()
+                        .attach(generatedSnapshots, hourlyForBias, hb.higherTimeframePivotStrength());
+            }
+            // Regime is attached whenever metrics exist for the symbol and window. A strategy that
+            // does not ask for the feature simply never reads it, so this stays inert by default.
+            int regimeDays = Integer.getInteger("marketRegimeDays", 30);
+            if (regimeDays > 0) {
+                var metrics = new com.smalistean.propstrategy.database.PostgresMetricSnapshotRepository(database)
+                        .findRange(marketSymbol,
+                                loaded.dataset().startInclusive().minusSeconds((long) regimeDays * 86400L * 2),
+                                loaded.dataset().endExclusive());
+                if (!metrics.isEmpty()) {
+                    generatedSnapshots = new com.smalistean.propstrategy.feature.MarketRegimeAssembler()
+                            .attach(generatedSnapshots, metrics, regimeDays);
+                }
+            }
         } else {
             generatedSnapshots = featureGenerator.generate(candles, strategy.requiredFeatures());
         }
@@ -223,10 +251,20 @@ public final class BacktestApplication {
                     stats.makerEntryFills(), stats.makerEntryOrders(), stats.expiredMakerEntries(),
                     stats.makerExitFills(), stats.makerExitOrders(), stats.takerExitFallbacks());
         }
-        result.account().closedTrades().stream().limit(5).forEach(trade ->
-                System.out.printf("%s %s -> %s net=%s reason=%s%n",
+        // Default 5 keeps existing output; -DtradeListLimit=0 prints every trade, which the
+        // bootstrap/walk-forward evidence tooling needs to resample individual trade PnLs.
+        int tradeListLimit = Integer.getInteger("tradeListLimit", 5);
+        result.account().closedTrades().stream()
+                .limit(tradeListLimit == 0 ? Long.MAX_VALUE : tradeListLimit).forEach(trade ->
+                // entry/exit prices are printed so favorable-excursion analysis can reconstruct how
+                // far a trade ran before it closed, without altering the engine to record it.
+                System.out.printf("%s %s -> %s net=%s entry=%s exit=%s qty=%s reason=%s%n",
                         trade.side(), trade.entryTime(), trade.exitTime(),
-                        trade.netPnl().stripTrailingZeros().toPlainString(), trade.exitReason()));
+                        trade.netPnl().stripTrailingZeros().toPlainString(),
+                        trade.entryPrice().stripTrailingZeros().toPlainString(),
+                        trade.exitPrice().stripTrailingZeros().toPlainString(),
+                        trade.quantity().stripTrailingZeros().toPlainString(),
+                        trade.exitReason()));
 
         if (Boolean.getBoolean("diagnostics")) {
             System.out.println(new StrategyDiagnosticReport().generate(
@@ -277,10 +315,20 @@ public final class BacktestApplication {
         PerformanceReport reportGenerator = new PerformanceReport();
         List<PerformanceReport.Report> subperiodReports = new java.util.ArrayList<>();
         Instant subperiodStart = loaded.dataset().startInclusive();
-        for (int index = 1; index <= 4; index++) {
+        // Derived from the dataset window rather than fixed at four, which silently assumed a
+        // 24-month training period. A shorter window (a walk-forward fold, or the pre-training
+        // history) left the trailing periods with no bars at all, and the engine's "requires at
+        // least one bar" guard then failed the whole run after the main report had already been
+        // computed. The final period is clamped to the dataset end so it is measured, not dropped.
+        for (int index = 1; subperiodStart.isBefore(loaded.dataset().endExclusive()); index++) {
             Instant periodStart = subperiodStart;
-            Instant subperiodEnd = ZonedDateTime.ofInstant(periodStart, ZoneOffset.UTC)
+            Instant uncapped = ZonedDateTime.ofInstant(periodStart, ZoneOffset.UTC)
                     .plusMonths(6).toInstant();
+            Instant subperiodEnd = uncapped.isAfter(loaded.dataset().endExclusive())
+                    ? loaded.dataset().endExclusive() : uncapped;
+            if (between(bars, periodStart, subperiodEnd).isEmpty()) {
+                break;
+            }
             List<BacktestEngine.BacktestBar> subBars = between(bars, periodStart, subperiodEnd);
             List<FundingRate> subFunding = funding.stream()
                     .filter(rate -> !rate.fundingTime().isBefore(periodStart)
@@ -325,7 +373,18 @@ public final class BacktestApplication {
                 stressed.netProfit().stripTrailingZeros().toPlainString(),
                 stressed.tradeStats().profitFactor().stripTrailingZeros().toPlainString(),
                 stressed.drawdown().maxDrawdownPct().stripTrailingZeros().toPlainString());
-        System.out.println(evaluator.evaluate(criteria, overall, subperiodReports, stressed));
+        // The acceptance gate is defined against the full four-subperiod training window. A shorter
+        // window (walk-forward fold, or pre-training history) cannot satisfy it, and running it
+        // anyway would only produce a meaningless verdict. Skipping is stated explicitly rather
+        // than silently, so a skipped gate is never mistaken for a passed one.
+        if (subperiodReports.size() == 4) {
+            System.out.println(evaluator.evaluate(criteria, overall, subperiodReports, stressed));
+        } else {
+            System.out.printf("Acceptance evaluation SKIPPED - NOT PASSED, NOT RUN: the gate needs "
+                    + "four 6-month subperiods and this window [%s, %s) produced %d.%n",
+                    loaded.dataset().startInclusive(), loaded.dataset().endExclusive(),
+                    subperiodReports.size());
+        }
     }
 
     private static List<BacktestEngine.BacktestBar> between(

@@ -21,7 +21,7 @@ class ApolloV5BasePocContinuationStrategyTest {
                         bd("0.75"), bd("2.5"), bd("0.35"), bd("0.025"), bd("0.35"),
                         bd("0.1"), bd("0.25"), 24, 12, 1, bd("0.25"), bd("0.15"),
                         bd("1.2"), bd("0.02"), bd("0.05"), bd("1.2"), bd("0.15"),
-                        bd("0.25"), bd("3"), 96, 0, 2, bd("0.1"), bd("0")));
+                        bd("0.25"), bd("3"), 96, 0, 2, bd("0.1"), bd("0"), 0, bd("0"), 2, 0));
         List<FeatureSnapshot> history = new ArrayList<>();
         history.add(snapshot(0, "111", "112", "110", "111")); // accepted breakout
         history.add(snapshot(1, "106", "108", "105", "106")); // acceptance close

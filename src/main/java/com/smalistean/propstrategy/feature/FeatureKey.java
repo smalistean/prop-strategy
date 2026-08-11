@@ -165,6 +165,14 @@ public record FeatureKey(String name, int period, int lookback) {
     public static FeatureKey completedHourEma(int period) { return new FeatureKey("completedHourEma", period); }
     public static FeatureKey crossSectionRank() { return new FeatureKey("crossSectionRank", 0); }
     public static FeatureKey btcMarketHealthy() { return new FeatureKey("btcMarketHealthy", 0); }
+    /** Higher-timeframe structural bias from confirmed 1h swings: +1 uptrend, -1 downtrend, 0 undecided. */
+    /** Net aggressor delta of the base zone, as a signed fraction of its total quote volume. */
+    public static FeatureKey selectedBaseDelta() { return new FeatureKey("selectedBaseDelta", 0); }
+    public static FeatureKey higherTimeframeBias() { return new FeatureKey("higherTimeframeBias", 0); }
+    /** +1 new longs, -1 new shorts, 0 unwind/undecided. See MarketRegimeAssembler. */
+    public static FeatureKey marketRegime() { return new FeatureKey("marketRegime", 0); }
+    /** Market-wide taker buy/sell volume ratio at the bar, from Binance metrics archives. */
+    public static FeatureKey marketTakerRatio() { return new FeatureKey("marketTakerRatio", 0); }
     public static FeatureKey higherTimeframeSupport() { return new FeatureKey("higherTimeframeSupport", 0); }
     public static FeatureKey higherTimeframeResistance() { return new FeatureKey("higherTimeframeResistance", 0); }
     public static FeatureKey completedFourHourClose() { return new FeatureKey("completedFourHourClose", 0); }

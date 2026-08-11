@@ -127,6 +127,7 @@ public final class BacktestEngine {
         PropRuleEngine propRules = new PropRuleEngine(config.propRules());
         List<FeatureSnapshot> history = bars.stream().map(BacktestBar::features).toList();
         StrategyDecision pending = StrategyDecision.hold();
+        RestingOrder resting = null;
         Optional<PropRuleEngine.Violation> termination = Optional.empty();
         int fundingIndex = 0;
         int minuteIndex = 0;
@@ -148,6 +149,8 @@ public final class BacktestEngine {
             List<Kline> withinBar = minuteCandles.subList(minuteIndex, minuteEnd);
 
             executePending(pending, account, sizer, execution, bar, withinBar, tracker);
+            resting = tryFillResting(resting, account, sizer, execution, bar, withinBar, tracker);
+            resting = placeResting(resting, pending, account, bar, tracker);
             applyFundingThrough(account, fundingRates, bar, fundingIndex);
             while (fundingIndex < fundingRates.size()
                     && !fundingRates.get(fundingIndex).fundingTime().isAfter(bar.closeTime())) {
@@ -184,6 +187,9 @@ public final class BacktestEngine {
         if (pending instanceof StrategyDecision.Exit exit && account.hasOpenPosition()) {
             executeExit(account, execution, bar, minuteCandles, exit.reason(), tracker);
             return;
+        }
+        if (pending instanceof StrategyDecision.EnterAtLimit) {
+            return; // handled by the resting-order path, not executed at market
         }
         if (!(pending instanceof StrategyDecision.Enter)
                 && !(pending instanceof StrategyDecision.EnterAtLevels)
@@ -461,6 +467,80 @@ public final class BacktestEngine {
                 account.applyFunding(account.side() == Side.LONG ? payment.negate() : payment);
             }
         }
+    }
+
+    private record RestingOrder(Side side, BigDecimal entryPrice, BigDecimal stopPrice,
+                               BigDecimal targetPrice, int barsRemaining) { }
+
+    /**
+     * Accepts or refreshes a resting limit order. A genuine limit must sit on the far side of the
+     * market - a buy below it, a sell above - otherwise it would fill instantly at a price better
+     * than the market was offering, which is not an order the exchange would have honoured.
+     */
+    private RestingOrder placeResting(RestingOrder current, StrategyDecision pending,
+                                      Account account, Kline bar, ExecutionTracker tracker) {
+        if (account.hasOpenPosition()) {
+            return null; // an open position cancels any working order
+        }
+        if (!(pending instanceof StrategyDecision.EnterAtLimit limit)) {
+            return current;
+        }
+        boolean marketable = limit.side() == Side.LONG
+                ? limit.entryPrice().compareTo(bar.close()) >= 0
+                : limit.entryPrice().compareTo(bar.close()) <= 0;
+        if (marketable) {
+            return current;
+        }
+        if (current != null) {
+            // A working order is left alone. Re-deriving it each bar would reprice it as the zone
+            // drifts and reset its lifetime every time, so it could never expire - a trailing order,
+            // not the "place a limit and let price come to it" the source describes.
+            return current;
+        }
+        tracker.makerEntryOrders++;
+        return new RestingOrder(limit.side(), limit.entryPrice(), limit.stopPrice(),
+                limit.targetPrice(), limit.lifetimeBars());
+    }
+
+    /** Fills a resting limit from the bar's minute candles, or ages it toward expiry. */
+    private RestingOrder tryFillResting(RestingOrder resting, Account account, PositionSizer sizer,
+                                        ExecutionModel execution, Kline bar,
+                                        List<Kline> minuteCandles, ExecutionTracker tracker) {
+        if (resting == null) {
+            return null;
+        }
+        if (account.hasOpenPosition()) {
+            return null;
+        }
+        boolean buy = resting.side() == Side.LONG;
+        for (Kline minute : minuteCandles) {
+            boolean tradedThrough = buy
+                    ? minute.low().compareTo(resting.entryPrice()) <= 0
+                    : minute.high().compareTo(resting.entryPrice()) >= 0;
+            if (!tradedThrough) {
+                continue;
+            }
+            BigDecimal quantity = sizer.size(account.balance(), resting.entryPrice(),
+                    resting.stopPrice());
+            BigDecimal maximumQuantity = account.balance().multiply(config.maxLeverage(), MC)
+                    .divide(resting.entryPrice(), MC);
+            quantity = quantity.min(maximumQuantity);
+            if (quantity.signum() <= 0) {
+                return null;
+            }
+            tracker.makerEntryFills++;
+            ExecutionModel.Fill fill = execution.makerFill(resting.entryPrice(), quantity);
+            account.open(minute.closeTime(), resting.side(), quantity,
+                    resting.stopPrice(), resting.targetPrice(), fill);
+            return null;
+        }
+        int remaining = resting.barsRemaining() - 1;
+        if (remaining <= 0) {
+            tracker.expiredMakerEntries++;
+            return null;
+        }
+        return new RestingOrder(resting.side(), resting.entryPrice(), resting.stopPrice(),
+                resting.targetPrice(), remaining);
     }
 
     private MakerFill findMakerFill(Kline bar, List<Kline> minuteCandles, boolean buy) {

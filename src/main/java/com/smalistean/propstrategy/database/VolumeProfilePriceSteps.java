@@ -28,19 +28,25 @@ import java.util.Map;
  * reprocessing 22-25 GB of already-imported local archives each with no concrete evidence either
  * is wrong, unlike BNB/SOL where the coarseness was directly measurable.
  * <p>
- * These values are the RAW stored bin width, deliberately finer than any single POC/zone
- * computation needs - {@code VolumeProfileFeatureAssemblerV5.aggregationStep} rounds this up to a
- * whole multiple sized off ATR at compute time (2026-08-10), so the effective analysis resolution
- * tracks current volatility instead of being fixed at import. BNBUSDT and SOLUSDT were re-imported
- * a second time at $0.02 and $0.01 specifically because their first revisit ($1 and $0.5) turned
- * out to already be at or coarser than the ATR-scaled target (avg 15m bar range ~$1.86 and ~$0.85,
- * so a 0.1x-ATR analysis bin wants ~$0.19 and ~$0.09) - with raw that coarse the aggregation logic
- * has no room to operate and silently becomes a no-op, reproducing the same regression a flat finer
- * step already showed. BTCUSDT's existing $10 raw already leaves the aggregation genuine room (avg
- * 15m range ~$212 needs an analysis step of ~$21, i.e. ~2x raw) so it was left as-is; ETHUSDT's $10
- * raw is coarser than its own ATR-scaled target (~$1.12), so aggregation is currently a no-op for
- * ETH too, same open question as BNB/SOL but not yet acted on given the 25 GB reprocessing cost and
- * no evidence of a problem there.
+ * Consistency pass (2026-08-11). Between 2026-08-10 and 2026-08-11 these values were set by three
+ * different methodologies: (1) "a few hundred distinct levels across the full price range" for most
+ * symbols, (2) the untouched original $10 for BTCUSDT/ETHUSDT, and (3) roughly ten times finer than
+ * an ATR-scaled target for BNBUSDT/SOLUSDT, to give
+ * {@code VolumeProfileFeatureAssemblerV5.aggregationStep} headroom to operate. Methodology (3) was
+ * abandoned: it never outperformed, and the evidence ran the other way - ETHUSDT re-imported at 1
+ * instead of 10 went from 92 trades / +$4,408 / completed to 24 trades / -$8,882 / MAX_DRAWDOWN, and
+ * BNBUSDT was negative in every configuration tried while XRPUSDT, on methodology (1), is the
+ * strongest symbol measured.
+ * <p>
+ * BNBUSDT and SOLUSDT are therefore back on methodology (1) at 1 and 0.5, giving 1,174 and 573
+ * distinct levels - in line with XRPUSDT (674), ADAUSDT (596) and LINKUSDT (526). Those bins already
+ * existed in the database from the earlier revisit, so no re-import of the main range was needed;
+ * only the 2022-10-01..2023-01-01 lookback runway had to be backfilled at the restored steps. The
+ * finer step=0.02 / step=0.01 rows are retained for reference but are no longer selected.
+ * <p>
+ * The single property that actually matters, and the reason the original flat $10 was a genuine bug,
+ * is that no symbol's price range may collapse into one bin. Every value below yields hundreds of
+ * distinct levels across its own range, so that failure mode is closed.
  */
 public final class VolumeProfilePriceSteps {
     private static final Map<String, BigDecimal> DEFAULTS = Map.ofEntries(
@@ -51,10 +57,10 @@ public final class VolumeProfilePriceSteps {
             // MAX_DRAWDOWN termination. The finer representation is account-destroying here, not
             // merely less profitable. The step=1 rows are retained in the database for reference.
             Map.entry("ETHUSDT", new BigDecimal("10")),
-            Map.entry("BNBUSDT", new BigDecimal("0.02")),
+            Map.entry("BNBUSDT", new BigDecimal("1")),
             Map.entry("BCHUSDT", new BigDecimal("5")),
             Map.entry("AAVEUSDT", new BigDecimal("1")),
-            Map.entry("SOLUSDT", new BigDecimal("0.01")),
+            Map.entry("SOLUSDT", new BigDecimal("0.5")),
             Map.entry("LTCUSDT", new BigDecimal("0.5")),
             Map.entry("AVAXUSDT", new BigDecimal("0.1")),
             Map.entry("ETCUSDT", new BigDecimal("0.1")),
@@ -66,24 +72,14 @@ public final class VolumeProfilePriceSteps {
             Map.entry("DOGEUSDT", new BigDecimal("0.001")));
 
     /**
-     * Declared, per-symbol {@code pocBinAtrFraction} override (2026-08-10). The strategy config
-     * default (0.1) sets BTCUSDT's typical aggregation multiple - how many raw bins get merged into
-     * one analysis bin at average ATR - to ~2x. Applying that same flat fraction to BNBUSDT/SOLUSDT
-     * produced a ~9x typical multiple instead, because their raw steps (above) were deliberately
-     * picked far finer than their ATR-scaled target when the aggregation-only design was still being
-     * tested; once minimumPocShare/minimumZoneShare were normalized by dividing out the aggregation
-     * multiple (correcting for coarser bins mechanically inflating concentration), that much larger
-     * multiple made the threshold far harder to clear for BNB/SOL than for BTC, collapsing their
-     * trade counts (79->3 and 85->13 respectively). Rather than re-importing raw data again, these
-     * two fractions were solved to reproduce BTC's own ~2x typical multiple against BNB/SOL's
-     * existing raw steps and real average ATR (avg 15m bar range ~$1.86 and ~$0.85): fraction =
-     * targetMultiple * rawStep / avgAtr. Symbols not listed here fall back to the strategy config's
-     * declared value rather than throwing, since an un-normalized default is a reasonable starting
-     * point, not a silently-degenerate one the way an unlisted price step would be.
+     * Per-symbol {@code pocBinAtrFraction} overrides. Now empty: the BNBUSDT/SOLUSDT entries existed
+     * only to tame the ~9x aggregation multiple created by their ultra-fine methodology-(3) steps,
+     * and became redundant when those steps were restored to 1 and 0.5 on 2026-08-11. At those steps
+     * the ATR-scaled target is finer than one raw bin, so aggregation is a no-op and the
+     * concentration normalization divides by 1 - the same behaviour as the other thirteen symbols.
+     * Kept as an extension point; symbols not listed fall back to the strategy config's value.
      */
-    private static final Map<String, BigDecimal> ATR_FRACTION_OVERRIDES = Map.of(
-            "BNBUSDT", new BigDecimal("0.02"),
-            "SOLUSDT", new BigDecimal("0.025"));
+    private static final Map<String, BigDecimal> ATR_FRACTION_OVERRIDES = Map.of();
 
     private VolumeProfilePriceSteps() {}
 

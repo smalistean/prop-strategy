@@ -85,6 +85,34 @@ and not a general recall/precision measurement — extending the comparison to t
 examples in the table above, or to a larger set of exact-price labels, is the natural next
 iteration of this task.
 
+## Provenance correction and re-verification (2026-08-11)
+
+The 20-row table below was assembled partly from my own frame analysis and partly from the
+pre-existing descriptions in `APOLLO_COURSE_SOURCE_NOTES.md`, written in an earlier session. It did
+not distinguish the two. Four rows — `profili_obioma`, `profil_obioma_lovushka`, `slom_trenda`,
+`tbx` — were **not** independently verified when first tabulated. All four have now been re-checked
+frame by frame. **Every one required a correction**, and in each case the correction matters for
+whether the clip can be used as a test case at all:
+
+| Clip | Prior description | Verified finding |
+| --- | --- | --- |
+| `profili_obioma.mp4` | "manually selects TradingView's Fixed Range Volume Profile and stretches it over a small, visually bounded horizontal candle cluster (YFIUSDT 1h, **around 19 June 2025**)" | Instrument confirmed: **YFI/TetherUS PERPETUAL, Binance, 1h**. But the clip is largely a **UI tutorial** — navigating the drawing-tools menu to locate "Фиксированный профиль объёма" under the volume-based section — not a worked application over a cluster. **No date is visible on screen in any sampled frame**; the "19 June 2025" claim could not be verified and should not be relied on. |
+| `profil_obioma_lovushka.mp4` | POC-trap example; chart not identified | **The instrument is EURGBP — a forex pair, not crypto.** Price axis 0.826-0.856, "GBP" selector. The POC-trap teaching itself checks out (level 0.84082, price passes through toward deeper liquidity near 0.836 before reversing), but being forex it can never be checked against our data. |
+| `tbx.mp4` | "treats a bounded consolidation as a tradable box only after a breakout is accepted and then retested" | Teaching confirmed (box → breakout → retest circled above the box → stop hidden below, caption **МЫ ЛОС ПРЯЧЕМ**; take-profit further in the direction). But it is a **hand-drawn schematic**: the "candles" are freehand yellow lines on an otherwise empty chart. The 780.17 level is only where he happened to draw. **Not market data — can never be a recall test case.** |
+| `slom_trenda.mp4` | "a слом тренда must invalidate an identifiable sequence of swings on the setup timeframe" | Teaching confirmed and sharpened, but **also a hand-drawn schematic on a completely blank chart** (price axis 0.034-0.066 USDT, no candles at all). Captions state two rules explicitly: **ДОЛЖНЫ ЧЕРЕДОВАТЬСЯ** ("[breaks] must alternate") and **ВАША ПЯТНАДЦАТИМИНУТКА … ПРОТИВ СТАРШЕГО** ("your 15-minute against the higher [timeframe]"). **Not market data.** |
+
+**Consequences:**
+
+1. **None of these four can serve as detector recall test cases.** Two are freehand schematics, one
+   is forex, one is a UI tutorial. The original table implied they were chart examples. The count of
+   genuinely testable labelled examples is correspondingly lower than 20.
+2. The `slom_trenda` captions are **direct source support for roadmap step 4** (multi-timeframe
+   swing hierarchy): the clip explicitly warns against trading the 15-minute against the higher
+   timeframe, and states that breaks must alternate. That strengthens step 4's grounding beyond the
+   inference previously drawn from `slom_trenda_tf` and `slom-trenda2`.
+3. Any future entry in this file should record **who verified it and from what** — inherited
+   descriptions and first-hand frame analysis are not interchangeable.
+
 ## Instrument audit (2026-08-11) — which videos can support exact-price labelling
 
 Checked by extracting the on-chart ticker label from sample videos in both folders. The two sets
@@ -145,6 +173,72 @@ V5's `strategy.baseMapLookbackDays=7` searches only seven days back for base can
 direct, dated, exact-price evidence that the real map is roughly **6x longer-lived** than what V5
 looks for. That is a concrete, source-grounded reason to revisit the lookback — and unlike the
 granularity work, it comes from ground truth rather than from scanning backtest P&L.
+
+### Second batch: new material added 2026-08-11
+
+The user added **57 further ETHUSDT.P daily reviews covering February-May 2026** (previously the
+set started in May), plus two new concept clips. Under the shifted calendar (final test now ends
+2026-02-07) this entire Feb-May 2026 range is post-final-test and free to label from.
+
+**`tochka_vhoda.mp4`** — "ТОЧКА ВХОДА В СДЕЛКУ" (entry point into a trade). The most directly
+on-topic clip yet for entry labelling. ETHUSDT.P, caption sequence **СЛОМ → РЕТЕСТ → ВХОДИТЬ**
+(break → retest → enter), i.e. Family A. Levels read at full resolution:
+
+| Field | Value |
+| --- | --- |
+| Broken-and-retested level (entry zone) | **1,996.61** |
+| Adjacent level | 1,992.41 |
+| Swept low | **1,963.70** |
+| Upper level | 2,068.10 |
+
+Structure: price collapsed through 1,996.61, bottomed near 1,963.70, consolidated, then returned to
+retest 1,996.61 from below — the retest is the marked entry. **Date unresolved:** the clip carries
+no on-screen date, and attempts to pin it by price signature failed (ETH traded this range in
+Feb-Mar, May and Jul 2026; the 2,068.10 is a drawn level rather than a candle high, so it does not
+localise). Usable as a structural entry example, not yet as a dated one.
+
+**`29,04 лимиткой.mp4`** — "29 April, with a limit order", subtitled **"Не выгодно"** (not worth
+it). Dated **2026-04-29**, ETHUSDT.P ~2,218-2,228, and directly about **Family B** (limit entry).
+Captions **ВЫСТАВЛЯЕМ ОСНОВНЫЕ … ЗАПАСА** ("we place the main [orders] … reserve") are the
+split-limit-order concept from Книга 2.0 pp. 36/52-54 — several limits across volume waves with
+total risk unchanged. Levels: 2,311.24 · 2,300 · 2,216.75 · 2,200 · 2,199.16 · 2,195.70 · 2,191.71 ·
+2,187.10 · 2,176.82 · 2,175.67 · 2,154.47. A **fixed-range volume profile histogram is visible**
+(~2,200-2,240) with a drawn horizontal at 2,216.75 through its dense area — a direct POC comparison
+point. The "not worth it" framing means this is a **negative** Family B example: worth labelling
+precisely because it shows when the trader declines a limit entry.
+
+### Dated Feb-May 2026 examples (post-final-test under the shifted calendar)
+
+| Video | Date | Price at recording | Marked levels | Notes |
+| --- | --- | ---: | --- | --- |
+| `29,04 лимиткой.mp4` | 2026-04-29 | ~2,218-2,228 | 2,311.24 · 2,300 · 2,216.75 · 2,200 · 2,199.16 · 2,195.70 · 2,191.71 · 2,187.10 · 2,176.82 · 2,175.67 · 2,154.47 | **Family B negative example.** Volume profile visible; drawn line at 2,216.75 through its dense area |
+| `07,04 эфир .mp4` | 2026-04-07 (on-screen title "07.04.2026") | 2,081.26 | 2,293.95 · 2,163.63 · 2,150.00 · 2,135.36 · 2,050.17 · 1,992.41 · 1,891.38 · 1,857.62 | Volume profile dense ~2,140-2,175; captions РАЗВОРОТА ТРЕНДА (trend reversal) |
+
+| `04,03 эфир .mp4` | 2026-03-04 (on-screen title "04.03.2026") | 2,144.52 | 2,488.85 · **2,440.87** · 2,400 · 2,293.95 · 2,200 · 2,068.54 · 2,000 · 1,891.38 · 1,857.62 · 1,804.58 · 1,626.70 · 1,581.57 · 1,410.52 | Volume profile dense ~1,990-2,070; captions ЛОНГИ / ЦЕЛЬ ("longs" / "target") with a circled objective near 2,262-2,294 |
+
+Contact sheets also generated but not yet read in detail: `13,02`, `02,05`.
+
+### Level persistence extends to ~10 weeks
+
+`2,440.87` appears as a marked level on **2026-03-04** (`04,03`) and again on **2026-05-12**
+(`12,05`) — identical to the cent, **~10 weeks apart**. That is longer than the six-week interval
+measured earlier from `1,986.11` / `2,011.26` (2026-06-23 → 2026-08-05).
+
+This creates a tension worth recording rather than smoothing over: the trader's annotations persist
+at least 10 weeks, but the mechanical map **saturates at 42 days** — ETHUSDT and BTCUSDT produced
+identical results at 42 and 56 days in `APOLLO_V5_LOOKBACK_TEST.md`. So a longer search window does
+not find more, even though the human map is demonstrably longer-lived.
+
+The likely explanation is that the two are not measuring the same thing: the detector requires a
+base to satisfy width/drift/slope/penetration geometry within the window, whereas a marked level
+survives in the trader's map as a *price*, decoupled from whatever structure originally created it.
+If so, the productive direction is not a longer lookback but **persisting levels independently of
+the bases that produced them** — a structural change, not a parameter one. Recorded as a hypothesis;
+not tested.
+
+**Useful observation for automated processing:** several videos carry the date in the on-screen
+title card (e.g. `07,04` shows "07.04.2026"), which corroborates the filename convention
+`DD,MM` = 2026. That means the filename date can be trusted without opening each video.
 
 ### Not yet extracted
 
