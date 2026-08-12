@@ -14,6 +14,15 @@ import java.util.Optional;
 
 public final class PostgresKlineRepository {
 
+    /**
+     * Spot klines live in {@code spot_kline}, not here. They are the same shape but a different
+     * market, and keeping them apart means a query against futures data cannot silently include
+     * spot - see V8__create_spot_kline.sql for what went wrong when they shared a table.
+     */
+    private static String upsertSql(String table) {
+        return UPSERT_SQL.replace("futures_kline", table);
+    }
+
     private static final String UPSERT_SQL = """
             INSERT INTO futures_kline (
                 symbol, interval, open_time, open_price, high_price, low_price,
@@ -41,9 +50,17 @@ public final class PostgresKlineRepository {
     }
 
     public int upsertAll(String symbol, String interval, List<Kline> klines) {
+        return upsertAll(symbol, interval, klines, "futures_kline");
+    }
+
+    /** @param table {@code futures_kline} or {@code spot_kline}; nothing else is valid. */
+    public int upsertAll(String symbol, String interval, List<Kline> klines, String table) {
+        if (!"futures_kline".equals(table) && !"spot_kline".equals(table)) {
+            throw new IllegalArgumentException("Unsupported kline table: " + table);
+        }
         try (Connection connection = openConnection()) {
             connection.setAutoCommit(false);
-            try (PreparedStatement statement = connection.prepareStatement(UPSERT_SQL)) {
+            try (PreparedStatement statement = connection.prepareStatement(upsertSql(table))) {
                 for (Kline kline : klines) {
                     bind(statement, symbol, interval, kline);
                     statement.addBatch();
