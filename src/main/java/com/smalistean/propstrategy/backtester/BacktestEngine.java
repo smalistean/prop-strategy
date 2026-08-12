@@ -188,7 +188,8 @@ public final class BacktestEngine {
             executeExit(account, execution, bar, minuteCandles, exit.reason(), tracker);
             return;
         }
-        if (pending instanceof StrategyDecision.EnterAtLimit) {
+        if (pending instanceof StrategyDecision.EnterAtLimit
+                || pending instanceof StrategyDecision.EnterAtStop) {
             return; // handled by the resting-order path, not executed at market
         }
         if (!(pending instanceof StrategyDecision.Enter)
@@ -469,8 +470,9 @@ public final class BacktestEngine {
         }
     }
 
+    /** {@code stopOrder} false = limit resting on the far side; true = stop in the direction of travel. */
     private record RestingOrder(Side side, BigDecimal entryPrice, BigDecimal stopPrice,
-                               BigDecimal targetPrice, int barsRemaining) { }
+                               BigDecimal targetPrice, int barsRemaining, boolean stopOrder) { }
 
     /**
      * Accepts or refreshes a resting limit order. A genuine limit must sit on the far side of the
@@ -482,13 +484,29 @@ public final class BacktestEngine {
         if (account.hasOpenPosition()) {
             return null; // an open position cancels any working order
         }
-        if (!(pending instanceof StrategyDecision.EnterAtLimit limit)) {
+        Side side;
+        BigDecimal entryPrice;
+        BigDecimal stopPrice;
+        BigDecimal targetPrice;
+        int lifetimeBars;
+        boolean stopOrder;
+        if (pending instanceof StrategyDecision.EnterAtLimit limit) {
+            side = limit.side(); entryPrice = limit.entryPrice(); stopPrice = limit.stopPrice();
+            targetPrice = limit.targetPrice(); lifetimeBars = limit.lifetimeBars(); stopOrder = false;
+        } else if (pending instanceof StrategyDecision.EnterAtStop stop) {
+            side = stop.side(); entryPrice = stop.triggerPrice(); stopPrice = stop.stopPrice();
+            targetPrice = stop.targetPrice(); lifetimeBars = stop.lifetimeBars(); stopOrder = true;
+        } else {
             return current;
         }
-        boolean marketable = limit.side() == Side.LONG
-                ? limit.entryPrice().compareTo(bar.close()) >= 0
-                : limit.entryPrice().compareTo(bar.close()) <= 0;
-        if (marketable) {
+        // A limit must rest on the far side of the market and a stop in the direction of travel;
+        // either placed on the wrong side would fill instantly at a price the market never offered.
+        boolean wrongSide = stopOrder
+                ? (side == Side.LONG ? entryPrice.compareTo(bar.close()) <= 0
+                                     : entryPrice.compareTo(bar.close()) >= 0)
+                : (side == Side.LONG ? entryPrice.compareTo(bar.close()) >= 0
+                                     : entryPrice.compareTo(bar.close()) <= 0);
+        if (wrongSide) {
             return current;
         }
         if (current != null) {
@@ -498,8 +516,7 @@ public final class BacktestEngine {
             return current;
         }
         tracker.makerEntryOrders++;
-        return new RestingOrder(limit.side(), limit.entryPrice(), limit.stopPrice(),
-                limit.targetPrice(), limit.lifetimeBars());
+        return new RestingOrder(side, entryPrice, stopPrice, targetPrice, lifetimeBars, stopOrder);
     }
 
     /** Fills a resting limit from the bar's minute candles, or ages it toward expiry. */
@@ -514,9 +531,12 @@ public final class BacktestEngine {
         }
         boolean buy = resting.side() == Side.LONG;
         for (Kline minute : minuteCandles) {
-            boolean tradedThrough = buy
-                    ? minute.low().compareTo(resting.entryPrice()) <= 0
-                    : minute.high().compareTo(resting.entryPrice()) >= 0;
+            // A buy limit fills when price falls to it; a buy stop fills when price rises through it.
+            boolean tradedThrough = resting.stopOrder()
+                    ? (buy ? minute.high().compareTo(resting.entryPrice()) >= 0
+                           : minute.low().compareTo(resting.entryPrice()) <= 0)
+                    : (buy ? minute.low().compareTo(resting.entryPrice()) <= 0
+                           : minute.high().compareTo(resting.entryPrice()) >= 0);
             if (!tradedThrough) {
                 continue;
             }
@@ -529,7 +549,9 @@ public final class BacktestEngine {
                 return null;
             }
             tracker.makerEntryFills++;
-            ExecutionModel.Fill fill = execution.makerFill(resting.entryPrice(), quantity);
+            ExecutionModel.Fill fill = resting.stopOrder()
+                    ? execution.takerFill(resting.entryPrice(), buy, quantity)
+                    : execution.makerFill(resting.entryPrice(), quantity);
             account.open(minute.closeTime(), resting.side(), quantity,
                     resting.stopPrice(), resting.targetPrice(), fill);
             return null;
@@ -540,7 +562,7 @@ public final class BacktestEngine {
             return null;
         }
         return new RestingOrder(resting.side(), resting.entryPrice(), resting.stopPrice(),
-                resting.targetPrice(), remaining);
+                resting.targetPrice(), remaining, resting.stopOrder());
     }
 
     private MakerFill findMakerFill(Kline bar, List<Kline> minuteCandles, boolean buy) {

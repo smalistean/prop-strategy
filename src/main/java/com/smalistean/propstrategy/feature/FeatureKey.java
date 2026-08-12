@@ -173,6 +173,14 @@ public record FeatureKey(String name, int period, int lookback) {
     public static FeatureKey marketRegime() { return new FeatureKey("marketRegime", 0); }
     /** Market-wide taker buy/sell volume ratio at the bar, from Binance metrics archives. */
     public static FeatureKey marketTakerRatio() { return new FeatureKey("marketTakerRatio", 0); }
+
+    /** Gerchik level map: nearest mapped level above/below, with its evidence. */
+    public static FeatureKey gerchikLevelAbove() { return new FeatureKey("gerchikLevelAbove", 0); }
+    public static FeatureKey gerchikLevelBelow() { return new FeatureKey("gerchikLevelBelow", 0); }
+    public static FeatureKey gerchikLevelAboveTouches() { return new FeatureKey("gerchikLevelAboveTouches", 0); }
+    public static FeatureKey gerchikLevelBelowTouches() { return new FeatureKey("gerchikLevelBelowTouches", 0); }
+    public static FeatureKey gerchikLevelAboveMirror() { return new FeatureKey("gerchikLevelAboveMirror", 0); }
+    public static FeatureKey gerchikLevelBelowMirror() { return new FeatureKey("gerchikLevelBelowMirror", 0); }
     public static FeatureKey higherTimeframeSupport() { return new FeatureKey("higherTimeframeSupport", 0); }
     public static FeatureKey higherTimeframeResistance() { return new FeatureKey("higherTimeframeResistance", 0); }
     public static FeatureKey completedFourHourClose() { return new FeatureKey("completedFourHourClose", 0); }

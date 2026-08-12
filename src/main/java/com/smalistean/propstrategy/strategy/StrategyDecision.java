@@ -68,6 +68,34 @@ public sealed interface StrategyDecision {
         }
     }
 
+    /**
+     * A stop order resting until price trades through {@code triggerPrice} in the entry direction.
+     *
+     * <p>Distinct from {@link EnterAtLimit}: a limit rests on the far side of the market and fills
+     * as price comes to it, whereas a stop rests in the direction of travel and fills as price runs
+     * through it. Gerchik uses both, and which one applies is part of the model rather than an
+     * execution detail - the false-breakout entry is <i>"в противоположной плоскости выставляем
+     * стоп-ордер"</i>, a stop order placed in the opposite plane as the failed breakout bar closes,
+     * while the bounce entry is a limit at the level plus люфт.
+     */
+    record EnterAtStop(Side side, BigDecimal triggerPrice, BigDecimal stopPrice,
+                       BigDecimal targetPrice, int lifetimeBars) implements StrategyDecision {
+        public EnterAtStop {
+            if (side == null || triggerPrice == null || stopPrice == null || targetPrice == null
+                    || triggerPrice.signum() <= 0 || stopPrice.signum() <= 0
+                    || targetPrice.signum() <= 0 || lifetimeBars <= 0) {
+                throw new IllegalArgumentException(
+                        "Stop entry requires side, positive trigger/stop/target prices and a positive lifetime");
+            }
+            if (side == Side.LONG && (stopPrice.compareTo(triggerPrice) >= 0
+                    || targetPrice.compareTo(triggerPrice) <= 0)
+                    || side == Side.SHORT && (stopPrice.compareTo(triggerPrice) <= 0
+                    || targetPrice.compareTo(triggerPrice) >= 0)) {
+                throw new IllegalArgumentException("Stop entry stop/target must straddle the trigger price");
+            }
+        }
+    }
+
     record Exit(String reason) implements StrategyDecision {
         public Exit {
             if (reason == null || reason.isBlank()) {

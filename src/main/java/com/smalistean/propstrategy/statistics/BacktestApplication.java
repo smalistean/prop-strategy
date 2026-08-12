@@ -62,6 +62,8 @@ public final class BacktestApplication {
         boolean orderFlow = loaded.strategyType().equals("order-flow-exhaustion");
         boolean htfLiquidity = loaded.strategyType().equals("apollo-higher-timeframe-liquidity-sweep")
                 || loaded.strategyType().equals("apollo-ordered-liquidity-sequence-v3");
+        boolean gerchikLevels = loaded.strategyType().startsWith("gerchik-")
+                && !loaded.strategyType().equals("gerchik-level");
         boolean volumeProfile = strategy instanceof VolumeProfileAwareStrategy;
         int warmupCandles = multiTimeframe ? 1 : volumeProfile
                 ? strategy.requiredFeatures().stream()
@@ -101,6 +103,26 @@ public final class BacktestApplication {
                     : new BigDecimal("0.30");
             generatedSnapshots = new HigherTimeframeLiquidityMapAssembler().attach(technical, hourly,
                     mapLookbackBars, mapPivotStrength, mapMinimumTouches, mapToleranceAtr);
+        } else if (gerchikLevels) {
+            if (!loaded.interval().equals("15m")) {
+                throw new IllegalArgumentException("Gerchik level strategies require market.interval=15m");
+            }
+            java.util.Set<com.smalistean.propstrategy.feature.FeatureKey> technicalKeys =
+                    strategy.requiredFeatures().stream()
+                            .filter(key -> !key.name().startsWith("gerchik"))
+                            .collect(java.util.stream.Collectors.toSet());
+            List<FeatureSnapshot> technical = featureGenerator.generate(candles, technicalKeys);
+            // Levels are drawn on the higher timeframe and persist for months, so the map needs far
+            // more warmup than the 15m features do: the course draws hourly levels over 10-15 days
+            // and daily levels over a year.
+            String levelInterval = System.getProperty("gerchikLevelInterval", "1h");
+            List<Kline> levelBars = klineRepository.findRangeWithWarmup(marketSymbol, levelInterval,
+                    loaded.dataset().startInclusive(), loaded.dataset().endExclusive(),
+                    Integer.getInteger("gerchikLevelWarmupBars", 2000));
+            generatedSnapshots = new com.smalistean.propstrategy.feature.GerchikLevelMapAssembler()
+                    .attach(technical, levelBars,
+                            Integer.getInteger("gerchikPivotStrength", 3),
+                            new BigDecimal(System.getProperty("gerchikToleranceAtr", "0.05")));
         } else if (orderFlow) {
             if (!loaded.interval().equals("5m")) {
                 throw new IllegalArgumentException("Order-flow strategy requires market.interval=5m");
