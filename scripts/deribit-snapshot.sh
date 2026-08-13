@@ -1,0 +1,40 @@
+#!/bin/bash
+# Records one Deribit option-chain snapshot. Intended to be run hourly by a scheduler.
+#
+# Item 4 in RESEARCH_OPTIONS.md needs option QUOTES, and Deribit serves only trade history for free,
+# so the data has to be accumulated going forward. Nothing is testable from it for months. A missed
+# hour is a permanent hole - the quotes for a past hour cannot be fetched later - so this logs every
+# run, including failures, rather than exiting silently.
+set -u -o pipefail
+
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+JAVA="${JAVA_HOME:-/opt/homebrew/opt/openjdk@25}/bin/java"
+# Deliberately outside target/, which `mvn clean` deletes. The log is the only record of which hours
+# were missed, and losing it to a routine rebuild would erase exactly that.
+LOG="$REPO/logs/deribit-snapshot.log"
+CLASSPATH_FILE="$REPO/target/classpath.txt"
+
+mkdir -p "$REPO/logs"
+export DB_USER="${DB_USER:-prop_strategy_app}"
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+
+# `mvn clean` removes target/classes and the cached classpath, which would otherwise make every
+# subsequent hourly run fail until someone rebuilt by hand. Both are restored here instead.
+if [ ! -d "$REPO/target/classes" ]; then
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) target/classes missing, rebuilding" >>"$LOG"
+    (cd "$REPO" && mvn -q compile) >>"$LOG" 2>&1
+fi
+if [ ! -s "$CLASSPATH_FILE" ]; then
+    (cd "$REPO" && mvn -q dependency:build-classpath \
+        -Dmdep.outputFile="$CLASSPATH_FILE" -DincludeScope=runtime) >>"$LOG" 2>&1
+fi
+
+"$JAVA" -cp "$REPO/target/classes:$(cat "$CLASSPATH_FILE")" \
+    com.smalistean.propstrategy.marketdownloader.DeribitChainSnapshotApplication \
+    >>"$LOG" 2>&1
+STATUS=$?
+
+if [ $STATUS -ne 0 ]; then
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) SNAPSHOT FAILED (exit $STATUS)" >>"$LOG"
+fi
+exit $STATUS
