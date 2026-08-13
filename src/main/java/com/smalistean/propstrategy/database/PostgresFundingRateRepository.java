@@ -14,7 +14,7 @@ import java.util.Optional;
 public final class PostgresFundingRateRepository {
 
     private static final String UPSERT_SQL = """
-            INSERT INTO futures_funding_rate (
+            INSERT INTO binance_perp_funding_rate (
                 symbol, funding_time, rate_type, funding_rate, mark_price
             ) VALUES (?, ?, ?, ?, ?)
             ON CONFLICT (symbol, funding_time, rate_type) DO UPDATE SET
@@ -57,7 +57,7 @@ public final class PostgresFundingRateRepository {
     }
 
     public Optional<Instant> latestFundingTime(String symbol) {
-        String sql = "SELECT MAX(funding_time) FROM futures_funding_rate WHERE symbol = ?";
+        String sql = "SELECT MAX(funding_time) FROM binance_perp_funding_rate WHERE symbol = ?";
         try (Connection connection = openConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, symbol);
@@ -72,7 +72,7 @@ public final class PostgresFundingRateRepository {
     }
 
     public long count(String symbol) {
-        String sql = "SELECT COUNT(*) FROM futures_funding_rate WHERE symbol = ?";
+        String sql = "SELECT COUNT(*) FROM binance_perp_funding_rate WHERE symbol = ?";
         try (Connection connection = openConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, symbol);
@@ -88,7 +88,7 @@ public final class PostgresFundingRateRepository {
     public List<FundingRate> findThrough(String symbol, Instant endInclusive) {
         String sql = """
                 SELECT symbol, funding_time, rate_type, funding_rate, mark_price
-                FROM futures_funding_rate
+                FROM binance_perp_funding_rate
                 WHERE symbol = ? AND funding_time <= ?
                 ORDER BY funding_time, rate_type
                 """;
@@ -117,7 +117,7 @@ public final class PostgresFundingRateRepository {
                                        Instant endExclusive) {
         String sql = """
                 SELECT symbol, funding_time, rate_type, funding_rate, mark_price
-                FROM futures_funding_rate
+                FROM binance_perp_funding_rate
                 WHERE symbol = ? AND funding_time >= ? AND funding_time < ?
                 ORDER BY funding_time, rate_type
                 """;

@@ -29,7 +29,7 @@ import java.util.zip.ZipInputStream;
  * resolution.
  *
  * <p>Why not the REST API: it serves roughly the last 30 days, which is why
- * {@code futures_open_interest_statistic} holds exactly one month. These archives reach back to
+ * {@code binance_perp_open_interest_statistic} holds exactly one month. These archives reach back to
  * 2021-10 for BTCUSDT and 2021-12 for the other symbols.
  *
  * <p>Why not {@link BinanceArchiveDownloader}: it fetches a CHECKSUM alongside every archive, which

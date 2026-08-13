@@ -50,10 +50,10 @@ public final class KlineArchiveImportApplication {
     /**
      * Archive segment: {@code futures/um} for perpetuals, {@code spot} for the spot leg. Spot is
      * needed by the cash-and-carry test, which hedges a short perp with long spot on the same asset.
-     * Spot symbols are stored with a suffix so the two never collide in {@code futures_kline}.
+     * Spot symbols are stored with a suffix so the two never collide in {@code binance_perp_kline}.
      */
     private static String segment() { return System.getProperty("klineMarket", "futures/um"); }
-    private static String table() { return "spot".equals(segment()) ? "spot_kline" : "futures_kline"; }
+    private static String table() { return "spot".equals(segment()) ? "binance_spot_kline" : "binance_perp_kline"; }
     private static final String ROOT = "https://data.binance.vision";
     private static final Pattern KEY = Pattern.compile("<Key>([^<]+)</Key>");
     private static final Pattern MONTH = Pattern.compile("-(\\d{4}-\\d{2})\\.zip$");

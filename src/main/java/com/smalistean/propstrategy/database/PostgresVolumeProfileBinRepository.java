@@ -14,7 +14,7 @@ import java.util.List;
 
 public final class PostgresVolumeProfileBinRepository {
     private static final String UPSERT = """
-            INSERT INTO futures_volume_profile_bin
+            INSERT INTO binance_perp_volume_profile_bin
               (symbol, bucket_time, bucket_minutes, price_step, price_from,
                aggregate_trade_count, base_volume, quote_notional,
                aggressive_buy_quote, aggressive_sell_quote)
@@ -67,7 +67,7 @@ public final class PostgresVolumeProfileBinRepository {
         String sql = """
                 SELECT bucket_time, price_from, aggregate_trade_count, base_volume,
                        quote_notional, aggressive_buy_quote, aggressive_sell_quote
-                FROM futures_volume_profile_bin
+                FROM binance_perp_volume_profile_bin
                 WHERE symbol=? AND bucket_minutes=? AND price_step=?
                   AND bucket_time>=? AND bucket_time<?
                 ORDER BY bucket_time, price_from
@@ -95,7 +95,7 @@ public final class PostgresVolumeProfileBinRepository {
 
     public boolean archiveCompleted(String symbol, String archiveName, int bucketMinutes,
                                     BigDecimal priceStep, String sha256) {
-        String sql = "SELECT 1 FROM futures_volume_profile_import WHERE symbol=? AND archive_name=? "
+        String sql = "SELECT 1 FROM binance_perp_volume_profile_import WHERE symbol=? AND archive_name=? "
                 + "AND bucket_minutes=? AND price_step=? AND archive_sha256=?";
         try (Connection connection = open(); PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, symbol); statement.setString(2, archiveName);
@@ -108,7 +108,7 @@ public final class PostgresVolumeProfileBinRepository {
     public void recordCompleted(String symbol, String archiveName, int bucketMinutes,
                                 BigDecimal priceStep, String sha256, long sourceRows, long binRows) {
         String sql = """
-                INSERT INTO futures_volume_profile_import
+                INSERT INTO binance_perp_volume_profile_import
                   (symbol, archive_name, bucket_minutes, price_step, archive_sha256, source_rows, bin_rows)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (symbol, archive_name, bucket_minutes, price_step)
@@ -124,7 +124,7 @@ public final class PostgresVolumeProfileBinRepository {
     }
 
     public long count(String symbol, int bucketMinutes, BigDecimal priceStep, Instant start, Instant end) {
-        String sql = "SELECT COUNT(*) FROM futures_volume_profile_bin WHERE symbol=? "
+        String sql = "SELECT COUNT(*) FROM binance_perp_volume_profile_bin WHERE symbol=? "
                 + "AND bucket_minutes=? AND price_step=? AND bucket_time>=? AND bucket_time<?";
         try (Connection connection = open(); PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, symbol); statement.setInt(2, bucketMinutes);

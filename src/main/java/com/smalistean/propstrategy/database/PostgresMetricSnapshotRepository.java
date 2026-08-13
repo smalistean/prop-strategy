@@ -26,7 +26,7 @@ public final class PostgresMetricSnapshotRepository {
     }
 
     private static final String UPSERT = """
-            INSERT INTO futures_metric_snapshot
+            INSERT INTO binance_perp_metric_snapshot
               (symbol, snapshot_time, sum_open_interest, sum_open_interest_value,
                count_toptrader_long_short_ratio, sum_toptrader_long_short_ratio,
                count_long_short_ratio, sum_taker_long_short_vol_ratio)
@@ -77,7 +77,7 @@ public final class PostgresMetricSnapshotRepository {
                     }
                 }
                 try (PreparedStatement statement = connection.prepareStatement("""
-                        INSERT INTO futures_metric_import (symbol, archive_day, row_count, status)
+                        INSERT INTO binance_perp_metric_import (symbol, archive_day, row_count, status)
                         VALUES (?, ?, ?, ?)
                         ON CONFLICT (symbol, archive_day) DO UPDATE SET
                           row_count=EXCLUDED.row_count, status=EXCLUDED.status, imported_at=NOW()
@@ -104,7 +104,7 @@ public final class PostgresMetricSnapshotRepository {
         Set<LocalDate> days = new HashSet<>();
         try (Connection connection = open();
              PreparedStatement statement = connection.prepareStatement(
-                     "SELECT archive_day FROM futures_metric_import WHERE symbol = ?")) {
+                     "SELECT archive_day FROM binance_perp_metric_import WHERE symbol = ?")) {
             statement.setString(1, symbol);
             try (ResultSet results = statement.executeQuery()) {
                 while (results.next()) {
@@ -123,7 +123,7 @@ public final class PostgresMetricSnapshotRepository {
                 SELECT snapshot_time, sum_open_interest, sum_open_interest_value,
                        count_toptrader_long_short_ratio, sum_toptrader_long_short_ratio,
                        count_long_short_ratio, sum_taker_long_short_vol_ratio
-                FROM futures_metric_snapshot
+                FROM binance_perp_metric_snapshot
                 WHERE symbol=? AND snapshot_time>=? AND snapshot_time<?
                 ORDER BY snapshot_time
                 """;

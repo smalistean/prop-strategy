@@ -15,16 +15,16 @@ import java.util.Optional;
 public final class PostgresKlineRepository {
 
     /**
-     * Spot klines live in {@code spot_kline}, not here. They are the same shape but a different
+     * Spot klines live in {@code binance_spot_kline}, not here. They are the same shape but a different
      * market, and keeping them apart means a query against futures data cannot silently include
      * spot - see V8__create_spot_kline.sql for what went wrong when they shared a table.
      */
     private static String upsertSql(String table) {
-        return UPSERT_SQL.replace("futures_kline", table);
+        return UPSERT_SQL.replace("binance_perp_kline", table);
     }
 
     private static final String UPSERT_SQL = """
-            INSERT INTO futures_kline (
+            INSERT INTO binance_perp_kline (
                 symbol, interval, open_time, open_price, high_price, low_price,
                 close_price, volume, close_time, quote_asset_volume, trade_count,
                 taker_buy_base_volume, taker_buy_quote_volume
@@ -50,12 +50,12 @@ public final class PostgresKlineRepository {
     }
 
     public int upsertAll(String symbol, String interval, List<Kline> klines) {
-        return upsertAll(symbol, interval, klines, "futures_kline");
+        return upsertAll(symbol, interval, klines, "binance_perp_kline");
     }
 
-    /** @param table {@code futures_kline} or {@code spot_kline}; nothing else is valid. */
+    /** @param table {@code binance_perp_kline} or {@code binance_spot_kline}; nothing else is valid. */
     public int upsertAll(String symbol, String interval, List<Kline> klines, String table) {
-        if (!"futures_kline".equals(table) && !"spot_kline".equals(table)) {
+        if (!"binance_perp_kline".equals(table) && !"binance_spot_kline".equals(table)) {
             throw new IllegalArgumentException("Unsupported kline table: " + table);
         }
         try (Connection connection = openConnection()) {
@@ -78,7 +78,7 @@ public final class PostgresKlineRepository {
     }
 
     public long count(String symbol, String interval) {
-        String sql = "SELECT COUNT(*) FROM futures_kline WHERE symbol = ? AND interval = ?";
+        String sql = "SELECT COUNT(*) FROM binance_perp_kline WHERE symbol = ? AND interval = ?";
         try (Connection connection = openConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, symbol);
@@ -93,7 +93,7 @@ public final class PostgresKlineRepository {
     }
 
     public Optional<Instant> latestOpenTime(String symbol, String interval) {
-        String sql = "SELECT MAX(open_time) FROM futures_kline WHERE symbol = ? AND interval = ?";
+        String sql = "SELECT MAX(open_time) FROM binance_perp_kline WHERE symbol = ? AND interval = ?";
         try (Connection connection = openConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, symbol);
@@ -117,7 +117,7 @@ public final class PostgresKlineRepository {
                        volume, close_time, quote_asset_volume, trade_count,
                        taker_buy_base_volume, taker_buy_quote_volume
                 FROM (
-                    SELECT * FROM futures_kline
+                    SELECT * FROM binance_perp_kline
                     WHERE symbol = ? AND interval = ?
                     ORDER BY open_time DESC
                     LIMIT ?
@@ -163,7 +163,7 @@ public final class PostgresKlineRepository {
                     SELECT open_time, open_price, high_price, low_price, close_price,
                            volume, close_time, quote_asset_volume, trade_count,
                            taker_buy_base_volume, taker_buy_quote_volume
-                    FROM futures_kline
+                    FROM binance_perp_kline
                     WHERE symbol = ? AND interval = ? AND open_time < ?
                     ORDER BY open_time DESC
                     LIMIT ?
@@ -171,7 +171,7 @@ public final class PostgresKlineRepository {
                     SELECT open_time, open_price, high_price, low_price, close_price,
                            volume, close_time, quote_asset_volume, trade_count,
                            taker_buy_base_volume, taker_buy_quote_volume
-                    FROM futures_kline
+                    FROM binance_perp_kline
                     WHERE symbol = ? AND interval = ?
                       AND open_time >= ? AND open_time < ?
                 )
@@ -208,7 +208,7 @@ public final class PostgresKlineRepository {
                                       Instant startInclusive, Instant endExclusive) {
         String sql = """
                 SELECT COUNT(*), MIN(open_time), MAX(open_time)
-                FROM futures_kline
+                FROM binance_perp_kline
                 WHERE symbol = ? AND interval = ? AND open_time >= ? AND open_time < ?
                 """;
         try (Connection connection = openConnection();
@@ -239,7 +239,7 @@ public final class PostgresKlineRepository {
         String sql = """
                 WITH ordered AS (
                     SELECT open_time, LEAD(open_time) OVER (ORDER BY open_time) AS next_open_time
-                    FROM futures_kline
+                    FROM binance_perp_kline
                     WHERE symbol = ? AND interval = ? AND open_time >= ? AND open_time < ?
                 )
                 SELECT open_time + (? * INTERVAL '1 millisecond') AS gap_start, next_open_time AS gap_end

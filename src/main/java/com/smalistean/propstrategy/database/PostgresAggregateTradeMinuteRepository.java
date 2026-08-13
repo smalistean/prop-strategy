@@ -14,7 +14,7 @@ import java.util.OptionalLong;
 public final class PostgresAggregateTradeMinuteRepository {
 
     private static final String UPSERT = """
-            INSERT INTO futures_agg_trade_minute (
+            INSERT INTO binance_perp_agg_trade_minute (
               symbol, minute_time, first_event_time, last_event_time, first_agg_trade_id,
               last_agg_trade_id, aggregate_trade_count, underlying_trade_count, base_volume,
               quote_notional, aggressive_buy_base, aggressive_sell_base, aggressive_buy_quote,
@@ -88,11 +88,11 @@ public final class PostgresAggregateTradeMinuteRepository {
 
     public void reconcile(String symbol, Instant start, Instant end) {
         String sql = """
-                UPDATE futures_agg_trade_minute a SET
+                UPDATE binance_perp_agg_trade_minute a SET
                   kline_base_volume_difference = a.base_volume - k.volume,
                   reconciliation_status = CASE WHEN ABS(a.base_volume - k.volume) <= 0.00000001
                     THEN 'MATCHED' ELSE 'MISMATCH' END, updated_at=NOW()
-                FROM futures_kline k
+                FROM binance_perp_kline k
                 WHERE a.symbol=? AND a.minute_time>=? AND a.minute_time<?
                   AND k.symbol=a.symbol AND k.interval='1m' AND k.open_time=a.minute_time
                 """;
@@ -105,7 +105,7 @@ public final class PostgresAggregateTradeMinuteRepository {
     public void recordCompletedArchive(String archiveName, String sourceUrl, String sha256,
                                        long archiveSize, int minuteRows, long sourceRows) {
         String sql = """
-                INSERT INTO futures_agg_trade_import
+                INSERT INTO binance_perp_agg_trade_import
                   (archive_name, source_url, expected_sha256, archive_size, status,
                    minute_rows, source_rows, completed_at)
                 VALUES (?, ?, ?, ?, 'COMPLETED', ?, ?, NOW())
@@ -123,7 +123,7 @@ public final class PostgresAggregateTradeMinuteRepository {
     }
 
     public boolean archiveCompleted(String archiveName, String sha256) {
-        String sql = "SELECT 1 FROM futures_agg_trade_import WHERE archive_name=? "
+        String sql = "SELECT 1 FROM binance_perp_agg_trade_import WHERE archive_name=? "
                 + "AND expected_sha256=? AND status='COMPLETED'";
         try (Connection connection = open(); PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, archiveName); statement.setString(2, sha256);
@@ -132,7 +132,7 @@ public final class PostgresAggregateTradeMinuteRepository {
     }
 
     public OptionalLong latestAggregateTradeIdBefore(String symbol, Instant boundary) {
-        String sql = "SELECT MAX(last_agg_trade_id) FROM futures_agg_trade_minute WHERE symbol=? AND minute_time<?";
+        String sql = "SELECT MAX(last_agg_trade_id) FROM binance_perp_agg_trade_minute WHERE symbol=? AND minute_time<?";
         try (Connection connection = open(); PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, symbol);
             statement.setObject(2, utc(boundary));
@@ -144,7 +144,7 @@ public final class PostgresAggregateTradeMinuteRepository {
     }
 
     public long count(String symbol, Instant start, Instant end) {
-        String sql = "SELECT COUNT(*) FROM futures_agg_trade_minute WHERE symbol=? AND minute_time>=? AND minute_time<?";
+        String sql = "SELECT COUNT(*) FROM binance_perp_agg_trade_minute WHERE symbol=? AND minute_time>=? AND minute_time<?";
         try (Connection connection = open(); PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, symbol); statement.setObject(2, utc(start)); statement.setObject(3, utc(end));
             try (java.sql.ResultSet result = statement.executeQuery()) { result.next(); return result.getLong(1); }
@@ -160,7 +160,7 @@ public final class PostgresAggregateTradeMinuteRepository {
                 SELECT minute_time, first_price, maximum_price, minimum_price, last_price,
                        base_volume, quote_notional, aggregate_trade_count,
                        aggressive_buy_base, aggressive_buy_quote, last_event_time
-                FROM futures_agg_trade_minute
+                FROM binance_perp_agg_trade_minute
                 WHERE symbol=? AND minute_time>=? AND minute_time<?
                 ORDER BY minute_time
                 """;

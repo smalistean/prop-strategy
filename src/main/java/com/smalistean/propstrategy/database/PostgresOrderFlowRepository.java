@@ -24,7 +24,7 @@ public final class PostgresOrderFlowRepository {
                 SELECT minute_time, quote_notional, quote_delta,
                        large_100k_buy_quote, large_100k_sell_quote,
                        reconciliation_status
-                FROM futures_agg_trade_minute
+                FROM binance_perp_agg_trade_minute
                 WHERE symbol=? AND minute_time>=? AND minute_time<?
                 ORDER BY minute_time
                 """;

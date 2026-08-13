@@ -188,7 +188,7 @@ public final class CrossSectionalMomentumApplication {
                 SELECT (open_time AT TIME ZONE 'UTC')::date AS d, symbol,
                        (ARRAY_AGG(close_price ORDER BY open_time DESC))[1] AS close,
                        SUM(quote_asset_volume) AS vol
-                FROM futures_kline
+                FROM binance_perp_kline
                 WHERE interval='1h' AND open_time >= ?
                 GROUP BY 1, 2
                 """;
@@ -221,7 +221,7 @@ public final class CrossSectionalMomentumApplication {
              PreparedStatement statement = connection.prepareStatement("""
                      SELECT symbol, (funding_time AT TIME ZONE 'UTC')::date AS d, SUM(rate) FROM (
                          SELECT symbol, funding_time, MAX(funding_rate) AS rate
-                         FROM futures_funding_rate WHERE funding_time >= ?
+                         FROM binance_perp_funding_rate WHERE funding_time >= ?
                          GROUP BY symbol, funding_time
                      ) deduplicated GROUP BY 1,2
                      """)) {

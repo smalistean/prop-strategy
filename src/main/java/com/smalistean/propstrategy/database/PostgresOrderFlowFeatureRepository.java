@@ -40,8 +40,8 @@ public final class PostgresOrderFlowFeatureRepository {
                     COALESCE(a.large_100k_sell_quote,0) large_sell,
                     CASE WHEN a.minute_time IS NULL THEN 0 ELSE 1 END observed,
                     CASE WHEN a.reconciliation_status='MATCHED' THEN 1 ELSE 0 END exact
-                  FROM futures_kline k
-                  LEFT JOIN futures_agg_trade_minute a
+                  FROM binance_perp_kline k
+                  LEFT JOIN binance_perp_agg_trade_minute a
                     ON a.symbol=k.symbol AND a.minute_time=k.open_time
                   WHERE k.symbol=? AND k.interval='1m'
                     AND k.open_time>=? - INTERVAL '240 minutes' AND k.open_time<?

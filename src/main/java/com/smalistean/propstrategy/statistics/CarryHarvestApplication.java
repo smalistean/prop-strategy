@@ -57,8 +57,8 @@ public final class CarryHarvestApplication {
         double minimumFundingAnnual = Double.parseDouble(System.getProperty("carryMinFunding", "0"));
 
         DatabaseConfig database = DatabaseConfig.fromEnvironment();
-        TreeMap<LocalDate, Map<String, Bar>> perp = loadPanel(database, "futures_kline", from);
-        TreeMap<LocalDate, Map<String, Bar>> spot = loadPanel(database, "spot_kline", from);
+        TreeMap<LocalDate, Map<String, Bar>> perp = loadPanel(database, "binance_perp_kline", from);
+        TreeMap<LocalDate, Map<String, Bar>> spot = loadPanel(database, "binance_spot_kline", from);
         Map<String, TreeMap<LocalDate, Double>> funding = loadFunding(database, from);
         List<LocalDate> days = new ArrayList<>(perp.keySet());
         System.out.printf("perp days %d, spot days %d, funding symbols %d%n",
@@ -234,7 +234,7 @@ public final class CarryHarvestApplication {
         Map<String, TreeMap<LocalDate, Double>> funding = new HashMap<>();
         try (Connection connection = DriverManager.getConnection(
                 database.url(), database.user(), database.password());
-             // Deduplicated per payment BEFORE summing per day. futures_funding_rate holds two
+             // Deduplicated per payment BEFORE summing per day. binance_perp_funding_rate holds two
              // rate_types - ARCHIVE (833 symbols, 2020-01..2026-08-01) and Regular (16 symbols,
              // 2022-10..2026-08-11) - and 63,075 (symbol, funding_time) pairs appear under both.
              // Summing directly doubled the funding of exactly those 16 large caps from 2022-10
@@ -245,7 +245,7 @@ public final class CarryHarvestApplication {
              PreparedStatement statement = connection.prepareStatement("""
                      SELECT symbol, (funding_time AT TIME ZONE 'UTC')::date, SUM(rate) FROM (
                          SELECT symbol, funding_time, MAX(funding_rate) AS rate
-                         FROM futures_funding_rate WHERE funding_time >= ?
+                         FROM binance_perp_funding_rate WHERE funding_time >= ?
                          GROUP BY symbol, funding_time
                      ) deduplicated GROUP BY 1,2
                      """)) {

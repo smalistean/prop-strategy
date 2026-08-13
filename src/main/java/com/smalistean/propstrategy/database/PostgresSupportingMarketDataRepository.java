@@ -16,7 +16,7 @@ import java.util.Optional;
 public final class PostgresSupportingMarketDataRepository {
 
     private static final String UPSERT_OPEN_INTEREST = """
-            INSERT INTO futures_open_interest_statistic (
+            INSERT INTO binance_perp_open_interest_statistic (
                 symbol, period, statistic_time, sum_open_interest,
                 sum_open_interest_value, circulating_supply
             ) VALUES (?, ?, ?, ?, ?, ?)
@@ -28,7 +28,7 @@ public final class PostgresSupportingMarketDataRepository {
             """;
 
     private static final String UPSERT_RATIO = """
-            INSERT INTO futures_trader_ratio (
+            INSERT INTO binance_perp_trader_ratio (
                 symbol, period, ratio_type, statistic_time,
                 long_short_ratio, long_share, short_share
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -99,19 +99,19 @@ public final class PostgresSupportingMarketDataRepository {
     }
 
     public Optional<Instant> latestOpenInterestTime(String symbol, String period) {
-        return latest("futures_open_interest_statistic", symbol, period, null);
+        return latest("binance_perp_open_interest_statistic", symbol, period, null);
     }
 
     public Optional<Instant> latestRatioTime(String symbol, String period, RatioType type) {
-        return latest("futures_trader_ratio", symbol, period, type);
+        return latest("binance_perp_trader_ratio", symbol, period, type);
     }
 
     public long openInterestCount(String symbol, String period) {
-        return count("futures_open_interest_statistic", symbol, period, null);
+        return count("binance_perp_open_interest_statistic", symbol, period, null);
     }
 
     public long ratioCount(String symbol, String period, RatioType type) {
-        return count("futures_trader_ratio", symbol, period, type);
+        return count("binance_perp_trader_ratio", symbol, period, type);
     }
 
     public List<OpenInterestStatistic> findOpenInterestThrough(
@@ -119,7 +119,7 @@ public final class PostgresSupportingMarketDataRepository {
         String sql = """
                 SELECT symbol, period, statistic_time, sum_open_interest,
                        sum_open_interest_value, circulating_supply
-                FROM futures_open_interest_statistic
+                FROM binance_perp_open_interest_statistic
                 WHERE symbol = ? AND period = ? AND statistic_time <= ?
                 ORDER BY statistic_time
                 """;
@@ -151,7 +151,7 @@ public final class PostgresSupportingMarketDataRepository {
         String sql = """
                 SELECT symbol, period, ratio_type, statistic_time,
                        long_short_ratio, long_share, short_share
-                FROM futures_trader_ratio
+                FROM binance_perp_trader_ratio
                 WHERE symbol = ? AND period = ? AND ratio_type = ?
                   AND statistic_time <= ?
                 ORDER BY statistic_time

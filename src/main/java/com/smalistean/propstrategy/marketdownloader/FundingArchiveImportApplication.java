@@ -48,7 +48,7 @@ public final class FundingArchiveImportApplication {
     private static final Pattern KEY = Pattern.compile("<Key>([^<]+)</Key>");
     private static final Pattern MONTH = Pattern.compile("-(\\d{4}-\\d{2})\\.zip$");
     private static final String UPSERT = """
-            INSERT INTO futures_funding_rate (symbol, funding_time, rate_type, funding_rate)
+            INSERT INTO binance_perp_funding_rate (symbol, funding_time, rate_type, funding_rate)
             VALUES (?, ?, 'ARCHIVE', ?)
             ON CONFLICT (symbol, funding_time, rate_type)
             DO UPDATE SET funding_rate = EXCLUDED.funding_rate, updated_at = NOW()
@@ -128,7 +128,7 @@ public final class FundingArchiveImportApplication {
                 database.url(), database.user(), database.password());
              PreparedStatement statement = connection.prepareStatement(
                      "SELECT DISTINCT to_char(funding_time AT TIME ZONE 'UTC','YYYY-MM') "
-                             + "FROM futures_funding_rate WHERE symbol = ? AND rate_type = 'ARCHIVE'")) {
+                             + "FROM binance_perp_funding_rate WHERE symbol = ? AND rate_type = 'ARCHIVE'")) {
             statement.setString(1, symbol);
             try (ResultSet results = statement.executeQuery()) {
                 while (results.next()) months.add(results.getString(1));
