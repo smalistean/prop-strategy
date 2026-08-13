@@ -214,9 +214,16 @@ public final class CrossSectionalMomentumApplication {
         Map<String, TreeMap<LocalDate, Double>> funding = new HashMap<>();
         try (Connection connection = DriverManager.getConnection(
                 database.url(), database.user(), database.password());
+             // Deduplicated per payment before summing per day: 63,075 (symbol, funding_time) pairs
+             // exist under both the ARCHIVE and Regular rate_types, so a direct SUM double-counts
+             // funding for the sixteen symbols that have both. See CarryHarvestApplication for the
+             // full note.
              PreparedStatement statement = connection.prepareStatement("""
-                     SELECT symbol, (funding_time AT TIME ZONE 'UTC')::date AS d, SUM(funding_rate)
-                     FROM futures_funding_rate WHERE funding_time >= ? GROUP BY 1,2
+                     SELECT symbol, (funding_time AT TIME ZONE 'UTC')::date AS d, SUM(rate) FROM (
+                         SELECT symbol, funding_time, MAX(funding_rate) AS rate
+                         FROM futures_funding_rate WHERE funding_time >= ?
+                         GROUP BY symbol, funding_time
+                     ) deduplicated GROUP BY 1,2
                      """)) {
             statement.setObject(1, from);
             try (ResultSet results = statement.executeQuery()) {

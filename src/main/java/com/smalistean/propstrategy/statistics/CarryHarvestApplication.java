@@ -53,6 +53,8 @@ public final class CarryHarvestApplication {
         double costBpsPerSidePerLeg = Double.parseDouble(System.getProperty("carryCostBps", "6.5"));
         LocalDate from = LocalDate.parse(System.getProperty("carryFrom", "2021-01-01"));
         LocalDate to = LocalDate.parse(System.getProperty("carryTo", "2026-12-31"));
+        // Annualised trailing-funding floor. 0 disables and reproduces the primary configuration.
+        double minimumFundingAnnual = Double.parseDouble(System.getProperty("carryMinFunding", "0"));
 
         DatabaseConfig database = DatabaseConfig.fromEnvironment();
         TreeMap<LocalDate, Map<String, Bar>> perp = loadPanel(database, "futures_kline", from);
@@ -73,6 +75,7 @@ public final class CarryHarvestApplication {
         Set<String> held = new HashSet<>();
         int rebalances = 0;
         int eligibleSum = 0;
+        double deployedSum = 0;
 
         java.util.List<LocalDate> periodEnd = new ArrayList<>();
         for (int i = lookbackDays; i + holdDays < days.size(); i += holdDays) {
@@ -103,9 +106,27 @@ public final class CarryHarvestApplication {
                         .stream().mapToDouble(Double::doubleValue).sum();
                 eligible.add(new Candidate(symbol, trailing));
             }
-            if (eligible.size() < positions) continue;
             eligible.sort(Comparator.comparingDouble(Candidate::trailingFunding).reversed());
-            List<String> chosen = eligible.subList(0, positions).stream().map(Candidate::symbol).toList();
+            // Participation rule: a slot is filled only when it pays. Unfilled slots hold cash at
+            // zero, so skipping is never rewarded with an assumed yield.
+            double perPeriodFloor = minimumFundingAnnual * lookbackDays / 365.0;
+            List<String> chosen = eligible.stream()
+                    .filter(c -> minimumFundingAnnual <= 0 || c.trailingFunding() >= perPeriodFloor)
+                    .limit(positions).map(Candidate::symbol).toList();
+            if (minimumFundingAnnual <= 0 && eligible.size() < positions) continue;
+            if (chosen.isEmpty()) {
+                // Flat: pay only to exit whatever was held, then record a zero-return period.
+                double exitCost = (held.size() / (double) positions) * 2 * costBpsPerSidePerLeg / 10_000.0;
+                returns.add(-exitCost / 2.0);
+                periodEnd.add(exit);
+                fundingLeg.add(0.0);
+                basisLeg.add(0.0);
+                deployedSum += 0;
+                held.clear();
+                eligibleSum += eligible.size();
+                rebalances++;
+                continue;
+            }
 
             double basisTotal = 0;
             double fundingTotal = 0;
@@ -118,8 +139,11 @@ public final class CarryHarvestApplication {
                 basisTotal += spotReturn - perpReturn;   // long spot, short perp
                 fundingTotal += received;                 // a short receives positive funding
             }
+            // Divided by the full slot count, not by the number filled, so idle capital dilutes
+            // the return exactly as it would in a real account.
             double basis = basisTotal / positions;
             double received = fundingTotal / positions;
+            deployedSum += chosen.size() / (double) positions;
 
             Set<String> chosenSet = new HashSet<>(chosen);
             long turned = chosen.stream().filter(s -> !held.contains(s)).count();
@@ -136,6 +160,7 @@ public final class CarryHarvestApplication {
             eligibleSum += eligible.size();
             rebalances++;
         }
+        System.out.printf("  mean deployed fraction %.0f%%%n", 100 * deployedSum / rebalances);
         report(returns, fundingLeg, basisLeg, holdDays, rebalances, eligibleSum, positions);
         // Per-year, because a single favourable stretch carrying an entire result is the failure
         // mode that invalidated the Apollo work; it has to be visible rather than inferred.
@@ -144,13 +169,27 @@ public final class CarryHarvestApplication {
         for (int k = 0; k < returns.size(); k++) {
             byYear.computeIfAbsent(periodEnd.get(k).getYear(), y -> new ArrayList<>()).add(returns.get(k));
         }
+        // Decomposed inside the single full run on purpose. Re-running the app per year gives
+        // different numbers, because a truncated panel resets every symbol's first-seen date and
+        // starves the 30-day age filter and the volume medians - the slices are not comparable.
+        java.util.TreeMap<Integer, List<Double>> fundByYear = new java.util.TreeMap<>();
+        java.util.TreeMap<Integer, List<Double>> basisByYear = new java.util.TreeMap<>();
+        for (int k = 0; k < returns.size(); k++) {
+            int y = periodEnd.get(k).getYear();
+            fundByYear.computeIfAbsent(y, x -> new ArrayList<>()).add(fundingLeg.get(k));
+            basisByYear.computeIfAbsent(y, x -> new ArrayList<>()).add(basisLeg.get(k));
+        }
+        System.out.printf("    %-6s %9s %9s %9s %8s%n", "year", "funding", "basis", "NET", "Sharpe");
         for (var e : byYear.entrySet()) {
             List<Double> r = e.getValue();
+            double pv = 365.0 / holdDays;
             double m = r.stream().mapToDouble(Double::doubleValue).average().orElse(0);
             double s2 = Math.sqrt(r.stream().mapToDouble(x -> (x - m) * (x - m)).sum() / r.size());
-            double pv = 365.0 / holdDays;
-            System.out.printf("    %d  %+6.1f%%   Sharpe %5.2f   (%d periods)%n",
-                    e.getKey(), m * pv * 100, s2 == 0 ? 0 : (m * pv) / (s2 * Math.sqrt(pv)), r.size());
+            double fu = fundByYear.get(e.getKey()).stream().mapToDouble(Double::doubleValue).average().orElse(0);
+            double ba = basisByYear.get(e.getKey()).stream().mapToDouble(Double::doubleValue).average().orElse(0);
+            System.out.printf("    %-6d %+8.1f%% %+8.1f%% %+8.1f%% %8.2f  (%d periods)%n",
+                    e.getKey(), fu * pv * 100, ba * pv * 100, m * pv * 100,
+                    s2 == 0 ? 0 : (m * pv) / (s2 * Math.sqrt(pv)), r.size());
         }
     }
 
@@ -195,9 +234,21 @@ public final class CarryHarvestApplication {
         Map<String, TreeMap<LocalDate, Double>> funding = new HashMap<>();
         try (Connection connection = DriverManager.getConnection(
                 database.url(), database.user(), database.password());
-             PreparedStatement statement = connection.prepareStatement(
-                     "SELECT symbol, (funding_time AT TIME ZONE 'UTC')::date, SUM(funding_rate) "
-                             + "FROM futures_funding_rate WHERE funding_time >= ? GROUP BY 1,2")) {
+             // Deduplicated per payment BEFORE summing per day. futures_funding_rate holds two
+             // rate_types - ARCHIVE (833 symbols, 2020-01..2026-08-01) and Regular (16 symbols,
+             // 2022-10..2026-08-11) - and 63,075 (symbol, funding_time) pairs appear under both.
+             // Summing directly doubled the funding of exactly those 16 large caps from 2022-10
+             // onward, which both inflated their realised carry and made them likelier to be ranked
+             // into the top ten. The values agree wherever they overlap, so MAX picks either safely
+             // while keeping the coverage of both: filtering to ARCHIVE alone would drop the last
+             // ten days.
+             PreparedStatement statement = connection.prepareStatement("""
+                     SELECT symbol, (funding_time AT TIME ZONE 'UTC')::date, SUM(rate) FROM (
+                         SELECT symbol, funding_time, MAX(funding_rate) AS rate
+                         FROM futures_funding_rate WHERE funding_time >= ?
+                         GROUP BY symbol, funding_time
+                     ) deduplicated GROUP BY 1,2
+                     """)) {
             statement.setObject(1, from);
             try (ResultSet results = statement.executeQuery()) {
                 while (results.next()) {
@@ -230,7 +281,7 @@ public final class CarryHarvestApplication {
         double fundingAnnual = fundingLeg.stream().mapToDouble(Double::doubleValue).average().orElse(0) * periodsPerYear;
         double basisAnnual = basisLeg.stream().mapToDouble(Double::doubleValue).average().orElse(0) * periodsPerYear;
         long losers = returns.stream().filter(r -> r < 0).count();
-        System.out.printf("%nhold %dd, %d positions, mean eligible %.0f, %d rebalances%n",
+        System.out.printf("%nhold %dd, %d slots, mean eligible %.0f, %d rebalances%n",
                 holdDays, positions, eligibleSum / (double) rebalances, rebalances);
         System.out.printf("  decomposition (annualised, on total two-leg capital):%n");
         System.out.printf("    funding received %+.1f%%   basis drift %+.1f%%%n", fundingAnnual * 100, basisAnnual * 100);
