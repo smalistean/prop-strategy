@@ -11,3 +11,8 @@ target/
 .env.binance
 data/
 *.csv
+
+# Runtime logs from importers and scheduled agents. Regenerated on every run and machine-specific
+# (they carry absolute paths and timestamps), so they are working output rather than source.
+logs/
+*.log
