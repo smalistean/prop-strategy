@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Hourly funding-rate recorder for the four XVF venues (binance, bybit, hyperliquid, dydx). Writes
+  ~2,200 observations an hour into DynamoDB. Independent of the Deribit option-chain stack: different
+  data, different schedule, different table, and no shared resources beyond the account's free tier.
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Address notified when an hour fails after all retries. Confirm the subscription email.
+    AllowedPattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+  RetentionDays:
+    Type: Number
+    Default: 30
+    MinValue: 7
+    Description: >
+      TTL on each item. At 30 days this holds ~1.6M items (~0.3GB), well inside the free tier.
+      Nothing consumes these rows automatically yet, so anything not pulled within the window is gone.
+
+Globals:
+  Function:
+    Runtime: java21
+    Architectures: [arm64]
+    MemorySize: 512
+    Timeout: 900
+
+Resources:
+
+  FundingTable:
+    Type: AWS::DynamoDB::Table
+    # Retained on stack delete. A funding observation is a measurement of a moment that has passed;
+    # unlike settled history it cannot be re-fetched from any venue endpoint afterwards.
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub '${AWS::StackName}-observation'
+      # venue#observed_hour, so each run writes four partitions of 232-868 items - all under the
+      # 1,000 WCU/sec per-partition ceiling. The stamp an observation targets is an ATTRIBUTE, not
+      # part of the key: the key has to stay stable across retries for the write to be idempotent.
+      AttributeDefinitions:
+        - AttributeName: venue_hour
+          AttributeType: S
+        - AttributeName: venue_symbol
+          AttributeType: S
+      KeySchema:
+        - AttributeName: venue_hour
+          KeyType: HASH
+        - AttributeName: venue_symbol
+          KeyType: RANGE
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits: 25
+        WriteCapacityUnits: 25
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+  # Its own topic rather than the Deribit stack's. Sharing one would mean deleting that stack
+  # silently disables these alerts, which is the class of hidden coupling worth one extra
+  # confirmation email to avoid.
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${AWS::StackName}-alerts'
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  FundingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-recorder'
+      CodeUri: recorder/target/recorders.jar
+      Handler: com.smalistean.propstrategy.aws.VenueFundingRecorderHandler::handleRequest
+      Description: >
+        Records the current funding state of the four XVF venues each hour. These are OBSERVATIONS of
+        pending rates, not settled payments - see the handler javadoc before mixing them with the
+        <venue>_perp_funding_rate history.
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref FundingTable
+          RETENTION_DAYS: !Ref RetentionDays
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref FundingTable
+      Events:
+        Hourly:
+          # An EventBridge rule, which is unmetered and invokes Lambda asynchronously - async is what
+          # enables the retry policy and the on-failure destination below.
+          Type: Schedule
+          Properties:
+            # :50, not :05. dYdX and Hyperliquid settle hourly on the hour, and Binance/Bybit publish
+            # a rate that converges as its stamp approaches, so sampling late in the hour is closest
+            # to what actually settles.
+            Schedule: 'cron(50 * * * ? *)'
+            Description: Hourly XVF venue funding observation
+      EventInvokeConfig:
+        MaximumRetryAttempts: 2
+        MaximumEventAgeInSeconds: 2400
+        DestinationConfig:
+          OnFailure:
+            Type: SNS
+            Destination: !Ref AlertTopic
+
+Outputs:
+  FundingTableName:
+    Description: Pass to the funding exporter as -DdynamoTable
+    Value: !Ref FundingTable
+  FundingFunctionName:
+    Value: !Ref FundingFunction
+  AlertTopicArn:
+    Value: !Ref AlertTopic

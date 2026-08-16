@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Hourly Deribit option-chain recorder. Writes ~4,046 items an hour into DynamoDB, where a local
+  exporter pulls them into Postgres for analysis. Sized to sit entirely inside the always-free tier.
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Address notified when an hour fails after all retries. Confirm the subscription email.
+    AllowedPattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+  RetentionDays:
+    Type: Number
+    Default: 30
+    MinValue: 7
+    Description: >
+      TTL on each item. DynamoDB is a buffer, not the archive - the local Postgres copy is. At 30 days
+      storage sits flat at ~1.1GB (4% of the 25GB free tier) rather than growing past it in month 23.
+      This is also the entire margin for error: nothing local runs on a schedule, so an hour not
+      exported within 30 days is deleted with no error and cannot be refetched at any price. Raising
+      this costs nothing until roughly 600 days of retention - it buys margin, not capacity.
+  DeribitCurrencies:
+    Type: String
+    Default: BTC,ETH,USDC
+    Description: Currency buckets to snapshot. USDC alone covers seven underlyings.
+
+Globals:
+  Function:
+    Runtime: java21
+    Architectures: [arm64]
+    MemorySize: 512
+    # 900s is the Lambda maximum. The handler's own retry budget stops at 600s so it always has time
+    # to fail cleanly and hand the invocation back rather than being killed mid-write.
+    Timeout: 900
+
+Resources:
+
+  ChainTable:
+    Type: AWS::DynamoDB::Table
+    # Retained on stack delete: these quotes cannot be re-fetched at any price, so an accidental
+    # `sam delete` must not be able to destroy hours that were never exported.
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub '${AWS::StackName}-chain'
+      # Partition key is snapshot_underlying ("2026-08-16T05:00:00Z#BTC"), not snapshot_time alone.
+      # One partition key for the whole snapshot would put all 4,046 writes in a single partition,
+      # and a partition is capped at 1,000 WCU/sec no matter how much table capacity is provisioned.
+      # Splitting by underlying gives nine partitions, the largest of which (BTC) is 818 items.
+      AttributeDefinitions:
+        - AttributeName: snapshot_underlying
+          AttributeType: S
+        - AttributeName: instrument_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: snapshot_underlying
+          KeyType: HASH
+        - AttributeName: instrument_name
+          KeyType: RANGE
+      # PROVISIONED at 25/25, not PAY_PER_REQUEST. On-demand would cost ~$1.85/month for 2.95M
+      # writes; 25 WCU is the always-free allowance and covers this comfortably - the workload needs
+      # 4,046 WCU once an hour against a burst bucket of 300s x 25 = 7,500 WCU that is always full
+      # after 59 idle minutes.
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits: 25
+        WriteCapacityUnits: 25
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+      # Point-in-time recovery is deliberately OFF. It is the prerequisite for DynamoDB's native
+      # "Export to S3" and costs $0.20/GB-month - more than everything else here combined. The
+      # exporter reads with Query instead, which needs no PITR.
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${AWS::StackName}-alerts'
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  RecorderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-recorder'
+      CodeUri: recorder/target/recorders.jar
+      Handler: com.smalistean.propstrategy.aws.DeribitRecorderHandler::handleRequest
+      Description: Records one Deribit option-chain snapshot per hour into DynamoDB.
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ChainTable
+          RETENTION_DAYS: !Ref RetentionDays
+          DERIBIT_CURRENCIES: !Ref DeribitCurrencies
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref ChainTable
+      Events:
+        Hourly:
+          # A `Schedule` event is an EventBridge *rule*, which carries no invocation charge - unlike
+          # EventBridge Scheduler at $1/million. It also invokes Lambda ASYNCHRONOUSLY, which is the
+          # property that actually matters: async invocation is what enables the retry and the
+          # on-failure destination below. A synchronous invoke would get neither.
+          Type: Schedule
+          Properties:
+            # :05 rather than :00. The snapshot is truncated to the hour, so anything landing before
+            # the next hour records the same slot - this leaves 55 minutes of room for retries to
+            # still fill the hour they were meant for.
+            Schedule: 'cron(5 * * * ? *)'
+            Description: Hourly Deribit option-chain snapshot
+      EventInvokeConfig:
+        MaximumRetryAttempts: 2
+        # 2400s = 40 minutes. NOT the 6-hour maximum: past the hour boundary a retry writes a
+        # different hour's timestamp, so the slot it was meant to fill is lost anyway and the late
+        # attempt is wasted work that reports success.
+        MaximumEventAgeInSeconds: 2400
+        DestinationConfig:
+          OnFailure:
+            Type: SNS
+            Destination: !Ref AlertTopic
+
+
+Outputs:
+  TableName:
+    Description: Pass to the exporter as -DdynamoTable
+    Value: !Ref ChainTable
+  FunctionName:
+    Description: Invoke manually to backfill the current hour
+    Value: !Ref RecorderFunction
+  AlertTopicArn:
+    Value: !Ref AlertTopic
