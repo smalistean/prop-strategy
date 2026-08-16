@@ -74,6 +74,18 @@ public final class KlineArchiveImportApplication {
                 .connectTimeout(Duration.ofSeconds(20))
                 .followRedirects(HttpClient.Redirect.NORMAL).build();
 
+        // Targeted mode: a CSV of symbol,month pairs, one per line.
+        //
+        // Exists because measuring stop-loss slippage needs 1-minute bars, and 1m for the whole
+        // universe is unusable - one symbol-month alone is ~43,000 rows, and 833 symbols across
+        // their full lives would be hundreds of millions. The question only concerns the specific
+        // symbol-months where a stop would actually have fired, which is 68 pairs on Binance.
+        String pairsFile = System.getProperty("klinePairs");
+        if (pairsFile != null) {
+            importTargeted(client, repository, database, interval, pairsFile, threads);
+            return;
+        }
+
         List<String> symbols = listSymbols(client, interval).stream()
                 .filter(s -> s.endsWith(quote))
                 .sorted()
@@ -120,6 +132,67 @@ public final class KlineArchiveImportApplication {
         }
         System.out.printf("KLINE IMPORT DONE: %,d rows across %d symbols in %d minutes%n",
                 rowsTotal.get(), symbols.size(), (System.nanoTime() - began) / 60_000_000_000L);
+    }
+
+    /**
+     * Imports only the (symbol, month) pairs listed in a CSV, at the requested interval.
+     *
+     * <p>Reads from the archive rather than the REST API because delisted symbols are still served
+     * there: a first attempt at this measurement via {@code fapi/v1/klines} returned data for only
+     * 7 of 22 events, the rest having been removed from the live endpoint. The archive is also where
+     * the strategy's own universe came from, so the two agree by construction.
+     */
+    private static void importTargeted(HttpClient client, PostgresKlineRepository repository,
+                                       DatabaseConfig database, String interval, String pairsFile,
+                                       int threads) throws Exception {
+        List<String[]> pairs = new ArrayList<>();
+        for (String line : java.nio.file.Files.readAllLines(java.nio.file.Path.of(pairsFile))) {
+            String[] parts = line.trim().split(",");
+            if (parts.length == 2 && !parts[0].isBlank()) {
+                pairs.add(new String[] {parts[0].trim(), parts[1].trim()});
+            }
+        }
+        System.out.printf("targeted import: %d symbol-months at %s into %s%n",
+                pairs.size(), interval, table());
+
+        long began = System.nanoTime();
+        AtomicInteger rowsTotal = new AtomicInteger();
+        AtomicInteger done = new AtomicInteger();
+        AtomicInteger missing = new AtomicInteger();
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        for (String[] pair : pairs) {
+            pool.submit(() -> {
+                try {
+                    if (existingMonths(database, pair[0], interval).contains(pair[1])) {
+                        done.incrementAndGet();
+                        return;
+                    }
+                    List<Kline> klines = fetch(client, pair[0], interval, pair[1]);
+                    if (klines == null || klines.isEmpty()) {
+                        // 404 means the archive has no such month; recorded rather than silently
+                        // treated as an empty month.
+                        System.out.printf("?? %s %s not in archive%n", pair[0], pair[1]);
+                        missing.incrementAndGet();
+                    } else {
+                        rowsTotal.addAndGet(repository.upsertAll(pair[0], interval, klines, table()));
+                    }
+                    int n = done.incrementAndGet();
+                    if (n % 10 == 0) {
+                        System.out.printf("[%d/%d] %,d rows%n", n, pairs.size(), rowsTotal.get());
+                    }
+                } catch (RuntimeException e) {
+                    System.out.printf("!! %s %s failed: %s%n", pair[0], pair[1], e.getMessage());
+                    done.incrementAndGet();
+                }
+            });
+        }
+        pool.shutdown();
+        if (!pool.awaitTermination(6, TimeUnit.HOURS)) {
+            throw new IllegalStateException("Timed out on targeted import");
+        }
+        System.out.printf("TARGETED IMPORT DONE: %,d rows, %d pairs, %d absent from archive, %d min%n",
+                rowsTotal.get(), pairs.size(), missing.get(),
+                (System.nanoTime() - began) / 60_000_000_000L);
     }
 
     /**

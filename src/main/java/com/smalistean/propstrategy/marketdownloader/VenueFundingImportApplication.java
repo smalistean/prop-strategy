@@ -80,6 +80,22 @@ public final class VenueFundingImportApplication {
 
     private static List<Venue> venues() {
         return List.of(
+            // Binance via REST, to top up what the MONTHLY archive cannot supply.
+            //
+            // FundingArchiveImportApplication reaches 2020 but only publishes complete months, so
+            // between month-end and publication only the sixteen symbols that also carry `Regular`
+            // rows stay current. A cross-venue signal then pairs 800 legs from other venues against
+            // 16 from Binance and returns an empty book with no error - which is how this gap was
+            // found. Rows are written with rate_type 'REST'; perp_funding_all deduplicates per
+            // (symbol, funding_time) so overlap with the archive cannot double-count.
+            new Venue("binance", "binance_perp_funding_rate",
+                c -> jsonList(get(c, "https://fapi.binance.com/fapi/v1/premiumIndex"), "symbol")
+                        .stream().filter(s -> s.endsWith("USDT") || s.endsWith("USDC")).toList(),
+                (s, cursor) -> "https://fapi.binance.com/fapi/v1/fundingRate?symbol=" + s
+                        + "&limit=1000" + (cursor == null ? "" : "&endTime=" + cursor),
+                j -> payments(j, "fundingTime", "fundingRate", 1),
+                s -> strip(s, "USDT", "USDC"), 1000),
+
             new Venue("bybit", "bybit_perp_funding_rate",
                 c -> jsonList(get(c, "https://api.bybit.com/v5/market/tickers?category=linear")
                         .path("result").path("list"), "symbol"),
@@ -142,7 +158,7 @@ public final class VenueFundingImportApplication {
     public static void main(String[] args) throws Exception {
         Instant floor = Instant.parse(System.getProperty("venueFundingFrom", "2023-01-01T00:00:00Z"));
         List<String> only = List.of(System.getProperty("venues",
-                "bybit,dydx,okx,bitget,gate").split(","));
+                "binance,bybit,dydx,okx,bitget,gate").split(","));
 
         DatabaseConfig database = DatabaseConfig.fromEnvironment();
         DatabaseMigrator.migrate(database);
@@ -183,10 +199,19 @@ public final class VenueFundingImportApplication {
 
     private static int importSymbol(HttpClient client, DatabaseConfig database, Venue venue,
                                     String symbol, Instant floor) {
-        String upsert = "INSERT INTO " + venue.table()
-                + " (venue_symbol, base, funding_time, funding_rate) VALUES (?,?,?,?)"
-                + " ON CONFLICT (venue_symbol, funding_time) DO UPDATE SET"
-                + " funding_rate = EXCLUDED.funding_rate, updated_at = now()";
+        // Binance predates the venue tables and keys on (symbol, funding_time, rate_type) with no
+        // base column; the others share one shape. Branching here rather than reshaping the older
+        // table keeps every existing reader working.
+        boolean binance = "binance".equals(venue.name());
+        String upsert = binance
+                ? "INSERT INTO binance_perp_funding_rate (symbol, funding_time, rate_type, funding_rate)"
+                  + " VALUES (?,?,'REST',?)"
+                  + " ON CONFLICT (symbol, funding_time, rate_type) DO UPDATE SET"
+                  + " funding_rate = EXCLUDED.funding_rate, updated_at = now()"
+                : "INSERT INTO " + venue.table()
+                  + " (venue_symbol, base, funding_time, funding_rate) VALUES (?,?,?,?)"
+                  + " ON CONFLICT (venue_symbol, funding_time) DO UPDATE SET"
+                  + " funding_rate = EXCLUDED.funding_rate, updated_at = now()";
         int written = 0;
         // Bitget pages by page NUMBER; every other venue pages by a millisecond cursor. Both are
         // carried in the same variable because both are "the thing that identifies the next page".
@@ -206,10 +231,16 @@ public final class VenueFundingImportApplication {
                         if (payment.time().isBefore(oldest)) {
                             oldest = payment.time();
                         }
-                        statement.setString(1, symbol);
-                        statement.setString(2, venue.base().apply(symbol));
-                        statement.setObject(3, payment.time().atOffset(ZoneOffset.UTC));
-                        statement.setBigDecimal(4, payment.rate());
+                        if (binance) {
+                            statement.setString(1, symbol);
+                            statement.setObject(2, payment.time().atOffset(ZoneOffset.UTC));
+                            statement.setBigDecimal(3, payment.rate());
+                        } else {
+                            statement.setString(1, symbol);
+                            statement.setString(2, venue.base().apply(symbol));
+                            statement.setObject(3, payment.time().atOffset(ZoneOffset.UTC));
+                            statement.setBigDecimal(4, payment.rate());
+                        }
                         statement.addBatch();
                     }
                     written += statement.executeBatch().length;
