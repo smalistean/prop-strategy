@@ -1,0 +1,600 @@
+# XVF — implementation specification
+
+How the cross-venue funding strategy is actually built and run: processes, schedules, order types,
+timing, sizing, and failure handling.
+
+`XVF_STRATEGY.md` says **what** the strategy is and what the measurements were.
+This document says **how it executes**. Where the two disagree, this one describes the code as
+written and flags the disagreement in §12.
+
+**Status: dry-run only.** One venue of four is wired. Exits are not implemented. See §12 before
+running anything with `-DxvfDryRun=false`.
+
+---
+
+## 1. The position
+
+For one coin, held simultaneously:
+
+```
+SHORT perpetual on the venue paying MORE funding
+LONG  perpetual on the venue paying LESS funding
+equal notional, 1x per leg
+```
+
+The short leg receives funding, the long leg pays it, and the difference is the return. Price
+exposure cancels because both legs reference the same asset. Twenty such pairs, equal weight.
+
+---
+
+## 2. Process architecture
+
+Three separate processes. They do not share memory and communicate only through PostgreSQL.
+
+| Process | Entry point | Cadence | Sends orders |
+| --- | --- | --- | --- |
+| **Data refresh** | `scripts/xvf-refresh.sh` | daily | no |
+| **Signal / reporting** | `XvfSignalApplication` | on demand | no |
+| **Execution** | `XvfExecutionApplication` | every 3 days | yes, if `-DxvfDryRun=false` |
+
+### Why three and not one
+
+The refresh walks six venue APIs and takes minutes; the execution path must react to a fill inside a
+network round trip. Putting them in one process means a REST backfill can block an order.
+
+They are also separable by risk: the first two cannot lose money, so they can be scheduled,
+restarted and left unattended. Only the third needs supervision.
+
+### Why not a persistent daemon
+
+Funding is checked hourly at most, positions turn over every three days, and the reaction time that
+matters — maker fill to hedge — is inside a single run. A process that sleeps between rebalances
+holds nothing that a restart could not rebuild from the database, and a daemon that dies silently
+between rebalances looks identical to one that is working.
+
+The execution process is therefore short-lived: it opens streams, places the book, waits for the
+pairs to hedge, reports what is still exposed, and exits.
+
+---
+
+## 3. Funding schedules — measured, not assumed
+
+This is the constraint that sets every time in §4. Binance intervals are as declared by
+`GET /fapi/v1/fundingInfo` on 2026-08-15; the rest measured over the trailing 14 days in
+`perp_funding_all`:
+
+| Venue | Interval | Symbols | Stamp times (UTC) |
+| --- | --- | ---: | --- |
+| **dYdX** | 1 hour | 296 | every hour, `HH:00` |
+| **Hyperliquid** | 1 hour | 232 | every hour, `HH:00` |
+| **Binance** | **1 hour** | **1** | **every hour — dynamic, see below** |
+| **Binance** | 4 hours | 444 | `00 04 08 12 16 20` |
+| **Binance** | 8 hours | 308 | `00 08 16` |
+| **Bybit** | 4 hours | 407 | `00 04 08 12 16 20` |
+| **Bybit** | 8 hours | 358 | `00 08 16` |
+
+Two consequences that drive the design:
+
+**The CEX leg is always the binding stamp.** dYdX and Hyperliquid pay every hour, and every CEX
+stamp falls on an hour. So a pair entered before a Binance or Bybit stamp collects on *both* legs in
+the same minute. There is no schedule where the DEX leg is missed and the CEX leg is caught.
+
+**The majority of the CEX universe is 4-hourly, not 8-hourly.** 444 of 753 Binance symbols and 407
+of 772 Bybit symbols pay every four hours. That halves the value of any single payment, and the
+hourly tier divides it by eight again:
+
+| Interval | Payments/year | One payment on a 100%-annualised name |
+| --- | ---: | ---: |
+| 8 hours | 1,095 | 9.1 bp |
+| 4 hours | 2,190 | 4.6 bp |
+| 1 hour | 8,760 | 1.1 bp |
+
+Against a round trip of roughly 13bp across four fills, a 4-hourly position on a 100% name needs
+about three payments to cover its own entry and exit. At a 3-day hold it gets eighteen.
+
+### Binance intervals are dynamic, and they track exactly what XVF selects
+
+A Binance symbol's funding interval is not a fixed property. Binance shortens it when funding runs
+extreme and lengthens it again when it settles. Only one symbol (COTIUSDT) is hourly right now, but
+over the trailing 30 days **12 distinct symbols spent at least one full day on hourly funding**:
+
+| Symbol | Days hourly | Window |
+| --- | ---: | --- |
+| COTIUSDT | 17 | 2026-07-28 → 08-13 |
+| DEXEUSDT | 16 | 2026-07-22 → 08-06 |
+| ERAUSDT | 15 | 2026-07-23 → 08-06 |
+| ESPORTSUSDT | 10 | 2026-07-20 → 07-29 |
+| TUSDT | 8 | 2026-07-17 → 07-24 |
+| 1000XECUSDT | 6 | 2026-07-17 → 07-22 |
+| BANKUSDT, GWEIUSDT | 5 each | July |
+| CATUSDT, PROMUSDT, ACEUSDT, RIFUSDT | 1–2 each | July–August |
+
+This is not a curiosity at the edge of the universe. Split the 734 Binance symbols by whether they
+ever went hourly and compare peak trailing-7-day funding:
+
+| Cohort | Symbols | Avg peak annualised | Max | Share exceeding the 20% entry threshold |
+| --- | ---: | ---: | ---: | ---: |
+| Never hourly | 722 | 51% | 1,850% | 37.1% |
+| **Went hourly** | **12** | **1,199%** | **4,245%** | **100.0%** |
+
+Binance shortens the interval under precisely the condition XVF screens for. Every symbol that went
+hourly would have entered an XVF book, against 37% of the rest, and the cohort's average peak is 23×
+higher. `ACEUSDT` sits at rank 2 in the current book and ran hourly on 2026-08-08/09.
+
+Three consequences:
+
+1. **The stamp hours above do not hold for the top of the book.** The symbols XVF ranks highest are
+   disproportionately the ones moved off the `00/04/08/…` grid onto every hour. Timing must be
+   resolved per symbol at signal time, not read off a static schedule.
+2. **`fundingIntervalHours == 1` is a free live marker.** It is Binance stating that this symbol is in
+   a funding dislocation, published forward-looking through a public unauthenticated endpoint. The
+   signal ignores it entirely today — §12 item 13.
+3. **The trailing-sum arithmetic is unaffected.** `sum(funding_rate)` over 7 days is the realised
+   total whatever the interval, and `× 365/7` annualises it correctly. Interval changes break the
+   *schedule* assumptions, not the *rate* ones.
+
+---
+
+## 4. Timing — what happens at what time
+
+### The rebalance clock
+
+Rebalance every **3 days** (`XvfConfig.REBALANCE_DAYS`), read as "2 to 5 days" — 3 is a sampled
+peak, not a known optimum. 72 hours divides evenly by 1, 4 and 8, so a 3-day cadence always lands on
+a stamp boundary for every venue.
+
+Anchor the rebalance to a stamp hour in `{00, 04, 08, 12, 16, 20}` UTC so both the 4h and 8h CEX
+universes are covered when the hour is `00`, `08` or `16`.
+
+**But resolve the hour per symbol, not per book.** Per §3, a Binance leg may be on a 1h interval, and
+the symbols XVF ranks highest are the ones most likely to be. Read `GET /fapi/v1/fundingInfo` at
+signal time and take each symbol's `fundingIntervalHours`:
+
+| Leg's interval | Next stamp | Effect on entry |
+| --- | --- | --- |
+| 1h (dYdX, Hyperliquid, some Binance) | the next `HH:00` | any hour works; no waiting |
+| 4h | next `HH ∈ {00,04,08,12,16,20}` | up to 4h wait if the cycle is missed |
+| 8h | next `HH ∈ {00,08,16}` | up to 8h wait |
+
+The binding stamp for a pair is the **longer** of its two legs' intervals, since the DEX side pays
+hourly regardless. A Binance-8h/dYdX pair can only be timed onto `00/08/16`; a Binance-1h/dYdX pair
+can be entered in any hour, which is the easier case and applies disproportionately to the top of the
+book.
+
+### The entry window within the hour
+
+Measured on 47M Binance 1-minute bars, 1-minute range and trade count by offset from the funding
+stamp:
+
+| Window | Minutes sampled | Avg range (bp) | Avg trades |
+| --- | ---: | ---: | ---: |
+| −60..−31 | 2,169,044 | 26.2 | 1,293 |
+| −30..−11 | 1,466,200 | 25.1 | 1,215 |
+| −10..−4 | 513,170 | 23.4 | 1,107 |
+| **−3..−1** | 219,930 | **21.9** | **1,033** |
+| **STAMP** | 73,310 | **34.8** | **1,869** |
+| +1..+3 | 219,930 | 30.7 | 1,543 |
+| +4..+10 | 513,170 | 27.8 | 1,359 |
+| +11..+30 | 1,466,200 | 26.2 | 1,267 |
+| +31..+59 | 2,156,247 | 25.2 | 1,209 |
+
+The minutes before a stamp are the calmest of the hour — range falls monotonically from 26.2bp an
+hour out to 21.9bp in the last three minutes, 16% below baseline, with the lowest trade count. The
+stamp minute is the worst at 34.8bp and 81% more trades, decaying over the following 30 minutes.
+
+Entering just before a stamp is therefore both the cheapest moment and the one that collects
+immediately. Both effects point the same way, so the rule is unambiguous:
+
+| Time (UTC) | Action |
+| --- | --- |
+| `HH:45` | Run `xvf-refresh.sh` if it has not run today. Compute the book. |
+| `HH:50` | Start execution. Streams open before any order is placed. |
+| `HH:57`–`HH:59` | **Place orders.** Cheapest window of the hour. |
+| `HH:00` | Funding stamps on both legs. Position is already on. |
+| `HH:00`–`HH:10` | **Place nothing.** 34.8bp then 30.7bp. |
+| `HH:10`+ | Anything not filled by now waits for the next stamp hour rather than chasing. |
+
+`HH` is a stamp hour for the CEX leg. The three-minute window is narrow on purpose: it is the
+measured minimum, and widening it to ten minutes gives back most of the advantage (23.4bp).
+
+**This window is Binance-only.** Bybit's stamp schedule was not separately measured, and the range
+proxy conflates spread with genuine drift. The 127 symbols with 1-minute data skew more liquid than
+XVF typically selects.
+
+---
+
+## 5. Order types — when limit, when market
+
+The rule in one line: **the first leg is always a post-only limit, the second leg is always a
+market order, and nothing else uses a limit.**
+
+### Leg 1 — post-only limit on the thinner venue
+
+```java
+placePostOnly(venueSymbol, side, quantity, limitPrice)
+```
+
+**Post-only, not a plain limit.** On Binance this is `timeInForce=GTX`, "good till crossing": the
+order is *rejected* rather than executed if it would take. Rejection is the wanted behaviour. A
+plain limit that crosses fills immediately at taker, silently converting the cheap leg into the
+expensive one — the exact cost this design exists to avoid. A rejected entry costs one position's
+funding for one period out of twenty positions.
+
+**Which venue rests it:** the *thinner* one. `XvfExecutionApplication.venueDepthRank()` ranks
+dYdX (0) < Hyperliquid (1) < Bybit (2) < Binance (3), and the lower rank rests. Crossing costs most
+where the book is thin, so the maker order is worth more there and the market order lands where
+liquidity is deepest. Putting the limit on the liquid side earns the smaller saving and pays the
+larger slippage. Where both legs are the same class, the short leg rests — arbitrary but
+deterministic.
+
+**Price:** the touch on the resting side, so the order is at the front of the queue without
+crossing. Reading a mid or last price risks crossing and being rejected, which is safe but wastes
+the entry. *(Currently a placeholder — see §12.)*
+
+### Leg 2 — market order on the liquid venue, on the fill event
+
+```java
+placeMarket(venueSymbol, oppositeSide, filledQuantity)
+```
+
+Sent from the websocket callback the instant leg 1 reports a fill — **not on a timer, not on a
+poll**. Between the two fills the book is naked in a coin selected precisely because it is
+dislocated. Measured on the selected universe:
+
+| | Cost |
+| --- | ---: |
+| Cross the spread | 3.2 bp |
+| 5 minutes unhedged, median move | 56 bp |
+| 15 minutes unhedged, median | 92 bp |
+| 15 minutes unhedged, p90 | 273 bp |
+
+There is no horizon at which waiting is cheaper than crossing, which is why the second leg has no
+limit-order path at all. A partial fill hedges the filled portion immediately rather than waiting
+for the remainder — a half-filled maker leg is half-naked, and the exposure is what matters.
+
+### Everything else
+
+| Situation | Order type | Why |
+| --- | --- | --- |
+| Second leg / hedge | market | above |
+| Closing a pair at rebalance | market, both legs | same reasoning in reverse; a resting exit leaves the other leg naked |
+| Stop before liquidation | market | a limit stop can be skipped straight through |
+| Unwinding after `UNHEDGED_ALERT` | market, manual | the position is already directional |
+
+---
+
+## 6. Entry state machine
+
+`PairedEntryEngine` holds one `Pair` per position, keyed by client order ID.
+
+```
+                 placePostOnly on thin venue
+                            │
+                            ▼
+                        WORKING ──── 30 min, no fill ────► ABANDONED
+                            │                              (cancel, skip)
+                   fill event on user stream
+                            │
+                            ▼
+                      MAKER_FILLED ─── market hedge ok ───► HEDGED
+                            │
+                     5 attempts fail
+                            │
+                            ▼
+                     UNHEDGED_ALERT
+```
+
+### The three failure states, in order of severity
+
+**1. Maker never fills — harmless.** Cancel after 30 minutes, skip the position. Costs one period of
+funding on one of twenty positions. The abandon timer fires only from `WORKING`; once the maker has
+filled, cancelling is meaningless and the correct action is to hedge, so the transition is a
+`compareAndSet` rather than an unconditional write.
+
+**2. Maker fills, hedge send fails — the dangerous one.** Retry the market order five times with
+linear backoff (200ms × attempt). The engine does **not** cancel the maker leg: that leg is already
+filled, and "cancelling" a filled leg means sending another market order in the same direction as
+the exposure. After five failures the pair goes to `UNHEDGED_ALERT`, which is deliberately loud and
+deliberately not self-healing. Silently retrying forever would hide the one state that must reach a
+human.
+
+**3. Stream goes silent — treated as failure, not as absence of fills.** A fill that arrived while
+the listener was dead leaves an unhedged position nobody is watching. `outstanding()` is polled
+rather than trusting the stream to have reported everything. On Binance specifically, the `listenKey`
+expires 60 minutes after creation and a lapsed key does not error — the socket just stops
+delivering. The keepalive `PUT` runs every 30 minutes and a failure to extend is escalated, not
+retried quietly.
+
+Note that Binance's *market data* futures stream connects but never delivers a frame in this
+environment (see `ChallengeMonitorApplication`). The user data stream is a different endpoint and is
+not known to have that problem, but it is unverified — §12.
+
+### Ordering guarantee
+
+Every gateway's `streamOrderUpdates` is wired **before the first order is placed**. Placing first
+opens a window in which a fill arrives with nothing listening for it.
+
+---
+
+## 7. Sizing
+
+```
+legNotional = capital × LEG_LEVERAGE / (POSITIONS × 2)
+```
+
+At $10,000, 1x, 20 positions: **$250 per leg**, 40 legs, $10,000 total notional.
+
+Then three caps applied in order:
+
+**1. Participation cap.** `min(legNotional, thinLegWeeklyVolume × 0.01)`. Funding is a percentage and
+says nothing about whether the notional is reachable — REN paid 507% annualised on $289 of weekly
+volume. If the cap cuts the leg below half the target, skip the pair entirely rather than opening a
+runt position that still pays four fills of fees.
+
+**2. Liquidity floor.** The thinner leg needs **$500k** weekly quote volume or the candidate never
+enters the book. Applied in `XvfSignalEngine.topBook`, before ranking.
+
+**3. Step-size guard.** A leg needs roughly `100 × stepSize × price` in notional for rounding error
+under 1%.
+
+| | Per leg | Capital (40 legs) |
+| --- | ---: | ---: |
+| Median selected symbol | $5 | $200 |
+| p90 symbol | $77 | **$3,089** |
+| Worst (LLYUSDT, $12.09/step) | $1,209 | $48,364 |
+
+**$3,000 minimum, $10,000 comfortable.** At $10,000 this excludes the tokenised-equity perps (LLY,
+META, TSM, IWM, ARM, ALAB, AMAT, WDC) at $3–12 per step. Worth knowing the selection reaches those
+at all — they are equities, not crypto, and their funding dynamics were never separately examined.
+
+Volume for the participation cap comes from **live venue ticker endpoints** (`LiveVolume`), not from
+the kline tables. The kline importers are backfills — Binance 1h currently holds 1,230 rows for the
+last seven days where a full universe would carry ~140,000. A stale backfill makes the cap silently
+pass everything or silently block everything, and both look like a normal empty book.
+
+---
+
+## 8. Signal
+
+`XvfSignalEngine.topBook()` is the single source of truth. Both the reporting application and the
+execution application call it, so the book you look at and the book you trade cannot drift apart.
+
+```
+1. trailing 7-day realised funding, summed per venue per symbol
+2. drop any symbol with < 90% of its own median weekly payment count
+   (a partial week reads as a low rate, not as missing data)
+3. normalise base names        1000PEPE / PEPE / kPEPE → PEPE
+4. group by base, keep bases present on ≥ 2 venues
+5. spread = (max rate − min rate) × 365/7 × 100
+6. keep spread > 20% annualised AND thin leg ≥ $500k weekly
+7. sort by spread descending, take top 20
+```
+
+Step 3 is not cosmetic. Joining on the raw symbol split one asset into three and matched none of
+them, silently dropping every meme coin — which is where funding is most extreme. Prefixes are
+contract-size multipliers and funding is a rate, so normalising the name is sufficient; a *price* or
+*quantity* would need the multiplier applied.
+
+**Step 4 does not require the two legs to be on different venues.** It requires two *legs*. This is a
+live bug — see §12 item 16.
+
+### The freshness guard
+
+`requireFreshFunding()` refuses to return a book unless **every** venue has ≥ 100 distinct symbols in
+the trailing window. It checks symbol **count**, not the latest timestamp: Binance's sixteen
+old-universe symbols carry live rows while the other 800 depend on a monthly archive, so a timestamp
+check reports the venue current when 98% of it is missing — and the cross-venue pairing then
+collapses to an empty book with no error at all. 100 sits well under every venue's real universe
+(232 to 775) and well over the 16 that leak through when the archive is stale.
+
+---
+
+## 9. Module reference
+
+```
+xvf/
+├── XvfConfig.java                       every tunable, with the measurement that settled it
+├── signal/
+│   ├── XvfSignalEngine.java             ranking + freshness guard   ← single source of truth
+│   ├── XvfSignalApplication.java        prints the book, never sends an order
+│   └── LiveVolume.java                  24h quote volume from venue tickers
+├── venue/
+│   ├── VenueGateway.java                interface + per-venue stream endpoints
+│   └── BinanceGateway.java              HMAC-SHA256 REST, GTX post-only, listenKey websocket
+└── execution/
+    ├── PairedEntryEngine.java           the state machine in §6
+    └── XvfExecutionApplication.java     wiring, sizing, dry-run gate
+```
+
+`VenueGateway` is deliberately about **order events**, not market data. What matters is hearing your
+own fill in a network round trip; the market data stream is not on the critical path.
+
+Implementations own their credentials. Nothing in the interface reads keys, and no key material is
+logged, held in fields longer than a request needs, or written to the database. `BinanceGateway`
+overrides `toString()` so credentials cannot leak through a debug print of the object.
+
+### Per-venue user data streams
+
+| Venue | Endpoint | Notes |
+| --- | --- | --- |
+| Binance | `POST /fapi/v1/listenKey` → `wss://fstream.binance.com/ws/<key>` | event `ORDER_TRADE_UPDATE`; key expires 60 min, `PUT` every 30 |
+| Bybit | `wss://stream.bybit.com/v5/private` | authenticate, then subscribe `order` + `execution` |
+| Hyperliquid | `wss://api.hyperliquid.xyz/ws` | subscribe `{"type":"userFills","user":"0x..."}` |
+| dYdX | `wss://indexer.dydx.trade/v4/ws` | channel `v4_subaccounts` |
+
+---
+
+## 10. Data dependencies
+
+| Table | Feeds | Refreshed by |
+| --- | --- | --- |
+| `perp_funding_all` (view over 7 venue tables) | signal, freshness guard | `VenueFundingImportApplication` |
+| `binance_perp_kline`, `bybit_perp_kline`, `hyperliquid_perp_kline`, `dydx_perp_kline` | basis measurement, backtests | `KlineArchiveImportApplication`, `VenueCandleImportApplication` |
+| venue ticker endpoints (no table) | participation cap | `LiveVolume`, at signal time |
+
+`scripts/xvf-refresh.sh` runs funding first (the signal needs it) then candles (they only feed basis
+measurement and can lag a day without breaking anything), with a 10-day floor so a daily run costs
+one or two pages per symbol instead of re-walking years — the dYdX full history took 6.5 hours,
+which is not a daily job.
+
+---
+
+## 11. Configuration reference
+
+All in `XvfConfig`. Every value below was measured, not chosen.
+
+| Constant | Value | Settled by |
+| --- | --- | --- |
+| `VENUES` | binance, bybit, hyperliquid, dydx | the four with usable funding history; OKX/Gate/Bitget serve 1–3 months |
+| `LOOKBACK_DAYS` | 7 | carried over from cash-and-carry, not swept |
+| `MIN_SPREAD_ANNUAL_PCT` | 20.0 | 12.0% net at a 0% threshold, 19.0% at 20%, 25.4% at 40% but only 6 positions |
+| `POSITIONS` | 20 | Sharpe 5.12 vs 4.83 at top 10; ranks 11–20 realise 23.0% forward funding vs 22.3% for 6–10 |
+| `REBALANCE_DAYS` | 3 | swept 1/2/3/5/7/10/14 → 14.7 / 17.8 / **22.0** / 19.7 / 19.5 / 15.9 / 13.4 |
+| `EQUAL_WEIGHT` | true | spread-weighting cost a third of the Sharpe (4.83 → 3.47) for one point of return |
+| `LEG_LEVERAGE` | 1.0 | 2x/3x/5x worse once liquidation friction charged |
+| `MIN_WEEKLY_QUOTE_VOLUME` | 500,000 | below this, prints are untradeable and basis goes to zero |
+| `MAX_PARTICIPATION` | 0.01 | — |
+| `MIN_STEPS_PER_LEG` | 100 | rounding error under 1% |
+| `MAKER_BPS` / `TAKER_BPS` | 1.8 / 5.0 | venue schedules, VIP0, BNB discount |
+| `MIN_CAPITAL_USD` | 3,089 | p90 symbol at $77/leg × 40 legs |
+
+Daily rebalancing is the worst setting above weekly because **basis is a per-round-trip cost, not a
+per-day one**: −22.6% daily, −10.4% at three days, −3.4% weekly, −1.3% at fourteen. Churn realises
+it; holding lets it mean-revert.
+
+---
+
+## 12. Known gaps — read before trading
+
+### Not implemented
+
+1. **Exits.** There is no close path. `PairedEntryEngine` opens pairs; nothing closes them. The
+   3-day rebalance in `XvfConfig` is a backtest parameter with no runtime counterpart. This is the
+   largest gap: the system can enter twenty positions and cannot exit any of them programmatically.
+2. **Three of four gateways.** Bybit, Hyperliquid and dYdX resolve to `UnwiredGateway`, which throws
+   rather than skipping — a book that quietly opens only its Binance legs is a directional position,
+   not a hedged one. In practice this means almost no pair can currently open, since every pair needs
+   two venues and only one is wired.
+3. **`referencePrice()` returns `BigDecimal.ONE`.** A placeholder. Every quantity computed from it is
+   wrong by the price of the asset. This alone makes `-DxvfDryRun=false` unsafe today.
+4. **Stop-loss before liquidation.** Designed but not coded. At 1x, 2.1% of legs still liquidate.
+5. **No launchd agent** for `scripts/xvf-refresh.sh`, so the freshness guard is satisfied only by
+   running it manually.
+
+### Untested
+
+6. **The Binance user data stream.** Never run against a live account. The entire entry design
+   depends on the fill event arriving.
+7. **Hysteresis for mid-week switching.** No rule for what happens when a held pair leaves the top 20
+   between rebalances.
+
+### Discrepancies between the documented strategy and the code
+
+8. **`SECOND_LEG_CROSS_AFTER_SECONDS = 60` is dead.** It is defined in `XvfConfig` and read nowhere.
+   `XvfExecutionApplication` hardcodes `Duration.ofMinutes(30)` for a different quantity — the maker
+   *abandon* timeout, not a second-leg cross delay. The constant is both unused and misnamed.
+9. **The engine never crosses an unfilled maker leg.** The 3.3bp blended fee assumes 54% of legs fill
+   post-only within a minute and the other 46% cross. The code instead fills 54% at maker and
+   *abandons* the rest. Those are different books: the backtest holds twenty positions at a blended
+   cost, the implementation holds roughly eleven at a maker cost. The implemented entry cost per pair
+   is `1.8bp (maker) + 5.0bp (taker) = 6.8bp`, and the missing positions are a selection effect
+   nobody has measured — the pairs that fail to fill post-only are unlikely to be a random subset.
+10. **The 30-minute rest window contradicts §4.** Resting until `HH:27` means holding orders through
+    the stamp minute and the expensive decay after it. If the entry window is adopted, the abandon
+    timeout should be minutes, not 30.
+
+### Bugs found by running the signal on 2026-08-15
+
+11. **The signal emits same-venue pairs.** `topBook` groups legs by normalised base and takes the max
+    and min trailing rate among them, with no requirement that the two legs sit on different venues.
+    Observed output:
+
+    ```
+    KAITO   binance KAITOUSDC   binance KAITOUSDT   38.3%
+    ```
+
+    Both legs on Binance. The base normaliser strips `USDT` and `USDC` alike, so the two quote
+    variants of one coin collapse to one base and then pair against each other. Nothing downstream
+    catches it: `isThinner("binance","binance")` returns true on the `<=`, so maker and taker
+    gateways both resolve to Binance and the pair would be placed.
+
+    A USDT/USDC funding spread on one venue is a real trade, but it is not the one that was measured
+    — it is cross-margined, carries no withdrawal latency and no second-venue risk, and none of the
+    backtest applies to it. It must either be excluded or measured separately, not silently mixed
+    into a book labelled cross-venue.
+
+12. **The freshness guard passes on data three days stale.** The same run reported
+    `binance latest 2026-08-14, bybit 2026-08-12, dydx 2026-08-13, hyperliquid 2026-08-12` and
+    produced **4 candidates instead of 20** — $2,000 of $10,000 deployed. The guard passed because it
+    counts distinct symbols over the trailing 7 days (775 for Bybit, far above the 100 floor) and
+    never looks at how recent they are.
+
+    The degradation is safe but silent. The `payments >= 0.9 × median` completeness filter drops any
+    symbol whose trailing window is partial, so a stale venue quietly loses almost all its legs; what
+    survives is whatever venue is freshest. That is exactly how KAITO ended up as a Binance-only pair
+    — the dYdX, Hyperliquid and Bybit KAITO legs all exist and all price wider (dYdX 0.0% against
+    Binance −1366.0%, a 1,366-point spread) but were filtered out for incompleteness, leaving the two
+    Binance contracts as the only survivors.
+
+    The guard was built to catch a stale monthly archive and does catch that. It does not catch "every
+    venue is a few days behind", which produces a book that is undersized and mis-selected rather
+    than empty.
+
+13. **The signal ignores `fundingIntervalHours`.** Binance publishes each symbol's current funding
+    interval through an unauthenticated endpoint, and shortening it to 1 hour is Binance's own
+    statement that the symbol is in a funding dislocation — the condition XVF screens for. Measured in
+    §3: 100% of the symbols that went hourly exceeded the entry threshold, against 37.1% of the rest.
+    Nothing in `XvfSignalEngine` reads it. It is not clear whether it should be an input to ranking or
+    only to timing, but at minimum the execution path needs it to know when the next stamp is.
+
+14. **Interval changes can trip the completeness filter, though they are not doing so today.**
+    `payments >= 0.9 × median(weekly payments over 180d)` assumes a stable cadence. A symbol switching
+    8h → 1h goes from 21 payments a week to 168 and passes trivially; one switching *back* has 21
+    against an inflated median and would be dropped — silently removing symbols just as they come out
+    of the dislocation that selected them. Measured on 2026-08-15: all 730 Binance symbols pass, and
+    104 of them have had a ≥3× swing in weekly payment count within 180 days. The failure mode is
+    latent, not active, but the filter has no notion of the cadence having legitimately changed.
+
+### Unmeasured risks
+
+15. **Adverse selection on maker fills.** You fill when price moves through your level, so the fills
+    you get are the worse ones. Requires trade-level data; absent from the 3.3bp.
+16. **Fill rates off Binance.** All 313 measured legs were Binance. dYdX and Hyperliquid have thinner
+    books; fills will be worse and crossing more expensive.
+17. **Survivorship.** Hyperliquid, Bybit and dYdX universes come from currently-listed endpoints —
+    every coin in the backtest survived to today. Only Binance's archive includes delistings.
+18. **Cross-venue collateral.** Legs sit on separate venues with no cross-margining. Moving funds is
+    an on-chain withdrawal taking minutes to hours. Each venue needs its own standing buffer, and
+    that idle capital is not charged anywhere in the returns.
+19. **Reconciliation.** This project has produced 7.5%, 10.98%, 18.5%, 19.0%, 19.6%, 22.0% and 28%
+    from pipelines built at different times over different periods. They have not been collapsed into
+    one number from one code path. Treat any single figure as indicative until they are.
+
+---
+
+## 13. Runbook
+
+Refresh the data (satisfies the freshness guard):
+
+```bash
+bash scripts/xvf-refresh.sh
+```
+
+Print the target book without sending anything:
+
+```bash
+mvn -q compile exec:java -Dexec.mainClass=com.smalistean.propstrategy.xvf.signal.XvfSignalApplication -DxvfCapital=10000
+```
+
+Dry run of the full execution path — resolves the book, sizes it, prints every order it would send:
+
+```bash
+mvn -q compile exec:java -Dexec.mainClass=com.smalistean.propstrategy.xvf.execution.XvfExecutionApplication -DxvfCapital=10000
+```
+
+Live. **Do not run this until §12 items 1–3 are closed.** Dry run is the default because a missed
+run costs one period of funding while an unintended run costs real money on twenty positions:
+
+```bash
+mvn -q compile exec:java -Dexec.mainClass=com.smalistean.propstrategy.xvf.execution.XvfExecutionApplication -DxvfCapital=10000 -DxvfDryRun=false -DbinanceApiKey=... -DbinanceApiSecret=...
+```
