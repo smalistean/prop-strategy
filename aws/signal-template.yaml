@@ -1,0 +1,180 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Frozen XVF target books. A signal run ranks the book once, writes it here, and execution reads it
+  rather than re-ranking - so a restart mid-rebalance cannot trade a different book from the one it
+  was partway through. Also the read surface for a future signal web page.
+
+Parameters:
+  FundingTableName:
+    Type: String
+    Default: xvf-funding-observation
+    Description: Table the observations are read from. Owned by the xvf-funding stack.
+  LookbackDays:
+    Type: Number
+    Default: 7
+    Description: >
+      Trailing window. Observations began 2026-08-16, so a full 7-day window is only available from
+      2026-08-23; until then a shorter value produces a book from what exists.
+  RetentionDays:
+    Type: Number
+    Default: 365
+    MinValue: 30
+    Description: >
+      TTL per item. Books are tiny - 21 items per run - so a year of hourly runs is roughly 184k items
+      and 55MB. Retention here is about keeping history to compare signal against realisation, not
+      about storage pressure.
+
+Resources:
+
+  SignalTable:
+    Type: AWS::DynamoDB::Table
+    # Retained on stack delete. A frozen book is the record of what the strategy intended at a moment
+    # in time; it cannot be reconstructed later once the trailing window has moved on.
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub '${AWS::StackName}-book'
+      # Single-table design, so the keys are deliberately generic rather than named for one item type.
+      #
+      #   pk "RUN#<signalRunId>"  sk "META"       run status, cutoff, config hash, venue watermarks
+      #   pk "RUN#<signalRunId>"  sk "RANK#01".."RANK#20"
+      #                                           base, both venues and instruments, trailing rates,
+      #                                           spread, liquidity, target notional, funding stamps
+      #   pk "LATEST"             sk "META"       pointer to the current signalRunId
+      #
+      # A reader gets the current book in two calls: GetItem LATEST, then Query the run. That is the
+      # access pattern a web page needs, and it is why the pointer exists rather than scanning for
+      # the newest run.
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      # 1/2 is deliberate and small. The free allowance is 18,600 WCU-hours a month per REGION -
+      # 25 WCU shared across every table in the account, not 25 per table. The budget across all
+      # three tables is W 14+10+1 = 25 and R 10+9+2 = 21.
+      #
+      # A run writes 21 items at most a few times an hour, well inside a 300-item burst. Reads get 2
+      # because a web page may poll; 2 RCU is 4 eventually-consistent reads a second, far more than a
+      # personal dashboard needs.
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 1
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+  SignalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-ranker'
+      CodeUri: recorder/target/recorders.jar
+      Handler: com.smalistean.propstrategy.aws.XvfSignalHandler::handleRequest
+      Runtime: java21
+      Architectures: [arm64]
+      MemorySize: 1024
+      Timeout: 900
+      Description: >
+        Ranks the XVF book from DynamoDB observations and freezes it under a signalRunId. Execution
+        reads the run named by the LATEST pointer instead of re-ranking, so a restart mid-rebalance
+        cannot trade a different book.
+      Environment:
+        Variables:
+          FUNDING_TABLE: !Ref FundingTableName
+          SIGNAL_TABLE: !Ref SignalTable
+          LOOKBACK_DAYS: !Ref LookbackDays
+          RETENTION_DAYS: !Ref RetentionDays
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref FundingTableName
+        - DynamoDBWritePolicy:
+            TableName: !Ref SignalTable
+      Events:
+        Hourly:
+          Type: Schedule
+          Properties:
+            # :10, after the funding recorder's :50 write has settled and clear of both exporters.
+            # Hourly rather than per-rebalance so a web page always has a current book; the run is
+            # cheap and each supersedes the last via the LATEST pointer.
+            Schedule: 'cron(10 * * * ? *)'
+            Description: Hourly XVF signal ranking
+
+  # Read-only, internet-facing. Separate from the ranker on purpose: this URL is reachable by anyone,
+  # so it gets a read policy and can do nothing but return a book that is already public information.
+  SignalApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-api'
+      CodeUri: recorder/target/recorders.jar
+      Handler: com.smalistean.propstrategy.aws.XvfSignalApiHandler::handleRequest
+      Runtime: java21
+      Architectures: [arm64]
+      MemorySize: 512
+      Timeout: 30
+      Description: Serves the current frozen XVF book to the static page.
+      Environment:
+        Variables:
+          SIGNAL_TABLE: !Ref SignalTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref SignalTable
+      FunctionUrlConfig:
+        # NONE, not AWS_IAM: a browser fetching from a static page cannot sign SigV4, and the payload
+        # is public market data. Nothing here is worth authenticating and nothing can be written.
+        AuthType: NONE
+        Cors:
+          AllowOrigins: ['*']
+          AllowMethods: [GET]
+          MaxAge: 300
+
+  # Static site. Public-read by bucket policy rather than ACL - AWS disables ACLs on new buckets and
+  # BucketOwnerEnforced is the current default.
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-site-${AWS::AccountId}'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        # SPA fallback: Nuxt generates client-side routes that S3 has no object for.
+        ErrorDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub '${SiteBucket.Arn}/*'
+
+Outputs:
+  SignalTableName:
+    Description: Frozen target books; execution reads the run named by the LATEST pointer
+    Value: !Ref SignalTable
+  SignalApiUrl:
+    Description: Function URL the static page fetches from
+    Value: !GetAtt SignalApiFunctionUrl.FunctionUrl
+  SiteUrl:
+    Description: Public website endpoint
+    Value: !GetAtt SiteBucket.WebsiteURL
+  SiteBucketName:
+    Value: !Ref SiteBucket

@@ -11,10 +11,16 @@ set -euo pipefail
 # no resources in common, so a problem with one cannot take the other down.
 #   deribit-chain  option-chain snapshots  -> deribit-chain-chain
 #   xvf-funding    venue funding rates     -> xvf-funding-observation
+#   xvf-signal     frozen target books     -> xvf-signal-book
 # Pass STACKS=xvf-funding to deploy just one.
+#
+# Provisioned capacity is split across them on purpose. The DynamoDB free allowance is 18,600
+# WCU-hours a month PER REGION, i.e. 25 WCU shared by every table in the account - not 25 each.
+# Budget: W 14+10+1 = 25, R 10+9+2 = 21.
 STACK="${STACK:-deribit-chain}"
 FUNDING_STACK="${FUNDING_STACK:-xvf-funding}"
-STACKS="${STACKS:-$STACK $FUNDING_STACK}"
+SIGNAL_STACK="${SIGNAL_STACK:-xvf-signal}"
+STACKS="${STACKS:-$STACK $FUNDING_STACK $SIGNAL_STACK}"
 REGION="${REGION:-$(aws configure get region || echo eu-central-1)}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -35,6 +41,10 @@ for stack in $STACKS; do
         "$FUNDING_STACK")
             template="$HERE/funding-template.yaml"
             params=("AlertEmail=$ALERT_EMAIL" "RetentionDays=${RETENTION_DAYS:-30}")
+            ;;
+        "$SIGNAL_STACK")
+            template="$HERE/signal-template.yaml"
+            params=("RetentionDays=${SIGNAL_RETENTION_DAYS:-365}" "LookbackDays=${LOOKBACK_DAYS:-7}")
             ;;
         *)
             template="$HERE/template.yaml"
