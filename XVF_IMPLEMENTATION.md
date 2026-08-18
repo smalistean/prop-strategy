@@ -229,33 +229,52 @@ So the slow leg is the only one worth timing around; an hourly leg catches whate
 before regardless. This is already what the pre-stamp window does, which is why no extra logic is
 needed for it.
 
-**What does NOT work, and why.** The apparent opportunity is to skip a payment on a leg you are paying
-while still collecting on the leg that pays you - for example giving up one hourly DEX payment to
-dodge an 8-hourly CEX one. It fails on a structural fact: every CEX stamp falls on the hour (`00 04 08
-12 16 20` or `00 08 16`) and dYdX and Hyperliquid stamp at **every** `HH:00`. The two land in the same
-second, so at any CEX stamp it is **both payments or neither**. Against a DEX leg the dodge does not
-exist at all, and that is 65.7% of the book.
+**Stamps coincide, so a single payment cannot be isolated - but that is not what the trade needs.**
+Every CEX stamp falls on the hour (`00 04 08 12 16 20` or `00 08 16`) and dYdX and Hyperliquid stamp
+at **every** `HH:00`, so at any CEX stamp both legs pay in the same second. It is both payments or
+neither. Declining **both**, by entering after that instant or exiting before it, is exactly the trade:
+you give up a small hourly payment to avoid a larger 4h or 8h one.
 
-It survives only for CEX-CEX pairs whose legs run different intervals, where a 4h leg stamps at `04:00`
-and an 8h leg does not - a subset of 16.9% of selections.
-
-**The arithmetic, when it does apply, is more lopsided than it looks.** One payment is
+The per-event sizes are what make that attractive in principle. One payment is
 `annual_rate / payments_per_year`, so at 100% annualised an 8h payment is 9.1bp against an hourly
-payment's 1.1bp - **eight times larger**. Trading one hourly payment to dodge one 8-hourly payment is
-strongly favourable whenever the net at that instant is negative.
+payment's 1.1bp - **eight times larger**. So the net at a coincident stamp is negative whenever
+`rate_short < k x rate_long` (k = the cadence ratio), while the entry signal only requires
+`rate_short > rate_long`. A perfectly sound position routinely has negative stamps.
 
-**But a persistently negative net means the pair should be closed, not timed.** The trailing signal
-already handles cadence correctly: `sum(funding_rate)` over 7 days sums actual payments - 168 for an
-hourly leg, 21 for an 8h leg - so the annualised spread is cadence-correct by construction. A negative
-net at a shared stamp means rates moved against the position since entry, which belongs to the
-hysteresis rule (§12 item 7, untested) rather than to entry timing.
+That yields a clean rule: **be in the position only for positive-net stamps**, acted on at entry and
+exit where it is free. Mid-hold negatives have to be absorbed, since dodging one costs a 13bp round
+trip.
 
-**One further idea deliberately not taken.** Where the long leg is the slower one and its rate is
-positive, entering just *after* its stamp skips a payment you would owe. Worth ~9bp on a
-100%-annualised name - but the minutes after a stamp are the most expensive of the hour (30.7bp
-against a 21.9bp pre-stamp baseline), so the saving and the cost are the same order of magnitude and
-the sign is unknown. It applies to perhaps 10-15% of the book. Not worth measuring before the
-strategy has traded.
+**Measured, it is worth almost nothing.** Simulated at hourly granularity over the 2,656 pairs the
+strategy actually selected, each with its real annualised rate and real cadence, across 72-hour holds
+and all 24 entry phases:
+
+| | Fixed exit (scheduled rebalance) | Fixed hold (72h from entry) |
+| --- | ---: | ---: |
+| Baseline funding per hold | 1.289% of leg notional | 1.289% |
+| With timed entry and exit | 1.294% | 1.293% |
+| Gain | **+0.37% of funding** | +0.31% |
+| At 19% gross | **+0.070% of capital/yr** | +0.060% |
+| On $10,000 | **~$7/year** | ~$6/year |
+
+Whether the exit is schedule-anchored barely matters, which removes the one concern that looked
+capable of deciding it.
+
+Three diagnostics explain the size. Only **26.8%** of pairs have any negative-net stamp at all; across
+those pairs only **10.7%** of stamps are negative; and the rule delays entry in just **20.1%** of cases,
+by a mean of 2.4 hours. One stamp is ~1.4% of a 72-hour hold, so moving across one or two changes
+little.
+
+**Not implemented.** $7/year against the complexity of per-pair stamp arithmetic in the execution path
+is not a trade worth making, and it would have to be re-verified against the pre-stamp entry window in
+§4 - which is worth 4.3bp of range per fill and points the other way when the rule says enter *after* a
+stamp.
+
+**A negative net is a closing signal, not a timing one.** The trailing signal already handles cadence
+correctly - `sum(funding_rate)` over 7 days sums actual payments, 168 for an hourly leg and 21 for an
+8h leg - so the annualised spread is cadence-correct by construction. Persistent negative stamps mean
+rates moved against the position since entry, which belongs to the hysteresis rule (§12 item 7,
+untested) and is worth far more than the timing.
 
 ---
 
