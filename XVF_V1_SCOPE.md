@@ -96,14 +96,14 @@ on-chain leg. That is the price of the 16%.
 | 4 | Equal sizing | already the default |
 | 5 | Signal: 7-day trailing, >20% entry, top 20, 3-day rebalance | built |
 | 6 | Freshness guard counting usable symbols | built, verified refusing |
-| 7 | Reject same-venue pairs | **must fix** — §12 item 11 |
+| 7 | Reject same-venue pairs | fixed 2026-08-18 |
 | 8 | Post-only on thinner venue, market hedge on the fill event | built, untested live |
-| 9 | Real `referencePrice()` from best bid/ask | **must build** — §12 item 3 |
-| 10 | Exit path: market both legs at rebalance | **must build** — §12 item 1 |
-| 11 | Bybit gateway (HMAC REST, mirrors Binance) | **must build** |
-| 11b | Hyperliquid gateway (EIP-712 signing) | **must build**, the hard one |
+| 9 | Real `referencePrice()` from best bid/ask | fixed 2026-08-18 |
+| 10 | Exit path: market both legs at rebalance | **must build** — the only remaining blocker |
+| 11 | Bybit gateway (HMAC REST, mirrors Binance) | built, verified live 2026-08-18 |
+| 11b | Hyperliquid gateway (EIP-712 signing) | built, verified live 2026-08-18 — see §12 |
 | 12 | Entry inside the pre-stamp window | **must build**, cheap, measured 21.9bp vs 26.2bp |
-| 13 | Scheduled `xvf-refresh.sh` | **must build** — guard currently refuses on stale data |
+| 13 | Scheduled `xvf-refresh.sh` | done — launchd agent, daily 06:45 |
 | 14 | Dry-run default, `-DxvfDryRun=false` to trade | built |
 
 ## Out of scope, with where each is recorded
@@ -111,6 +111,7 @@ on-chain leg. That is the price of the 16%.
 | Item | Worth | Why deferred | Recorded |
 | --- | --- | --- | --- |
 | dYdX | -0.7 score in this set | marginal venue; pays only when a book is candidate-starved, which this one is not | this file |
+| Full Hyperliquid EIP-712 verification suite | correctness confidence | one live cancel round trip is not the same as fuzzing every code path; see §12 | §12 |
 | Bin-packed sizing | +1.7pp of return | ~73% deployed at three venues, so it still applies — but v1 proves plumbing first | §7 |
 | Hysteresis / early close | largest unclaimed item | needs measurement before design | §12 item 7 |
 | Stamp-level entry/exit timing | ~$7/yr on $10k | measured, too small | §4 |
@@ -118,8 +119,8 @@ on-chain leg. That is the price of the 16%.
 | Binance USDC contracts | ~$33/yr | second collateral asset not worth it yet | §7 |
 | HYPE / DYDX staking | rejected | locks capital, 6% of capital for $7/yr | §7 |
 | Stop-loss before liquidation | 2.1% of legs liquidate at 1x | needs design | §12 item 4 |
-| `fundingIntervalHours` in the signal | unknown | free live marker, unmeasured | §12 item 13 |
-| Funding observations feeding the guard | unblocks stale data | needs the settled-vs-observed comparison | §12 item 13 |
+| `fundingIntervalHours` in the signal | unknown | free live marker, unmeasured | §12 item 14 |
+| Funding observations feeding the guard | unblocks stale data | needs the settled-vs-observed comparison | §12 item 14 |
 
 ---
 
@@ -135,22 +136,25 @@ Each step leaves the system in a state that can be dry-run.
 - ~~**Schedule `xvf-refresh.sh`.**~~ Done - launchd agent, daily 06:45.
 - ~~**Real `referencePrice()`.**~~ Fixed 2026-08-18. Now `topOfBook(symbol).touch(side)`; a resting
   SELL joins the ask and a resting BUY the bid.
+- ~~**Bybit gateway.**~~ Built and verified live 2026-08-18: signed reads succeed, `retCode` (not the
+  HTTP status) drives ACCEPTED/REJECTED/UNKNOWN, orders build with correct quantity/price.
+- ~~**Hyperliquid gateway.**~~ Built and verified live 2026-08-18 - see §12 for what "verified" means
+  and does not mean here.
+- ~~**Same-venue pairs / referencePrice / all three gateways wired.**~~ Confirmed together: a full dry
+  run against all three real credentials placed correctly-sized orders on Bybit, Binance and
+  Hyperliquid in one book, imbalance under 0.28% throughout.
 
-### Remaining, and nothing can trade until the first three are closed
-1. **Bybit gateway**, mirroring `BinanceGateway`: HMAC REST, post-only, user data stream over
-   `wss://stream.bybit.com/v5/private`. The easy one - same auth shape. Until this exists almost no
-   pair can open at all: every pair needs two venues and only Binance is wired, so `bybit`,
-   `hyperliquid` and `dydx` all resolve to `UnwiredGateway`, which throws.
-2. **Exit path.** Nothing closes a position - grep finds no `reduceOnly`, no close, no unwind anywhere
-   in `xvf/`. The 3-day rebalance is a backtest parameter with no runtime counterpart. The largest of
-   the three: the system can open twenty positions and exit none of them programmatically.
-3. **Hyperliquid gateway.** EIP-712 wallet signing, `wss://api.hyperliquid.xyz/ws` with `userFills`.
-   The hard one, and the reason this is not a two-venue v1 - it is worth +16% over Binance+Bybit.
-4. **Pre-stamp entry window.** Place orders at `HH:57`-`HH:59` before the slower leg's stamp hour;
+### Remaining
+1. **Exit path.** Nothing closes a position - grep finds no `reduceOnly`, no close, no unwind
+   anywhere in `xvf/`. The 3-day rebalance is a backtest parameter with no runtime counterpart. The
+   only remaining blocker: the system can open positions on all three wired venues and close none of
+   them programmatically.
+2. **Pre-stamp entry window.** Place orders at `HH:57`-`HH:59` before the slower leg's stamp hour;
    Hyperliquid is hourly so the CEX leg sets the timing. Small, measured at 21.9bp against 26.2bp.
-5. **Verify the Binance user data stream against a live account.** The entire entry design depends on
-   the fill event arriving; it has only ever run in dry-run.
-6. **Paper, then minimum size.** $3,000 is the step-rounding floor; $10,000 is comfortable.
+3. **Verify the Binance and Bybit user data streams against live accounts.** The entire entry design
+   depends on the fill event arriving; neither has run outside dry-run. Hyperliquid's fill accounting
+   (`userFills`) and signing were verified live on 2026-08-18 - see §12.
+4. **Paper, then minimum size.** $3,000 is the step-rounding floor; $10,000 is comfortable.
 
 Also stale: `dydx` still appears in the unwired-gateway array in `XvfExecutionApplication`. The venue
 measurement dropped it, so it should be removed rather than left as a gateway nobody will write.

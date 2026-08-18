@@ -7,8 +7,9 @@ timing, sizing, and failure handling.
 This document says **how it executes**. Where the two disagree, this one describes the code as
 written and flags the disagreement in §12.
 
-**Status: dry-run only.** One venue of four is wired. Exits are not implemented. See §12 before
-running anything with `-DxvfDryRun=false`.
+**Status: dry-run only.** All three v1 venues (Binance, Bybit, Hyperliquid) are wired and verified
+live; dYdX is excluded on measurement, not unwired. **Exits are not implemented — this is the only
+remaining blocker to a live trade.** See §12 before running anything with `-DxvfDryRun=false`.
 
 ---
 
@@ -129,7 +130,7 @@ Three consequences:
    resolved per symbol at signal time, not read off a static schedule.
 2. **`fundingIntervalHours == 1` is a free live marker.** It is Binance stating that this symbol is in
    a funding dislocation, published forward-looking through a public unauthenticated endpoint. The
-   signal ignores it entirely today — §12 item 13.
+   signal ignores it entirely today — §12 item 14.
 3. **The trailing-sum arithmetic is unaffected.** `sum(funding_rate)` over 7 days is the realised
    total whatever the interval, and `× 365/7` annualises it correctly. Interval changes break the
    *schedule* assumptions, not the *rate* ones.
@@ -647,7 +648,7 @@ contract-size multipliers and funding is a rate, so normalising the name is suff
 *quantity* would need the multiplier applied.
 
 **Step 4 does not require the two legs to be on different venues.** It requires two *legs*. This is a
-live bug — see §12 item 16.
+live bug — see §12 item 12.
 
 ### The freshness guard
 
@@ -740,14 +741,17 @@ it; holding lets it mean-revert.
 ### Not implemented
 
 1. **Exits.** There is no close path. `PairedEntryEngine` opens pairs; nothing closes them. The
-   3-day rebalance in `XvfConfig` is a backtest parameter with no runtime counterpart. This is the
-   largest gap: the system can enter twenty positions and cannot exit any of them programmatically.
-2. **Three of four gateways.** Bybit, Hyperliquid and dYdX resolve to `UnwiredGateway`, which throws
-   rather than skipping — a book that quietly opens only its Binance legs is a directional position,
-   not a hedged one. In practice this means almost no pair can currently open, since every pair needs
-   two venues and only one is wired.
-3. **`referencePrice()` returns `BigDecimal.ONE`.** A placeholder. Every quantity computed from it is
-   wrong by the price of the asset. This alone makes `-DxvfDryRun=false` unsafe today.
+   3-day rebalance in `XvfConfig` is a backtest parameter with no runtime counterpart. **This is now
+   the only remaining blocker to a first live trade** — every other item that made
+   `-DxvfDryRun=false` unsafe has closed, so a rebalance today would open positions on all three wired
+   venues correctly and then have no way to end them.
+2. ~~**Three of four gateways.**~~ Closed 2026-08-18 for the three venues v1 uses. Binance, Bybit and
+   Hyperliquid all place real orders; dYdX is deliberately absent, not unwired — the venue measurement
+   excluded it (`XVF_V1_SCOPE.md`). Verified live: a full dry run against real credentials on all
+   three venues built correctly-sized, correctly-priced orders in one book with imbalance under 0.28%
+   throughout. See item 11 for what "verified" covers for Hyperliquid specifically.
+3. ~~**`referencePrice()` returns `BigDecimal.ONE`.**~~ Fixed 2026-08-18. Now
+   `gateway.topOfBook(symbol).touch(side)` — a resting SELL joins the ask, a resting BUY the bid.
 4. **Stop-loss before liquidation.** Designed but not coded. At 1x, 2.1% of legs still liquidate.
 5. ~~**No launchd agent** for `scripts/xvf-refresh.sh`.~~ Closed on 2026-08-18.
    `com.smalistean.propstrategy.xvf-refresh` runs it daily at 06:45 local, and
@@ -758,8 +762,9 @@ it; holding lets it mean-revert.
 
 ### Untested
 
-6. **The Binance user data stream.** Never run against a live account. The entire entry design
-   depends on the fill event arriving.
+6. **The Binance and Bybit user data streams.** Neither has run against a live account with a real
+   fill on it. The entire entry design depends on the fill event arriving. Hyperliquid's fill path
+   (`userFills`) has run live — see item 11.
 7. **Hysteresis for mid-week switching — the largest unclaimed item here.** No rule exists for what
    happens when a held pair stops being worth holding between rebalances. Positions are opened on a
    3-day schedule and closed on it, and nothing looks at them in between.
@@ -793,9 +798,63 @@ it; holding lets it mean-revert.
     the stamp minute and the expensive decay after it. If the entry window is adopted, the abandon
     timeout should be minutes, not 30.
 
+### Hyperliquid signing — what was verified, and a bug caught live
+
+11. **The EIP-712 signing pipeline is correct, verified two ways, and one real bug was found and fixed
+    in the process.**
+
+    Before writing `HyperliquidGateway`, the msgpack encoding, the `action_hash` construction, and the
+    EIP-712 domain were cross-checked against a from-scratch Python reference built from the official
+    SDK source (not from this code): a real order action's msgpack bytes and its `action_hash` matched
+    the Java implementation exactly, byte for byte. `web3j`'s `Keys.getAddress`, `Hash.sha3`
+    (Keccak-256 — the JDK has no Keccak provider, which is why this dependency exists at all) and
+    `StructuredDataEncoder` were each checked against known test vectors before being trusted.
+
+    That caught nothing, because the test case only exercised small integers (an asset index under
+    300). **Live testing against the real account found a genuine bug the offline check had no reason
+    to catch**: `MsgPack.writeInt` had no branch above `uint32` and silently truncated larger values
+    through a narrowing `(int)` cast. Hyperliquid's numeric order ids exceed 2^32
+    (`519178520652` in the case that surfaced it), and only a *cancel* action carries one — a fresh
+    order's only integer is the small asset index, so order placement never exercised this path.
+
+    The failure mode was actively misleading. The JSON body sent to the exchange carried the correct,
+    untruncated value via Jackson, so the exchange computed the correct hash from what it received.
+    This class signed a *different* hash, built from the truncated value. A valid ECDSA signature over
+    the wrong hash still recovers **some** address when checked against the right one — not an error,
+    a different, meaningless public key — which surfaced as:
+
+    ```
+    User or API Wallet 0xa8173edbaa67dea89910c3c38912e2e659ea4b1f does not exist.
+    ```
+
+    for an address that had never been configured anywhere and had nothing to do with the actual
+    key. That is indistinguishable from a credentials problem unless you already know to suspect the
+    hash rather than the key. Fixed by adding the `uint64` branch (`0xcf` + 8 bytes) and pinned with a
+    regression test using this exact oid.
+
+    **What was then verified live, in order, on the real account:**
+
+    | Step | Result |
+    | --- | --- |
+    | Key derivation | `HL_API_PRIVATE_KEY` correctly derives to `HL_API_WALLET_ADDRESS`, checked at construction |
+    | Read-only calls | `rules`, `topOfBook`, `orderByClientId` all correct against live data |
+    | Signed order, real matching-engine rejection | `$4.80` order rejected with *"Order must have minimum value of $10"* — proves the signature was valid before the truncation bug was even found, since an invalid signature fails differently |
+    | Signed order, accepted | `$10.20` BUY on BTC accepted, real `oid` returned, appeared in `openOrders` |
+    | Signed cancel (before the fix) | failed with the misleading address error above |
+    | Signed cancel (after the fix) | `{"status":"ok",...,"statuses":["success"]}`, order gone from `openOrders` |
+
+    Account left clean: no open orders, no positions, after every step above.
+
+    **What this does not cover.** One order and one cancel is not a test suite. `userFills` fill
+    accounting (summing discrete executions per `oid`, deduplicated by `tid` — see the class javadoc
+    for why this was chosen over trusting `orderUpdates`' ambiguous `sz` field) has not been exercised
+    against a real fill, because the account has never held enough equity for one. The 30-second
+    websocket heartbeat interval was not verified against current documentation. `MAX_TAKER_SLIPPAGE_BPS`
+    capped IOC orders have not been tested live on this venue specifically.
+
 ### Bugs found by running the signal on 2026-08-15
 
-11. **The signal emits same-venue pairs.** `topBook` groups legs by normalised base and takes the max
+12. **The signal emits same-venue pairs.** `topBook` groups legs by normalised base and takes the max
     and min trailing rate among them, with no requirement that the two legs sit on different venues.
     Observed output:
 
@@ -813,7 +872,7 @@ it; holding lets it mean-revert.
     backtest applies to it. It must either be excluded or measured separately, not silently mixed
     into a book labelled cross-venue.
 
-12. **The freshness guard passes on data three days stale.** The same run reported
+13. **The freshness guard passes on data three days stale.** The same run reported
     `binance latest 2026-08-14, bybit 2026-08-12, dydx 2026-08-13, hyperliquid 2026-08-12` and
     produced **4 candidates instead of 20** — $2,000 of $10,000 deployed. The guard passed because it
     counts distinct symbols over the trailing 7 days (775 for Bybit, far above the 100 floor) and
@@ -830,14 +889,14 @@ it; holding lets it mean-revert.
     venue is a few days behind", which produces a book that is undersized and mis-selected rather
     than empty.
 
-13. **The signal ignores `fundingIntervalHours`.** Binance publishes each symbol's current funding
+14. **The signal ignores `fundingIntervalHours`.** Binance publishes each symbol's current funding
     interval through an unauthenticated endpoint, and shortening it to 1 hour is Binance's own
     statement that the symbol is in a funding dislocation — the condition XVF screens for. Measured in
     §3: 100% of the symbols that went hourly exceeded the entry threshold, against 37.1% of the rest.
     Nothing in `XvfSignalEngine` reads it. It is not clear whether it should be an input to ranking or
     only to timing, but at minimum the execution path needs it to know when the next stamp is.
 
-14. **Interval changes can trip the completeness filter, though they are not doing so today.**
+15. **Interval changes can trip the completeness filter, though they are not doing so today.**
     `payments >= 0.9 × median(weekly payments over 180d)` assumes a stable cadence. A symbol switching
     8h → 1h goes from 21 payments a week to 168 and passes trivially; one switching *back* has 21
     against an inflated median and would be dropped — silently removing symbols just as they come out
@@ -847,13 +906,13 @@ it; holding lets it mean-revert.
 
 ### Unmeasured risks
 
-15. **Adverse selection on maker fills.** You fill when price moves through your level, so the fills
+16. **Adverse selection on maker fills.** You fill when price moves through your level, so the fills
     you get are the worse ones. Requires trade-level data; absent from the 3.3bp.
-16. **Fill rates off Binance.** All 313 measured legs were Binance. dYdX and Hyperliquid have thinner
+17. **Fill rates off Binance.** All 313 measured legs were Binance. dYdX and Hyperliquid have thinner
     books; fills will be worse and crossing more expensive.
-17. **Survivorship.** Hyperliquid, Bybit and dYdX universes come from currently-listed endpoints —
+18. **Survivorship.** Hyperliquid, Bybit and dYdX universes come from currently-listed endpoints —
     every coin in the backtest survived to today. Only Binance's archive includes delistings.
-18. **Cross-venue collateral — now partly measured, see §7.** Legs sit on separate venues with no
+19. **Cross-venue collateral — now partly measured, see §7.** Legs sit on separate venues with no
     cross-margining, and moving funds is an on-chain withdrawal taking minutes to hours. What §7 adds
     is the size of it: funding every venue for its own peak needs **1.53x capital at p90 and 1.88x at
     worst case**, an equal split fills the intended book in only **5.5% of weeks**, and the venues do
@@ -864,7 +923,7 @@ it; holding lets it mean-revert.
     capital falls by roughly a third); capping legs per venue and rebalancing between venues are not.
     Until one is chosen and measured, every return figure here assumes capital is already where it
     needs to be, which §7 shows it cannot be.
-19. **Reconciliation.** This project has produced 7.5%, 10.98%, 18.5%, 19.0%, 19.6%, 22.0% and 28%
+20. **Reconciliation.** This project has produced 7.5%, 10.98%, 18.5%, 19.0%, 19.6%, 22.0% and 28%
     from pipelines built at different times over different periods. They have not been collapsed into
     one number from one code path. Treat any single figure as indicative until they are.
 
@@ -899,7 +958,8 @@ Dry run of the full execution path — resolves the book, sizes it, prints every
 mvn -q compile exec:java -Dexec.mainClass=com.smalistean.propstrategy.xvf.execution.XvfExecutionApplication -DxvfCapital=10000
 ```
 
-Live. **Do not run this until §12 items 1–3 are closed.** Dry run is the default because a missed
+Live. **Do not run this until §12 item 1 (exits) is closed.** Items 2 and 3 closed on
+2026-08-18. Dry run is the default because a missed
 run costs one period of funding while an unintended run costs real money on twenty positions:
 
 ```bash
