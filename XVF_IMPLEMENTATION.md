@@ -202,6 +202,61 @@ measured minimum, and widening it to ten minutes gives back most of the advantag
 proxy conflates spread with genuine drift. The 127 symbols with 1-minute data skew more liquid than
 XVF typically selects.
 
+### Mismatched cadence between the two legs
+
+**Decision: not implemented. The entry rule stays uniform - place in the pre-stamp window, same for
+every pair.** Recorded here because the reasoning is not obvious and the conclusion is narrower than
+it first appears.
+
+Two legs of a pair rarely share a funding cadence. Measured over the same 146 weeks:
+
+| Pair type | Share | Long leg has a positive rate (you pay it) |
+| --- | ---: | ---: |
+| CEX-DEX, cadence always differs | **65.7%** | 33.0% |
+| DEX-DEX, both hourly | 17.4% | 40.5% |
+| CEX-CEX, cadence may match | 16.9% | 14.5% |
+
+**Entry timing matters in proportion to the slower leg's cadence.** Over a 72-hour hold, entering just
+before a stamp rather than just after is worth one extra payment:
+
+| Leg cadence | Stamps in 72h | Value of catching one more |
+| --- | ---: | ---: |
+| 8 hours | 9 | **+12.5%** of that leg's funding |
+| 4 hours | 18 | +5.9% |
+| 1 hour | 72 | +1.4% |
+
+So the slow leg is the only one worth timing around; an hourly leg catches whatever hour you enter
+before regardless. This is already what the pre-stamp window does, which is why no extra logic is
+needed for it.
+
+**What does NOT work, and why.** The apparent opportunity is to skip a payment on a leg you are paying
+while still collecting on the leg that pays you - for example giving up one hourly DEX payment to
+dodge an 8-hourly CEX one. It fails on a structural fact: every CEX stamp falls on the hour (`00 04 08
+12 16 20` or `00 08 16`) and dYdX and Hyperliquid stamp at **every** `HH:00`. The two land in the same
+second, so at any CEX stamp it is **both payments or neither**. Against a DEX leg the dodge does not
+exist at all, and that is 65.7% of the book.
+
+It survives only for CEX-CEX pairs whose legs run different intervals, where a 4h leg stamps at `04:00`
+and an 8h leg does not - a subset of 16.9% of selections.
+
+**The arithmetic, when it does apply, is more lopsided than it looks.** One payment is
+`annual_rate / payments_per_year`, so at 100% annualised an 8h payment is 9.1bp against an hourly
+payment's 1.1bp - **eight times larger**. Trading one hourly payment to dodge one 8-hourly payment is
+strongly favourable whenever the net at that instant is negative.
+
+**But a persistently negative net means the pair should be closed, not timed.** The trailing signal
+already handles cadence correctly: `sum(funding_rate)` over 7 days sums actual payments - 168 for an
+hourly leg, 21 for an 8h leg - so the annualised spread is cadence-correct by construction. A negative
+net at a shared stamp means rates moved against the position since entry, which belongs to the
+hysteresis rule (§12 item 7, untested) rather than to entry timing.
+
+**One further idea deliberately not taken.** Where the long leg is the slower one and its rate is
+positive, entering just *after* its stamp skips a payment you would owe. Worth ~9bp on a
+100%-annualised name - but the minutes after a stamp are the most expensive of the hour (30.7bp
+against a 21.9bp pre-stamp baseline), so the saving and the cost are the same order of magnitude and
+the sign is unknown. It applies to perhaps 10-15% of the book. Not worth measuring before the
+strategy has traded.
+
 ---
 
 ## 5. Order types — when limit, when market
