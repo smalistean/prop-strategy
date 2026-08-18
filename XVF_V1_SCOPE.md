@@ -37,27 +37,42 @@ The comparison only means something with the $500k weekly floor enforced on both
 82.2% of selected dYdX legs are untradeable prints. Deployment is from p90 leg-slot anchoring, book
 fill is the average share of the 20 positions that can actually be filled:
 
-| Venue set | Realised | Deployed | Book fill | Score |
-| --- | ---: | ---: | ---: | ---: |
-| **binance + bybit + hyperliquid** | 25.5% | 73% | 90% | **16.7** |
-| all four | 27.7% | 63% | 92% | 16.0 |
-| binance + hyperliquid | 22.3% | 100% | 71% | 15.8 |
-| binance + bybit | 19.8% | 100% | 73% | 14.4 |
+All ten combinations of the four venues:
+
+| Venue set | Cands/wk | Realised | Deployed | Book fill | Score |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| **binance + bybit + hyperliquid** | 51.7 | 25.5% | 73% | 90% | **16.7** |
+| all four | 55.5 | 27.7% | 63% | 92% | 16.0 |
+| binance + hyperliquid | 21.5 | 22.3% | 100% | 71% | 15.8 |
+| binance + hyperliquid + dydx | 25.7 | 25.1% | 78% | 79% | 15.6 |
+| bybit + hyperliquid + dydx | 24.7 | 24.6% | 78% | 77% | 14.9 |
+| bybit + hyperliquid | 20.0 | 21.7% | 100% | 67% | 14.5 |
+| binance + bybit | 30.9 | 19.8% | 100% | 73% | 14.4 |
+| binance + bybit + dydx | 35.5 | 22.3% | 82% | 79% | 14.4 |
+| hyperliquid + dydx | 8.7 | **31.5%** | 100% | 37% | 11.7 |
+| bybit + dydx | 5.0 | 24.0% | 100% | 23% | 5.5 |
 
 Adding Hyperliquid to the two CEXs is worth **+16%** (14.4 to 16.7) for one gateway.
 
-### dYdX should be dropped from the strategy, not just from v1
+**Hyperliquid is the single most valuable venue.** It appears in the top three sets, and the highest
+realised figure of all - 31.5% - belongs to hyperliquid+dydx, which fails only because 8.7 candidates
+a week cannot fill a book. Binance is the better CEX partner for it than Bybit (15.8 against 14.5).
 
-Adding dYdX to the other three makes the result **worse**, 16.7 to 16.0. Its funding history is
-extensive, which is why it was in `XvfConfig.VENUES`, but its *tradeable* universe cannot support a
-book: with the liquidity floor applied, a Binance+dYdX pairing yields **5.4 candidates a week and a
-full book in 4.8% of weeks**. It contributes little and dilutes deployment by demanding its own
-capital buffer.
+### dYdX earns its place only in books that are short of names
 
-An unfiltered version of this comparison scored Binance+dYdX highest by a wide margin. That was
-entirely the REN failure mode `XVF_STRATEGY.md` already documents — extreme funding on volume that
-could never have been traded. Any venue comparison run without the liquidity floor will reach the same
-wrong answer.
+Adding dYdX to the best set makes it **worse**, 16.7 to 16.0, and the same holds for
+binance+hyperliquid (15.8 to 15.6). But it *helps* bybit+hyperliquid (14.5 to 14.9), because that set
+has only 20 candidates a week and a 67% fill - dYdX supplies names it does not otherwise have.
+
+So the accurate statement is not "dYdX is bad" but **"dYdX is a marginal venue that pays only when the
+book is candidate-starved"**, and the configuration chosen here is not. Its tradeable universe is the
+constraint: under the liquidity floor a Binance+dYdX pairing yields 5.4 candidates a week and a full
+book in 4.8% of weeks.
+
+An unfiltered version of this comparison scored Binance+dYdX highest by a wide margin, on **82.2%
+untradeable legs**. That is exactly the REN failure mode `XVF_STRATEGY.md` documents - extreme funding
+on volume that could never have been traded. Any venue comparison run without the liquidity floor will
+reach the same wrong answer.
 
 ### The engineering cost, accepted rather than avoided
 
@@ -94,7 +109,7 @@ on-chain leg. That is the price of the 16%.
 
 | Item | Worth | Why deferred | Recorded |
 | --- | --- | --- | --- |
-| dYdX entirely | negative | tradeable universe too thin: 5.4 candidates/week under the liquidity floor | this file |
+| dYdX | -0.7 score in this set | marginal venue; pays only when a book is candidate-starved, which this one is not | this file |
 | Bin-packed sizing | +1.7pp of return | ~73% deployed at three venues, so it still applies — but v1 proves plumbing first | §7 |
 | Hysteresis / early close | largest unclaimed item | needs measurement before design | §12 item 7 |
 | Stamp-level entry/exit timing | ~$7/yr on $10k | measured, too small | §4 |
