@@ -6,7 +6,10 @@ import com.smalistean.propstrategy.xvf.signal.XvfSignalEngine;
 import com.smalistean.propstrategy.xvf.signal.XvfSignalEngine.Candidate;
 import com.smalistean.propstrategy.xvf.venue.BinanceGateway;
 import com.smalistean.propstrategy.xvf.venue.VenueGateway;
+import com.smalistean.propstrategy.xvf.venue.VenueGateway.OrderSnapshot;
 import com.smalistean.propstrategy.xvf.venue.VenueGateway.Side;
+import com.smalistean.propstrategy.xvf.venue.VenueGateway.SubmitResult;
+import com.smalistean.propstrategy.xvf.venue.VenueGateway.TopOfBook;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -29,7 +32,7 @@ import java.util.Map;
  * <pre>
  *   -DxvfCapital=10000
  *   -DxvfDryRun=true              default; set false to actually trade
- *   -DbinanceApiKey=... -DbinanceApiSecret=...
+ *   BINANCE_API_KEY=... BINANCE_API_SECRET=...   (environment, never -D: ps aux shows those)
  * </pre>
  *
  * <h2>What is wired and what is not</h2>
@@ -110,7 +113,7 @@ public final class XvfExecutionApplication {
                 Side makerSide = shortIsThinner ? Side.SELL : Side.BUY;
                 Side takerSide = shortIsThinner ? Side.BUY : Side.SELL;
 
-                BigDecimal price = referencePrice(makerGw, makerSymbol);
+                BigDecimal price = referencePrice(makerGw, makerSymbol, makerSide);
                 BigDecimal quantity = BigDecimal.valueOf(capped)
                         .divide(price, 8, RoundingMode.DOWN);
 
@@ -155,11 +158,15 @@ public final class XvfExecutionApplication {
         };
     }
 
-    private static BigDecimal referencePrice(VenueGateway gateway, String symbol) {
-        // Placeholder: the live implementation reads the best bid/ask from the venue's book so the
-        // post-only order rests at the touch. A mid or last price can cross and be rejected, which
-        // is safe but wastes the entry.
-        return BigDecimal.ONE;
+    /**
+     * The price a post-only order should rest at: the near side of the book for that side.
+     *
+     * <p>A resting SELL joins the ask and a resting BUY joins the bid. Resting at mid would cross and
+     * be rejected under post-only - safe, but it wastes the entry - and a last-traded price is not
+     * related to where the book currently is.
+     */
+    private static BigDecimal referencePrice(VenueGateway gateway, String symbol, Side side) {
+        return gateway.topOfBook(symbol).touch(side);
     }
 
     /** Same ranking the reporting application prints, so the two cannot disagree. */
@@ -174,11 +181,19 @@ public final class XvfExecutionApplication {
         @Override public String name() {
             return venue;
         }
-        @Override public OrderHandle placePostOnly(String s, Side side, BigDecimal q, BigDecimal p) {
+        @Override public SubmitResult placePostOnly(String s, Side side, BigDecimal q, BigDecimal p,
+                                                    String clientOrderId) {
             throw new UnsupportedOperationException(venue + " gateway not implemented — "
                     + "opening only one leg would leave the book directional");
         }
-        @Override public OrderHandle placeMarket(String s, Side side, BigDecimal q) {
+        @Override public SubmitResult placeCappedIoc(String s, Side side, BigDecimal q,
+                                                     BigDecimal worst, String clientOrderId) {
+            throw new UnsupportedOperationException(venue + " gateway not implemented");
+        }
+        @Override public java.util.Optional<OrderSnapshot> orderByClientId(String s, String c) {
+            throw new UnsupportedOperationException(venue + " gateway not implemented");
+        }
+        @Override public TopOfBook topOfBook(String venueSymbol) {
             throw new UnsupportedOperationException(venue + " gateway not implemented");
         }
         @Override public void cancel(OrderHandle handle) {

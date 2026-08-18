@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -25,17 +26,23 @@ import java.util.function.Consumer;
 /**
  * Binance USD-M futures gateway: signed REST for orders, user data stream for fills.
  *
- * <h2>Credentials</h2>
- * Read from {@code -DbinanceApiKey} / {@code -DbinanceApiSecret}, defaulting to obvious dummies so an
- * unconfigured run fails at the venue rather than doing something unintended. The secret is used only
- * to sign and is never logged; {@link #toString()} is overridden so it cannot leak through a debug
+ * <h2>Credentials come from the environment, never the command line</h2>
+ * {@code BINANCE_API_KEY} / {@code BINANCE_API_SECRET}. System properties were used previously and
+ * are wrong for this: {@code -DbinanceApiKey=...} is visible in {@code ps aux} to every user on the
+ * machine and is captured by any process listing in a crash dump or log. The secret is used only to
+ * sign, is never logged, and {@link #toString()} is overridden so it cannot leak through a debug
  * print of the object.
  *
- * <h2>Post-only is GTX</h2>
+ * <h2>Post-only is GTX, capped taker is IOC</h2>
  * Binance spells post-only {@code timeInForce=GTX} ("good till crossing"): the order is rejected
- * rather than executed if it would take. That rejection is the desired behaviour — a limit that
- * crosses silently pays taker, converting the cheap leg into the expensive one, which is exactly the
- * cost XVF's execution design exists to avoid.
+ * rather than executed if it would take. The crossing order is a limit priced at the caller's worst
+ * acceptable level with {@code timeInForce=IOC}, not {@code type=MARKET} — it still executes
+ * immediately against available liquidity but cannot print through that price.
+ *
+ * <h2>An ambiguous submission is UNKNOWN</h2>
+ * A timeout or 5xx after the request left the process may or may not have reached the matching
+ * engine. Those return {@link SubmitOutcome#UNKNOWN} so the caller resolves them with
+ * {@link #orderByClientId}; only an explicit 4xx from the venue is a rejection.
  *
  * <h2>listenKey lifetime</h2>
  * The user data stream key expires 60 minutes after creation and must be extended with a PUT. A
@@ -58,8 +65,8 @@ public final class BinanceGateway implements VenueGateway {
     private final Map<String, SymbolRules> ruleCache = new ConcurrentHashMap<>();
 
     public BinanceGateway(boolean dryRun) {
-        this.apiKey = System.getProperty("binanceApiKey", "DUMMY_BINANCE_KEY");
-        this.apiSecret = System.getProperty("binanceApiSecret", "DUMMY_BINANCE_SECRET")
+        this.apiKey = System.getenv().getOrDefault("BINANCE_API_KEY", "DUMMY_BINANCE_KEY");
+        this.apiSecret = System.getenv().getOrDefault("BINANCE_API_SECRET", "DUMMY_BINANCE_SECRET")
                 .getBytes(StandardCharsets.UTF_8);
         this.dryRun = dryRun;
     }
@@ -70,9 +77,8 @@ public final class BinanceGateway implements VenueGateway {
     }
 
     @Override
-    public OrderHandle placePostOnly(String venueSymbol, Side side, BigDecimal quantity,
-                                     BigDecimal limitPrice) {
-        String clientId = "xvf" + System.nanoTime();
+    public SubmitResult placePostOnly(String venueSymbol, Side side, BigDecimal quantity,
+                                      BigDecimal limitPrice, String clientOrderId) {
         Map<String, String> params = new HashMap<>();
         params.put("symbol", venueSymbol);
         params.put("side", side.name());
@@ -80,20 +86,22 @@ public final class BinanceGateway implements VenueGateway {
         params.put("timeInForce", "GTX");          // post-only: reject rather than take
         params.put("quantity", quantity.toPlainString());
         params.put("price", limitPrice.toPlainString());
-        params.put("newClientOrderId", clientId);
-        return send("POST", "/fapi/v1/order", params, venueSymbol, clientId);
+        params.put("newClientOrderId", clientOrderId);
+        return send("POST", "/fapi/v1/order", params, venueSymbol, clientOrderId);
     }
 
     @Override
-    public OrderHandle placeMarket(String venueSymbol, Side side, BigDecimal quantity) {
-        String clientId = "xvf" + System.nanoTime();
+    public SubmitResult placeCappedIoc(String venueSymbol, Side side, BigDecimal quantity,
+                                       BigDecimal worstPrice, String clientOrderId) {
         Map<String, String> params = new HashMap<>();
         params.put("symbol", venueSymbol);
         params.put("side", side.name());
-        params.put("type", "MARKET");
+        params.put("type", "LIMIT");
+        params.put("timeInForce", "IOC");          // crosses now, cancels the rest, never prints worse
         params.put("quantity", quantity.toPlainString());
-        params.put("newClientOrderId", clientId);
-        return send("POST", "/fapi/v1/order", params, venueSymbol, clientId);
+        params.put("price", worstPrice.toPlainString());
+        params.put("newClientOrderId", clientOrderId);
+        return send("POST", "/fapi/v1/order", params, venueSymbol, clientOrderId);
     }
 
     @Override
@@ -104,18 +112,71 @@ public final class BinanceGateway implements VenueGateway {
         send("DELETE", "/fapi/v1/order", params, handle.venueSymbol(), handle.clientOrderId());
     }
 
-    private OrderHandle send(String method, String path, Map<String, String> params,
-                             String venueSymbol, String clientId) {
+    @Override
+    public Optional<OrderSnapshot> orderByClientId(String venueSymbol, String clientOrderId) {
+        if (dryRun) {
+            return Optional.empty();
+        }
+        Map<String, String> params = new HashMap<>();
+        params.put("symbol", venueSymbol);
+        params.put("origClientOrderId", clientOrderId);
+        try {
+            JsonNode body = MAPPER.readTree(signedGet("/fapi/v1/order", params));
+            if (body.hasNonNull("code")) {
+                return Optional.empty();     // -2013 "Order does not exist": never reached the venue
+            }
+            return Optional.of(new OrderSnapshot(
+                    new OrderHandle("binance", venueSymbol, body.path("orderId").asText(""),
+                            clientOrderId),
+                    parseState(body.path("status").asText()),
+                    new BigDecimal(body.path("executedQty").asText("0")),
+                    new BigDecimal(body.path("avgPrice").asText("0"))));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("binance order lookup unparsed", e);
+        }
+    }
+
+    @Override
+    public TopOfBook topOfBook(String venueSymbol) {
+        try {
+            HttpResponse<String> response = http.send(
+                    HttpRequest.newBuilder(URI.create(
+                                    REST + "/fapi/v1/ticker/bookTicker?symbol=" + venueSymbol))
+                            .timeout(Duration.ofSeconds(10)).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                throw new IllegalStateException("bookTicker HTTP " + response.statusCode()
+                        + " for " + venueSymbol);
+            }
+            JsonNode body = MAPPER.readTree(response.body());
+            return new TopOfBook(new BigDecimal(body.path("bidPrice").asText()),
+                    new BigDecimal(body.path("askPrice").asText()),
+                    body.path("time").asLong(System.currentTimeMillis()));
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("bookTicker failed for " + venueSymbol, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted", e);
+        }
+    }
+
+    /**
+     * Sends a signed request and classifies the outcome.
+     *
+     * <p>A 4xx carries a venue decision and is a rejection. Anything else — timeout, connection
+     * reset, 5xx — leaves the outcome genuinely unknown, because the order may already be resting.
+     */
+    private SubmitResult send(String method, String path, Map<String, String> params,
+                              String venueSymbol, String clientId) {
+        OrderHandle handle = new OrderHandle("binance", venueSymbol, "", clientId);
         if (dryRun) {
             System.out.printf("  [dry-run] binance %s %s %s%n", method, path, params);
-            return new OrderHandle("binance", venueSymbol, "DRYRUN", clientId);
+            return new SubmitResult(SubmitOutcome.ACCEPTED,
+                    new OrderHandle("binance", venueSymbol, "DRYRUN", clientId), "dry run");
         }
         params.put("timestamp", Long.toString(System.currentTimeMillis()));
         params.put("recvWindow", "5000");
-        String query = params.entrySet().stream()
-                .map(e -> e.getKey() + "=" + urlEncode(e.getValue()))
-                .reduce((a, b) -> a + "&" + b).orElse("");
-        String signed = query + "&signature=" + sign(query);
+        String signed = query(params) + "&signature=" + sign(query(params));
         HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(REST + path + "?" + signed))
                 .header("X-MBX-APIKEY", apiKey).timeout(Duration.ofSeconds(15));
         HttpRequest request = switch (method) {
@@ -125,19 +186,51 @@ public final class BinanceGateway implements VenueGateway {
         };
         try {
             HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() != 200) {
-                throw new IllegalStateException("binance " + path + " HTTP "
-                        + response.statusCode() + ": " + response.body());
+            int status = response.statusCode();
+            if (status == 200) {
+                JsonNode body = MAPPER.readTree(response.body());
+                return new SubmitResult(SubmitOutcome.ACCEPTED,
+                        new OrderHandle("binance", venueSymbol, body.path("orderId").asText(""),
+                                clientId), "ok");
             }
-            JsonNode body = MAPPER.readTree(response.body());
-            return new OrderHandle("binance", venueSymbol,
-                    body.path("orderId").asText(""), clientId);
+            if (status >= 400 && status < 500) {
+                return new SubmitResult(SubmitOutcome.REJECTED, handle,
+                        "HTTP " + status + ": " + response.body());
+            }
+            return new SubmitResult(SubmitOutcome.UNKNOWN, handle,
+                    "HTTP " + status + ": " + response.body());
+        } catch (java.io.IOException e) {
+            // The request left this process; whether it reached the matching engine is unknowable
+            // from here. Resolve with orderByClientId rather than retrying.
+            return new SubmitResult(SubmitOutcome.UNKNOWN, handle, "io: " + e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return new SubmitResult(SubmitOutcome.UNKNOWN, handle, "interrupted");
+        }
+    }
+
+    private String signedGet(String path, Map<String, String> params) {
+        params.put("timestamp", Long.toString(System.currentTimeMillis()));
+        params.put("recvWindow", "5000");
+        String signed = query(params) + "&signature=" + sign(query(params));
+        try {
+            return http.send(HttpRequest.newBuilder(URI.create(REST + path + "?" + signed))
+                            .header("X-MBX-APIKEY", apiKey).timeout(Duration.ofSeconds(15))
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString()).body();
         } catch (java.io.IOException e) {
             throw new IllegalStateException("binance " + path + " failed", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("interrupted", e);
         }
+    }
+
+    private static String query(Map<String, String> params) {
+        return params.entrySet().stream()
+                .filter(e -> !"signature".equals(e.getKey()))
+                .map(e -> e.getKey() + "=" + urlEncode(e.getValue()))
+                .reduce((a, b) -> a + "&" + b).orElse("");
     }
 
     @Override
@@ -199,20 +292,25 @@ public final class BinanceGateway implements VenueGateway {
                 return;
             }
             JsonNode o = node.path("o");
-            OrderState state = switch (o.path("X").asText()) {
-                case "NEW" -> OrderState.RESTING;
-                case "PARTIALLY_FILLED" -> OrderState.PARTIALLY_FILLED;
-                case "FILLED" -> OrderState.FILLED;
-                case "CANCELED", "EXPIRED" -> OrderState.CANCELLED;
-                case "REJECTED" -> OrderState.REJECTED;
-                default -> OrderState.RESTING;
-            };
+            // 'z' is CUMULATIVE filled quantity for the order, not this fill's size. The engine
+            // differences it against a watermark; passing it through unchanged is intentional.
             listener.accept(new OrderUpdate("binance", o.path("s").asText(), o.path("c").asText(),
-                    state, new BigDecimal(o.path("z").asText("0")),
+                    parseState(o.path("X").asText()), new BigDecimal(o.path("z").asText("0")),
                     new BigDecimal(o.path("ap").asText("0")), node.path("E").asLong()));
         } catch (RuntimeException | com.fasterxml.jackson.core.JsonProcessingException e) {
             System.out.printf("!! binance stream frame unparsed: %s%n", e.getMessage());
         }
+    }
+
+    private static OrderState parseState(String venueStatus) {
+        return switch (venueStatus) {
+            case "NEW" -> OrderState.RESTING;
+            case "PARTIALLY_FILLED" -> OrderState.PARTIALLY_FILLED;
+            case "FILLED" -> OrderState.FILLED;
+            case "CANCELED", "EXPIRED" -> OrderState.CANCELLED;
+            case "REJECTED" -> OrderState.REJECTED;
+            default -> OrderState.RESTING;
+        };
     }
 
     private String createListenKey() {
@@ -264,6 +362,8 @@ public final class BinanceGateway implements VenueGateway {
                     BigDecimal step = BigDecimal.ONE;
                     BigDecimal tick = BigDecimal.ONE;
                     BigDecimal minNotional = new BigDecimal("5");
+                    // Read the FILTERS, not pricePrecision/quantityPrecision - Binance documents
+                    // explicitly that those are display precision, not tick and step size.
                     for (JsonNode f : s.path("filters")) {
                         switch (f.path("filterType").asText()) {
                             case "LOT_SIZE" -> step = new BigDecimal(f.path("stepSize").asText());

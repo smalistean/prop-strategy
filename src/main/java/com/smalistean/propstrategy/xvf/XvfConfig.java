@@ -123,6 +123,16 @@ public final class XvfConfig {
      */
     public static final int SECOND_LEG_CROSS_AFTER_SECONDS = 60;
 
+    /**
+     * Worst price a crossing leg may print, in basis points past the touch.
+     *
+     * <p>Crossing is intended; crossing at any price is not. Measured cost to cross is 3.2bp, so 25bp
+     * allows for a thin book and a moving market while still refusing the prints that make an
+     * unbounded market order dangerous in exactly the dislocated coins this strategy selects. An IOC
+     * that caps out leaves the remainder unfilled and visible rather than executed at any price.
+     */
+    public static final double MAX_TAKER_SLIPPAGE_BPS = 25.0;
+
     /** Minimum capital for the book to size cleanly. p90 symbol needs $77/leg x 40 legs. */
     public static final double MIN_CAPITAL_USD = 3_089;
 

@@ -1,7 +1,11 @@
 package com.smalistean.propstrategy.xvf.execution;
 
+import com.smalistean.propstrategy.xvf.XvfConfig;
 import com.smalistean.propstrategy.xvf.venue.VenueGateway;
 import com.smalistean.propstrategy.xvf.venue.VenueGateway.OrderHandle;
+import com.smalistean.propstrategy.xvf.venue.VenueGateway.OrderSnapshot;
+import com.smalistean.propstrategy.xvf.venue.VenueGateway.SubmitOutcome;
+import com.smalistean.propstrategy.xvf.venue.VenueGateway.SubmitResult;
 import com.smalistean.propstrategy.xvf.venue.VenueGateway.OrderState;
 import com.smalistean.propstrategy.xvf.venue.VenueGateway.OrderUpdate;
 import com.smalistean.propstrategy.xvf.venue.VenueGateway.Side;
@@ -11,6 +15,7 @@ import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -82,10 +87,29 @@ public final class PairedEntryEngine implements AutoCloseable {
                 new AtomicReference<>(BigDecimal.ZERO));
         byClientId.put(clientId, pair);
 
-        OrderHandle handle = makerLeg.gateway().placePostOnly(
+        SubmitResult submitted = makerLeg.gateway().placePostOnly(
                 makerLeg.venueSymbol(), makerLeg.side(),
                 round(makerLeg.quantity(), makerLeg.gateway().rules(makerLeg.venueSymbol()).stepSize()),
-                makerLimit);
+                makerLimit, clientId);
+        // An UNKNOWN maker submission may already be resting. Resolving it by the client ID the
+        // caller owns is the only safe move: retrying would place a second order, and treating it as
+        // rejected would leave a live order nobody is tracking.
+        if (submitted.outcome() == SubmitOutcome.UNKNOWN) {
+            submitted = resolve(makerLeg, clientId, submitted);
+        }
+        if (submitted.outcome() == SubmitOutcome.REJECTED) {
+            // Post-only rejection means the price would have crossed. Harmless: skip the position.
+            //
+            // Deregistered, unlike the timeout path below. No order exists, so no fill can, and a
+            // stray or replayed update carrying this ID must not be able to trigger a hedge for
+            // exposure that was never taken. The abandon TIMER leaves the pair registered on purpose:
+            // there a cancel can race a real fill, and that exposure still has to be offset.
+            byClientId.remove(clientId);
+            pair.state().set(PairState.ABANDONED);
+            System.out.printf("%s maker rejected: %s%n", base, submitted.detail());
+            return;
+        }
+        OrderHandle handle = submitted.handle();
         pair.makerHandle().set(handle);
 
         // A resting order that never fills is only ever a missed position, so the timeout simply
@@ -165,16 +189,29 @@ public final class PairedEntryEngine implements AutoCloseable {
             return;
         }
         for (int attempt = 1; attempt <= 5; attempt++) {
+            String hedgeId = "xvfh-" + pair.base() + "-" + System.nanoTime();
             try {
-                taker.gateway().placeMarket(taker.venueSymbol(), taker.side(), quantity);
-                pair.state().set(PairState.HEDGED);
-                System.out.printf("%s hedged: %s %s %s on %s%n", pair.base(), taker.side(),
-                        quantity, taker.venueSymbol(), taker.gateway().name());
-                return;
+                // Capped IOC, never an unbounded market order: crossing is intended, crossing at any
+                // price is not, and this hedges into a coin selected for being dislocated.
+                BigDecimal worst = worstAcceptable(taker);
+                SubmitResult result = taker.gateway().placeCappedIoc(
+                        taker.venueSymbol(), taker.side(), quantity, worst, hedgeId);
+                if (result.outcome() == SubmitOutcome.UNKNOWN) {
+                    result = resolve(taker, hedgeId, result);
+                }
+                if (result.accepted()) {
+                    pair.state().set(PairState.HEDGED);
+                    System.out.printf("%s hedged: %s %s %s on %s (cap %s)%n", pair.base(),
+                            taker.side(), quantity, taker.venueSymbol(),
+                            taker.gateway().name(), worst.toPlainString());
+                    return;
+                }
+                System.out.printf("!! %s hedge attempt %d not accepted: %s%n",
+                        pair.base(), attempt, result.detail());
             } catch (RuntimeException e) {
                 System.out.printf("!! %s hedge attempt %d failed: %s%n", pair.base(), attempt, e.getMessage());
-                sleep(200L * attempt);
             }
+            sleep(200L * attempt);
         }
         // Deliberately loud and deliberately not self-healing. An unhedged leg is the one state that
         // must reach a human; silently retrying forever would hide it.
@@ -194,6 +231,38 @@ public final class PairedEntryEngine implements AutoCloseable {
             }
         });
         return out;
+    }
+
+    /**
+     * Turns an UNKNOWN submission into a definite one by asking the venue about the caller's own ID.
+     *
+     * <p>An empty answer means the venue never saw the order, which is a genuine rejection. Anything
+     * else means it exists and must be tracked, whatever the network said.
+     */
+    private static SubmitResult resolve(Leg leg, String clientOrderId, SubmitResult unknown) {
+        try {
+            Optional<OrderSnapshot> found =
+                    leg.gateway().orderByClientId(leg.venueSymbol(), clientOrderId);
+            if (found.isEmpty()) {
+                return new SubmitResult(SubmitOutcome.REJECTED, unknown.handle(),
+                        "resolved: venue never saw " + clientOrderId);
+            }
+            return new SubmitResult(SubmitOutcome.ACCEPTED, found.get().handle(),
+                    "resolved: " + found.get().state());
+        } catch (RuntimeException e) {
+            // Still ambiguous. Report it as such rather than guessing in either direction.
+            System.out.printf("!!!! could not resolve %s on %s: %s — an order may be live and "
+                    + "untracked%n", clientOrderId, leg.gateway().name(), e.getMessage());
+            return unknown;
+        }
+    }
+
+    /** Worst price the crossing leg may print, from the touch plus the configured slippage cap. */
+    private static BigDecimal worstAcceptable(Leg taker) {
+        VenueGateway.TopOfBook book = taker.gateway().topOfBook(taker.venueSymbol());
+        BigDecimal cross = taker.side() == Side.BUY ? book.ask() : book.bid();
+        BigDecimal slip = cross.multiply(BigDecimal.valueOf(XvfConfig.MAX_TAKER_SLIPPAGE_BPS / 10_000.0));
+        return taker.side() == Side.BUY ? cross.add(slip) : cross.subtract(slip);
     }
 
     private static BigDecimal round(BigDecimal quantity, BigDecimal step) {
