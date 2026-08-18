@@ -76,10 +76,15 @@ public final class ChallengeMonitorApplication {
             vol.put(symbol, dailyVolatility(http, symbol));
         }
 
-        // REST polling rather than websockets. Two endpoints return every symbol in one call, a
-        // 5-second refresh is ample for a sizing monitor, and it works in environments where the
-        // futures websocket (fstream.binance.com) is unreachable - verified: it connects there but
-        // never delivers a frame, while spot streams do.
+        // REST polling rather than websockets. Two endpoints return every symbol in one call and a
+        // 5-second refresh is ample for a sizing monitor, so this stays as it is.
+        //
+        // An earlier version of this comment blamed the environment: the futures websocket
+        // "connects but never delivers a frame, while spot streams do". The symptom was real and the
+        // diagnosis was wrong. Binance split futures streams into /public, /market and /private and
+        // decommissioned the unified /ws URL on 2026-04-23; a legacy connection still handshakes and
+        // still receives pings, so it looks alive while delivering nothing. Spot kept working because
+        // it is on a different timeline. See BinanceGateway.WS.
         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
             try {
                 poll(http, symbols, vol);
