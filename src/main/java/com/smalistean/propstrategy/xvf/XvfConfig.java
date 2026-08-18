@@ -133,6 +133,17 @@ public final class XvfConfig {
      */
     public static final double MAX_TAKER_SLIPPAGE_BPS = 25.0;
 
+    /**
+     * Largest USD notional difference between the two legs of a pair, as a fraction.
+     *
+     * <p>Each leg rounds to its own venue's step size, so the two notionals never match exactly. The
+     * residual is unhedged directional exposure in a coin selected for being dislocated, and the
+     * measured tail of basis moves is severe - 1 hold in 100 moves 19% of notional, worst observed
+     * 37.9%. 1% of a leg is small against that; anything larger means the steps are too coarse for
+     * this capital and the pair should be skipped rather than opened crooked.
+     */
+    public static final double MAX_NOTIONAL_IMBALANCE = 0.01;
+
     /** Minimum capital for the book to size cleanly. p90 symbol needs $77/leg x 40 legs. */
     public static final double MIN_CAPITAL_USD = 3_089;
 
