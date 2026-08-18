@@ -548,8 +548,53 @@ Combined with the collateral split below, that is **55.7% USDC and 44.3% USDT** 
 than USDT, which is the opposite of what holding the CEXs on USDT suggests at a glance.
 
 **Not adopted.** Nothing in `XvfConfig` encodes it and no capital has been placed. It is written down
-so the choice is explicit rather than made by default at funding time, and because option 2 - capping
-legs per venue in the signal - could beat it and has never been measured.
+so the choice is explicit rather than made by default at funding time.
+
+### Bin-packed sizing recovers most of the idle capital
+
+Equal sizing wastes capital by construction: the book's legs land unevenly while funding is anchored
+to each venue's p90. If two venues both have slack and a pair uses both, that pair can simply be
+larger. Formally, choose a size for each pair subject to `sum of sizes touching venue v <= capacity_v`
+and a cap on any one position - a bin-packing problem, not a weighting scheme.
+
+Measured over 147 weeks of real selections, sizes in units of leg notional against 61 funded slots:
+
+| Policy | Deployed | Largest position | Effective positions |
+| --- | ---: | ---: | ---: |
+| equal, skip pairs that do not fit | 62.0% | 5.4% | 18.9 |
+| **bin-packed, max 1.5x** | **71.3%** | 6.9% | **18.9** |
+| bin-packed, max 2x | 75.3% | 8.7% | 17.8 |
+| bin-packed, max 3x | 79.6% | 12.4% | 15.2 |
+| bin-packed, uncapped | 97.4% | **52.7%** | **2.2** |
+
+**Uncapped is a trap.** It deploys 97.4% of capital by collapsing the book into 2.2 effective
+positions with one bet at 52.7% - that is not XVF, it is a pair trade wearing its name.
+
+**1.5x is close to free.** Deployment rises 62.0% to 71.3%, a 15% relative gain, while effective
+positions stay at 18.9 and the largest position moves only 5.4% to 6.9%. On a 19% gross figure that is
+roughly **11.8% to 13.5% on total capital** - larger than every fee optimisation in this document
+combined.
+
+**The method is spread-neutral, which is the point.** `XvfConfig.EQUAL_WEIGHT` records that
+spread-weighting cost a third of the Sharpe, so any sizing scheme has to be checked against that.
+Correlation between assigned size and spread rank is **-0.011** under random tie-breaking: sizes are
+driven by venue availability, which is orthogonal to the signal's opinion. This is not
+spread-weighting in disguise.
+
+**A separate free lever, to be treated with more suspicion.** When two pairs have equal headroom,
+feeding the wider spread first captures +6.4% more average spread at identical deployment (169.0%
+against 158.8% with random tie-breaking). It costs nothing - but it is a mild form of the thing that
+already failed once, so it should be measured on forward returns before adoption, not on signal
+spread.
+
+Three limits on the above. It is measured on signal-week spreads, so the *deployment* figures are
+structural and trustworthy while anything spread-weighted is not. The participation cap is not
+modelled - 1.5x sizing means 1.5x notional on the thin leg, which does not bind at $10,000 ($246
+against a $5,000 cap at the volume floor) but will at larger capital. And the greedy water-fill is
+near-optimal rather than optimal, though deployment was identical across all three tie-break orders,
+which suggests the bound is tight.
+
+Reproduce with `scripts/analysis-bin-packing.py`.
 
 ### Decision: one quote currency per venue
 
