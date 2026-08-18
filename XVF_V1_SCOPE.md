@@ -11,10 +11,11 @@ is deferred, because none of them matters if the plumbing does not work.
 
 ---
 
-## Decision: Binance, Bybit and Hyperliquid — and drop dYdX
+## Decision: Binance, Bybit and Hyperliquid — dYdX excluded
 
-Three venues. An earlier draft of this file said Binance and Bybit only, on a capital-efficiency
-argument. **That was wrong**, and measuring it properly also produced a finding that outlives v1.
+Three venues, chosen by measuring all ten combinations of the four. An earlier draft of this file said
+Binance and Bybit only, on a capital-efficiency argument. **That was wrong** — it picked the least
+profitable slice of the strategy — and correcting it produced findings that outlive v1.
 
 ### CEX-CEX pairs realise less than half
 
