@@ -1,0 +1,12 @@
+{
+  "name": "xvf-signal-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "generate": "nuxt generate"
+  },
+  "devDependencies": {
+    "nuxt": "^4.5.2"
+  }
+}

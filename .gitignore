@@ -12,6 +12,14 @@ target/
 data/
 *.csv
 
+# Node/Nuxt generated output. `dist` is a SYMLINK Nuxt creates to .output/public - the trailing
+# slash form does not match it, because git sees a link rather than a directory.
+node_modules/
+.nuxt/
+.output/
+dist
+dist/
+
 # Runtime logs from importers and scheduled agents. Regenerated on every run and machine-specific
 # (they carry absolute paths and timestamps), so they are working output rather than source.
 logs/
