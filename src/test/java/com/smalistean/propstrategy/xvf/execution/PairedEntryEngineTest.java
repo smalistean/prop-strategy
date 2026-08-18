@@ -67,8 +67,9 @@ class PairedEntryEngineTest {
             this.listener = l;
             return () -> { };
         }
+        BigDecimal step = new BigDecimal("0.001");
         @Override public SymbolRules rules(String venueSymbol) {
-            return new SymbolRules(new BigDecimal("0.001"), new BigDecimal("5"), new BigDecimal("0.01"));
+            return new SymbolRules(step, new BigDecimal("5"), new BigDecimal("0.01"));
         }
     }
 
@@ -207,6 +208,44 @@ class PairedEntryEngineTest {
             engine.onOrderUpdate(cumulative("xvf-X-doesnotexist", "3", VenueGateway.OrderState.FILLED));
             assertTrue(taker.marketOrders.isEmpty(),
                     "a maker that never landed must not produce a hedge");
+        }
+    }
+
+    @Test
+    void hedgeConvertsMakerUnitsIntoTakerUnits() throws Exception {
+        RecordingGateway maker = new RecordingGateway("maker");   // e.g. 1000PEPE contracts
+        RecordingGateway taker = new RecordingGateway("taker");   // e.g. PEPE contracts
+        taker.step = new BigDecimal("1");
+        try (PairedEntryEngine engine = new PairedEntryEngine(Duration.ofMinutes(30))) {
+            // Same USD notional, 1000x different contract units - the shape of 1000PEPE vs PEPE.
+            engine.open("PEPE",
+                    new PairedEntryEngine.Leg(maker, "1000PEPEUSDT", VenueGateway.Side.SELL,
+                            new BigDecimal("50")),
+                    new PairedEntryEngine.Leg(taker, "PEPE", VenueGateway.Side.BUY,
+                            new BigDecimal("50000")),
+                    new BigDecimal("5"));
+
+            java.lang.reflect.Field field = PairedEntryEngine.class.getDeclaredField("byClientId");
+            field.setAccessible(true);
+            String id = ((java.util.Map<String, ?>) field.get(engine)).keySet().iterator().next();
+
+            engine.onOrderUpdate(cumulative(id, "50", VenueGateway.OrderState.FILLED));
+
+            assertEquals(1, taker.marketOrders.size());
+            assertEquals(0, taker.marketOrders.get(0).compareTo(new BigDecimal("50000")),
+                    "a 50-contract maker fill must hedge 50,000 taker units, not 50");
+        }
+    }
+
+    @Test
+    void equalContractUnitsStillHedgeOneForOne() throws Exception {
+        RecordingGateway maker = new RecordingGateway("maker");
+        RecordingGateway taker = new RecordingGateway("taker");
+        try (PairedEntryEngine engine = new PairedEntryEngine(Duration.ofMinutes(30))) {
+            String id = openOne(engine, maker, taker);   // both legs sized 3
+            engine.onOrderUpdate(cumulative(id, "3", VenueGateway.OrderState.FILLED));
+            assertEquals(0, taker.marketOrders.get(0).compareTo(new BigDecimal("3")),
+                    "matched units must be unaffected by the conversion");
         }
     }
 }

@@ -64,7 +64,8 @@ public final class PairedEntryEngine implements AutoCloseable {
     private record Pair(String base, Leg maker, Leg taker, BigDecimal makerLimit,
                         AtomicReference<PairState> state, Instant opened,
                         AtomicReference<OrderHandle> makerHandle,
-                        AtomicReference<BigDecimal> hedgedQuantity) { }
+                        AtomicReference<BigDecimal> hedgedQuantity,
+                        BigDecimal hedgeRatio) { }
 
     private final Map<String, Pair> byClientId = new ConcurrentHashMap<>();
     private final ScheduledExecutorService timers = Executors.newScheduledThreadPool(2);
@@ -82,9 +83,15 @@ public final class PairedEntryEngine implements AutoCloseable {
      */
     public void open(String base, Leg makerLeg, Leg takerLeg, BigDecimal makerLimit) {
         String clientId = "xvf-" + base + "-" + System.nanoTime();
+        // Taker units per maker unit. The two venues may quote different contract sizes for the
+        // same asset - 1000PEPE against PEPE - so hedging the maker's NATIVE filled quantity on the
+        // taker venue would be out by that multiple. The caller has already sized both legs to equal
+        // USD notional, so their ratio is exactly the conversion needed.
+        BigDecimal hedgeRatio = takerLeg.quantity()
+                .divide(makerLeg.quantity(), 12, RoundingMode.HALF_UP);
         Pair pair = new Pair(base, makerLeg, takerLeg, makerLimit,
                 new AtomicReference<>(PairState.WORKING), Instant.now(), new AtomicReference<>(),
-                new AtomicReference<>(BigDecimal.ZERO));
+                new AtomicReference<>(BigDecimal.ZERO), hedgeRatio);
         byClientId.put(clientId, pair);
 
         SubmitResult submitted = makerLeg.gateway().placePostOnly(
@@ -175,14 +182,19 @@ public final class PairedEntryEngine implements AutoCloseable {
      * Sends the offsetting order for ONE increment of maker fill. Retries rather than giving up:
      * giving up leaves the increment naked.
      *
-     * @param makerFilled the newly filled amount, already differenced from the cumulative total
+     * @param makerFilled the newly filled amount in MAKER units, already differenced from the
+     *                    cumulative total. Converted to taker units by {@code hedgeRatio}.
      */
     private void hedge(Pair pair, BigDecimal makerFilled) {
         Leg taker = pair.taker();
-        BigDecimal quantity = round(makerFilled, taker.gateway().rules(taker.venueSymbol()).stepSize());
+        // Convert maker units to taker units BEFORE rounding. Hedging makerFilled directly was
+        // correct only when both venues quote the same contract size, which 3.6% of historical
+        // selections do not.
+        BigDecimal quantity = round(makerFilled.multiply(pair.hedgeRatio()),
+                taker.gateway().rules(taker.venueSymbol()).stepSize());
         if (quantity.signum() <= 0) {
-            // The increment rounded below one step. Leaving the watermark advanced would strand it,
-            // so hand it back to be swept up with the next fill.
+            // The converted increment rounded below one taker step. Leaving the watermark advanced
+            // would strand it, so hand it back to be swept up with the next fill.
             synchronized (pair) {
                 pair.hedgedQuantity().set(pair.hedgedQuantity().get().subtract(makerFilled));
             }

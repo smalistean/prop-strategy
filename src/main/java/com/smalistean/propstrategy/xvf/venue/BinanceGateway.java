@@ -27,7 +27,7 @@ import java.util.function.Consumer;
  * Binance USD-M futures gateway: signed REST for orders, user data stream for fills.
  *
  * <h2>Credentials come from the environment, never the command line</h2>
- * {@code BINANCE_API_KEY} / {@code BINANCE_API_SECRET}. System properties were used previously and
+ * {@code BINANCE_API_KEY} / {@code BINANCE_SECRET_KEY}. System properties were used previously and
  * are wrong for this: {@code -DbinanceApiKey=...} is visible in {@code ps aux} to every user on the
  * machine and is captured by any process listing in a crash dump or log. The secret is used only to
  * sign, is never logged, and {@link #toString()} is overridden so it cannot leak through a debug
@@ -66,7 +66,7 @@ public final class BinanceGateway implements VenueGateway {
 
     public BinanceGateway(boolean dryRun) {
         this.apiKey = System.getenv().getOrDefault("BINANCE_API_KEY", "DUMMY_BINANCE_KEY");
-        this.apiSecret = System.getenv().getOrDefault("BINANCE_API_SECRET", "DUMMY_BINANCE_SECRET")
+        this.apiSecret = System.getenv().getOrDefault("BINANCE_SECRET_KEY", "DUMMY_BINANCE_SECRET")
                 .getBytes(StandardCharsets.UTF_8);
         this.dryRun = dryRun;
     }
@@ -123,7 +123,16 @@ public final class BinanceGateway implements VenueGateway {
         try {
             JsonNode body = MAPPER.readTree(signedGet("/fapi/v1/order", params));
             if (body.hasNonNull("code")) {
-                return Optional.empty();     // -2013 "Order does not exist": never reached the venue
+                int code = body.path("code").asInt();
+                if (code == -2013) {
+                    return Optional.empty();   // "Order does not exist": it never reached the venue
+                }
+                // Any OTHER error code is a failure to ask, not an answer - a bad signature (-1022),
+                // an expired key, a rate limit. Returning empty would tell the caller the order was
+                // never placed, which it treats as a rejection, so a broken key would mark every
+                // ambiguous submission rejected while real orders rested untracked.
+                throw new IllegalStateException("binance order lookup code " + code + ": "
+                        + body.path("msg").asText());
             }
             return Optional.of(new OrderSnapshot(
                     new OrderHandle("binance", venueSymbol, body.path("orderId").asText(""),

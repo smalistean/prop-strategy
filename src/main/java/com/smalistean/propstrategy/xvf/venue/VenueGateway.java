@@ -55,6 +55,18 @@ public interface VenueGateway {
     String name();
 
     /**
+     * Whether this gateway can actually trade.
+     *
+     * <p>A pair needing an unwired venue must be SKIPPED, not attempted - one unimplemented venue
+     * should cost that pair, not the whole rebalance. The unwired implementation still throws from
+     * every other method, so a code path that bypasses this check fails loudly rather than opening
+     * one leg of a hedge.
+     */
+    default boolean wired() {
+        return true;
+    }
+
+    /**
      * Rests a limit order that is rejected rather than filled if it would cross.
      *
      * <p>Post-only, not a plain limit: a limit that crosses executes immediately and pays taker,
