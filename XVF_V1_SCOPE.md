@@ -127,23 +127,38 @@ on-chain leg. That is the price of the 16%.
 
 Each step leaves the system in a state that can be dry-run.
 
-1. **Reject same-venue pairs** in `XvfSignalEngine.topBook`. Correctness bug: `KAITOUSDC`/`KAITOUSDT`
-   both normalise to `KAITO` on Binance and pair against each other. Small, and it must not reach live
-   trading.
-2. **Schedule `xvf-refresh.sh`.** Without it the guard correctly refuses and nothing else can be
-   tested end to end.
-3. **Real `referencePrice()`.** Currently returns `BigDecimal.ONE`, so every computed quantity is wrong
-   by the price of the asset. This alone makes `-DxvfDryRun=false` unsafe today.
-4. **Bybit gateway**, mirroring `BinanceGateway`: HMAC REST, post-only, user data stream over
-   `wss://stream.bybit.com/v5/private`. The easy one - same auth shape.
-4b. **Hyperliquid gateway.** EIP-712 wallet signing, `wss://api.hyperliquid.xyz/ws` with
-   `userFills`. The hard one, and the reason this is not a two-venue v1.
-5. **Exit path.** Market both legs, close the whole book at the rebalance. No cleverness.
-6. **Pre-stamp entry window.** Place orders at `HH:57`-`HH:59` before the slower leg's stamp hour;
-   Hyperliquid is hourly so the CEX leg sets the timing.
-7. **Verify the Binance user data stream against a live account.** The entire entry design depends on
-   the fill event arriving; it has never run.
-8. **Paper, then minimum size.** $3,000 is the step-rounding floor; $10,000 is comfortable.
+### Done
+
+- ~~**Reject same-venue pairs.**~~ Fixed 2026-08-18. `bestCrossVenuePair` picks the widest combination
+  whose legs sit on different venues, rather than a plain max/min that could pair KAITOUSDC against
+  KAITOUSDT on Binance. Verified 20 of 20 cross-venue.
+- ~~**Schedule `xvf-refresh.sh`.**~~ Done - launchd agent, daily 06:45.
+- ~~**Real `referencePrice()`.**~~ Fixed 2026-08-18. Now `topOfBook(symbol).touch(side)`; a resting
+  SELL joins the ask and a resting BUY the bid.
+
+### Remaining, and nothing can trade until the first three are closed
+1. **Bybit gateway**, mirroring `BinanceGateway`: HMAC REST, post-only, user data stream over
+   `wss://stream.bybit.com/v5/private`. The easy one - same auth shape. Until this exists almost no
+   pair can open at all: every pair needs two venues and only Binance is wired, so `bybit`,
+   `hyperliquid` and `dydx` all resolve to `UnwiredGateway`, which throws.
+2. **Exit path.** Nothing closes a position - grep finds no `reduceOnly`, no close, no unwind anywhere
+   in `xvf/`. The 3-day rebalance is a backtest parameter with no runtime counterpart. The largest of
+   the three: the system can open twenty positions and exit none of them programmatically.
+3. **Hyperliquid gateway.** EIP-712 wallet signing, `wss://api.hyperliquid.xyz/ws` with `userFills`.
+   The hard one, and the reason this is not a two-venue v1 - it is worth +16% over Binance+Bybit.
+4. **Pre-stamp entry window.** Place orders at `HH:57`-`HH:59` before the slower leg's stamp hour;
+   Hyperliquid is hourly so the CEX leg sets the timing. Small, measured at 21.9bp against 26.2bp.
+5. **Verify the Binance user data stream against a live account.** The entire entry design depends on
+   the fill event arriving; it has only ever run in dry-run.
+6. **Paper, then minimum size.** $3,000 is the step-rounding floor; $10,000 is comfortable.
+
+Also stale: `dydx` still appears in the unwired-gateway array in `XvfExecutionApplication`. The venue
+measurement dropped it, so it should be removed rather than left as a gateway nobody will write.
+
+### Not on this path
+
+The signal Lambda and the `xvf-signal-book` table serve the frozen-book guarantee and a future web
+page. Neither closes any blocker above.
 
 ---
 
