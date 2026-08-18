@@ -278,13 +278,17 @@ public final class XvfExecutionApplication {
         @Override public boolean wired() {
             return false;
         }
+        @Override public java.util.List<VenueGateway.PositionSnapshot> positions() {
+            throw new UnsupportedOperationException(venue + " gateway not implemented");
+        }
         @Override public SubmitResult placePostOnly(String s, Side side, BigDecimal q, BigDecimal p,
-                                                    String clientOrderId) {
+                                                    String clientOrderId, boolean reduceOnly) {
             throw new UnsupportedOperationException(venue + " gateway not implemented — "
                     + "opening only one leg would leave the book directional");
         }
         @Override public SubmitResult placeCappedIoc(String s, Side side, BigDecimal q,
-                                                     BigDecimal worst, String clientOrderId) {
+                                                     BigDecimal worst, String clientOrderId,
+                                                     boolean reduceOnly) {
             throw new UnsupportedOperationException(venue + " gateway not implemented");
         }
         @Override public java.util.Optional<OrderSnapshot> orderByClientId(String s, String c) {

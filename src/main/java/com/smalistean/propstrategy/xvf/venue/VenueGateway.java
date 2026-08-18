@@ -1,6 +1,8 @@
 package com.smalistean.propstrategy.xvf.venue;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -73,8 +75,19 @@ public interface VenueGateway {
      * which silently converts the cheap leg into the expensive one. Rejection is the desired
      * behaviour — a missed entry costs one position's funding for one period, which is nothing.
      */
+    default SubmitResult placePostOnly(String venueSymbol, Side side, BigDecimal quantity,
+                                       BigDecimal limitPrice, String clientOrderId) {
+        return placePostOnly(venueSymbol, side, quantity, limitPrice, clientOrderId, false);
+    }
+
+    /**
+     * @param reduceOnly true when this order may only shrink an existing position, never open or
+     *                   flip one. Closing legs must set it: without it, an order sent against a
+     *                   position that has already gone flat silently opens a NEW position in the
+     *                   opposite direction - a naked leg created by the very code meant to remove one.
+     */
     SubmitResult placePostOnly(String venueSymbol, Side side, BigDecimal quantity,
-                               BigDecimal limitPrice, String clientOrderId);
+                               BigDecimal limitPrice, String clientOrderId, boolean reduceOnly);
 
     /**
      * Crosses the spread immediately, but never worse than {@code worstPrice}.
@@ -82,8 +95,14 @@ public interface VenueGateway {
      * <p>Unfilled remainder is cancelled rather than rested, so the caller learns straight away how
      * much exposure is still open instead of discovering it later behind a resting order.
      */
+    default SubmitResult placeCappedIoc(String venueSymbol, Side side, BigDecimal quantity,
+                                        BigDecimal worstPrice, String clientOrderId) {
+        return placeCappedIoc(venueSymbol, side, quantity, worstPrice, clientOrderId, false);
+    }
+
+    /** @param reduceOnly see {@link #placePostOnly}; closing legs must set it. */
     SubmitResult placeCappedIoc(String venueSymbol, Side side, BigDecimal quantity,
-                                BigDecimal worstPrice, String clientOrderId);
+                                BigDecimal worstPrice, String clientOrderId, boolean reduceOnly);
 
     /** Best effort; a fill that has already happened cannot be cancelled. */
     void cancel(OrderHandle handle);
@@ -115,6 +134,15 @@ public interface VenueGateway {
 
     /** Quantity step and minimum notional, needed to size a leg without rounding it into nonsense. */
     SymbolRules rules(String venueSymbol);
+
+    /**
+     * Every open position on this venue. Empty means flat.
+     *
+     * <p>Venue truth, not local bookkeeping. This is what makes "the pair closed cleanly" a checkable
+     * claim rather than an assumption - our own fill accounting can be right about every message it
+     * received and still be wrong about the account, if a message never arrived.
+     */
+    List<PositionSnapshot> positions();
 
     enum Side {
         BUY, SELL;
@@ -154,6 +182,13 @@ public interface VenueGateway {
     record OrderUpdate(String venue, String venueSymbol, String clientOrderId, OrderState state,
                        BigDecimal filledQuantity, BigDecimal averagePrice, long eventTimeMillis) { }
 
+    /**
+     * @param signedQuantity positive is long, negative is short, zero never appears - a flat symbol
+     *                       is simply absent from {@link #positions()}
+     */
+    record PositionSnapshot(String venue, String venueSymbol, BigDecimal signedQuantity,
+                            BigDecimal entryPrice) { }
+
     record TopOfBook(BigDecimal bid, BigDecimal ask, long eventTimeMillis) {
         public BigDecimal touch(Side side) {
             // Resting SELL sits at the ask, resting BUY at the bid: the side of the book you are
@@ -168,4 +203,28 @@ public interface VenueGateway {
      * @param tickSize        price increment
      */
     record SymbolRules(BigDecimal stepSize, BigDecimal minNotionalUsd, BigDecimal tickSize) { }
+
+    /**
+     * Snaps a price onto the venue's tick grid, rounding in whichever direction preserves intent.
+     *
+     * <p>A price read straight from the book is already on the grid, but any price <em>derived</em>
+     * from one - a slippage cap, a mid, an offset - generally is not, and venues differ in how they
+     * react. Binance rejects the order outright ({@code -1111}), while Bybit silently accepts it. That
+     * asymmetry is worse than either behaviour alone: in a paired trade it fills one leg and rejects
+     * the other, which is exactly how a hedged position becomes a naked one.
+     *
+     * <p>Direction is chosen so rounding never defeats the order type. A {@code marketable} price is
+     * a bound on how far the order may cross, so it rounds <em>outward</em> - a BUY cap up, a SELL cap
+     * down - and stays marketable; at most one tick of extra permitted slippage, against the certainty
+     * of the order being accepted. A passive price must never cross, so it rounds <em>inward</em> - a
+     * BUY down, a SELL up - keeping a post-only order post-only.
+     */
+    static BigDecimal roundToTick(BigDecimal price, BigDecimal tick, Side side, boolean marketable) {
+        if (tick == null || tick.signum() <= 0) {
+            return price;
+        }
+        boolean up = marketable == (side == Side.BUY);
+        BigDecimal ticks = price.divide(tick, 0, up ? RoundingMode.CEILING : RoundingMode.FLOOR);
+        return ticks.multiply(tick).stripTrailingZeros();
+    }
 }

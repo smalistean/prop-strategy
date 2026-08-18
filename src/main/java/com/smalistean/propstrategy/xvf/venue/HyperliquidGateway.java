@@ -138,14 +138,39 @@ public final class HyperliquidGateway implements VenueGateway {
 
     @Override
     public SubmitResult placePostOnly(String venueSymbol, Side side, BigDecimal quantity,
-                                      BigDecimal limitPrice, String clientOrderId) {
-        return submit(venueSymbol, side, quantity, limitPrice, "Alo", false, clientOrderId);
+                                      BigDecimal limitPrice, String clientOrderId,
+                                      boolean reduceOnly) {
+        return submit(venueSymbol, side, quantity,
+                VenueGateway.roundToTick(limitPrice, rules(venueSymbol).tickSize(), side, false),
+                "Alo", reduceOnly, clientOrderId);
     }
 
     @Override
     public SubmitResult placeCappedIoc(String venueSymbol, Side side, BigDecimal quantity,
-                                       BigDecimal worstPrice, String clientOrderId) {
-        return submit(venueSymbol, side, quantity, worstPrice, "Ioc", false, clientOrderId);
+                                       BigDecimal worstPrice, String clientOrderId,
+                                       boolean reduceOnly) {
+        return submit(venueSymbol, side, quantity,
+                VenueGateway.roundToTick(worstPrice, rules(venueSymbol).tickSize(), side, true),
+                "Ioc", reduceOnly, clientOrderId);
+    }
+
+    @Override
+    public java.util.List<PositionSnapshot> positions() {
+        if (dryRun) {
+            return java.util.List.of();
+        }
+        JsonNode state = infoPost(Map.of("type", "clearinghouseState", "user", accountAddress));
+        java.util.List<PositionSnapshot> out = new java.util.ArrayList<>();
+        for (JsonNode ap : state.path("assetPositions")) {
+            JsonNode p = ap.path("position");
+            BigDecimal szi = new BigDecimal(p.path("szi").asText("0"));
+            if (szi.signum() != 0) {
+                // szi is already signed on Hyperliquid: negative is short.
+                out.add(new PositionSnapshot("hyperliquid", p.path("coin").asText(), szi,
+                        new BigDecimal(p.path("entryPx").asText("0"))));
+            }
+        }
+        return out;
     }
 
     private SubmitResult submit(String venueSymbol, Side side, BigDecimal quantity, BigDecimal price,

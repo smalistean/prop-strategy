@@ -81,18 +81,52 @@ public final class BybitGateway implements VenueGateway {
 
     @Override
     public SubmitResult placePostOnly(String venueSymbol, Side side, BigDecimal quantity,
-                                      BigDecimal limitPrice, String clientOrderId) {
-        return submit(venueSymbol, side, quantity, limitPrice, "PostOnly", clientOrderId);
+                                      BigDecimal limitPrice, String clientOrderId,
+                                      boolean reduceOnly) {
+        return submit(venueSymbol, side, quantity,
+                VenueGateway.roundToTick(limitPrice, rules(venueSymbol).tickSize(), side, false),
+                "PostOnly", clientOrderId, reduceOnly);
     }
 
     @Override
     public SubmitResult placeCappedIoc(String venueSymbol, Side side, BigDecimal quantity,
-                                       BigDecimal worstPrice, String clientOrderId) {
-        return submit(venueSymbol, side, quantity, worstPrice, "IOC", clientOrderId);
+                                       BigDecimal worstPrice, String clientOrderId,
+                                       boolean reduceOnly) {
+        return submit(venueSymbol, side, quantity,
+                VenueGateway.roundToTick(worstPrice, rules(venueSymbol).tickSize(), side, true),
+                "IOC", clientOrderId, reduceOnly);
+    }
+
+    @Override
+    public java.util.List<PositionSnapshot> positions() {
+        if (dryRun) {
+            return java.util.List.of();
+        }
+        JsonNode response = signedGet("/v5/position/list",
+                "category=" + CATEGORY + "&settleCoin=USDT");
+        int code = response.path("retCode").asInt(-1);
+        if (code != 0) {
+            throw new IllegalStateException("bybit position/list retCode " + code + ": "
+                    + response.path("retMsg").asText());
+        }
+        java.util.List<PositionSnapshot> out = new java.util.ArrayList<>();
+        for (JsonNode p : response.path("result").path("list")) {
+            BigDecimal size = new BigDecimal(p.path("size").asText("0"));
+            if (size.signum() == 0) {
+                continue;
+            }
+            // Bybit reports size unsigned with the direction in `side`; the interface wants it signed.
+            BigDecimal signed = "Sell".equals(p.path("side").asText()) ? size.negate() : size;
+            out.add(new PositionSnapshot("bybit", p.path("symbol").asText(), signed,
+                    new BigDecimal(p.path("avgPrice").asText("0").isEmpty()
+                            ? "0" : p.path("avgPrice").asText("0"))));
+        }
+        return out;
     }
 
     private SubmitResult submit(String venueSymbol, Side side, BigDecimal quantity,
-                                BigDecimal price, String timeInForce, String clientOrderId) {
+                                BigDecimal price, String timeInForce, String clientOrderId,
+                                boolean reduceOnly) {
         ObjectNode body = MAPPER.createObjectNode();
         body.put("category", CATEGORY);
         body.put("symbol", venueSymbol);
@@ -103,6 +137,9 @@ public final class BybitGateway implements VenueGateway {
         body.put("timeInForce", timeInForce);
         body.put("orderLinkId", clientOrderId);
         body.put("positionIdx", 0);
+        if (reduceOnly) {
+            body.put("reduceOnly", true);
+        }
         return post("/v5/order/create", body, venueSymbol, clientOrderId);
     }
 

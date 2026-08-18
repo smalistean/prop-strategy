@@ -53,7 +53,17 @@ import java.util.function.Consumer;
 public final class BinanceGateway implements VenueGateway {
 
     private static final String REST = "https://fapi.binance.com";
-    private static final String WS = "wss://fstream.binance.com/ws/";
+    /**
+     * User data goes to {@code /private}, not the legacy {@code /ws}.
+     *
+     * <p>Binance split futures WebSocket traffic into {@code /public} (high-frequency market data),
+     * {@code /market} (regular market data) and {@code /private} (user data), and decommissioned the
+     * unified {@code /ws} and {@code /stream} URLs on <b>2026-04-23</b>. A legacy connection still
+     * completes its handshake and still receives server pings, so it looks healthy from every angle a
+     * client can see - it simply never delivers user data again. That silence is indistinguishable
+     * from "no fills happened", which is why this cost a live unhedged leg to find.
+     */
+    private static final String WS = "wss://fstream.binance.com/private/ws/";
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final String apiKey;
@@ -78,30 +88,62 @@ public final class BinanceGateway implements VenueGateway {
 
     @Override
     public SubmitResult placePostOnly(String venueSymbol, Side side, BigDecimal quantity,
-                                      BigDecimal limitPrice, String clientOrderId) {
+                                      BigDecimal limitPrice, String clientOrderId,
+                                      boolean reduceOnly) {
         Map<String, String> params = new HashMap<>();
         params.put("symbol", venueSymbol);
         params.put("side", side.name());
         params.put("type", "LIMIT");
         params.put("timeInForce", "GTX");          // post-only: reject rather than take
         params.put("quantity", quantity.toPlainString());
-        params.put("price", limitPrice.toPlainString());
+        params.put("price", VenueGateway.roundToTick(
+                limitPrice, rules(venueSymbol).tickSize(), side, false).toPlainString());
         params.put("newClientOrderId", clientOrderId);
+        if (reduceOnly) {
+            params.put("reduceOnly", "true");
+        }
         return send("POST", "/fapi/v1/order", params, venueSymbol, clientOrderId);
     }
 
     @Override
     public SubmitResult placeCappedIoc(String venueSymbol, Side side, BigDecimal quantity,
-                                       BigDecimal worstPrice, String clientOrderId) {
+                                       BigDecimal worstPrice, String clientOrderId,
+                                       boolean reduceOnly) {
         Map<String, String> params = new HashMap<>();
         params.put("symbol", venueSymbol);
         params.put("side", side.name());
         params.put("type", "LIMIT");
         params.put("timeInForce", "IOC");          // crosses now, cancels the rest, never prints worse
         params.put("quantity", quantity.toPlainString());
-        params.put("price", worstPrice.toPlainString());
+        params.put("price", VenueGateway.roundToTick(
+                worstPrice, rules(venueSymbol).tickSize(), side, true).toPlainString());
         params.put("newClientOrderId", clientOrderId);
+        if (reduceOnly) {
+            params.put("reduceOnly", "true");
+        }
         return send("POST", "/fapi/v1/order", params, venueSymbol, clientOrderId);
+    }
+
+    @Override
+    public java.util.List<PositionSnapshot> positions() {
+        if (dryRun) {
+            return java.util.List.of();
+        }
+        java.util.List<PositionSnapshot> out = new java.util.ArrayList<>();
+        try {
+            JsonNode body = MAPPER.readTree(signedGet("/fapi/v3/positionRisk", new HashMap<>()));
+            for (JsonNode p : body) {
+                BigDecimal amt = new BigDecimal(p.path("positionAmt").asText("0"));
+                if (amt.signum() != 0) {
+                    // positionAmt is already signed on Binance: negative is short.
+                    out.add(new PositionSnapshot("binance", p.path("symbol").asText(), amt,
+                            new BigDecimal(p.path("entryPrice").asText("0"))));
+                }
+            }
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("binance positionRisk unparsed", e);
+        }
+        return out;
     }
 
     @Override
