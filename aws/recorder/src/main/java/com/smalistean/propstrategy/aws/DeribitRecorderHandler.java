@@ -9,6 +9,8 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.PutRequest;
 import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
 
@@ -66,11 +68,15 @@ public final class DeribitRecorderHandler implements RequestHandler<Map<String, 
      * Horizon for retrying one HTTP call, in seconds.
      *
      * <p>The original on-laptop version retried four times with 1s/4s/9s backoff - a 14-second
-     * horizon. The outage on 2026-08-16 lasted at least three minutes, so it never had a chance. This
-     * is sized to outlast a short DNS or routing blip; anything longer is a real outage and belongs
-     * to the Lambda-level retry, not to this loop.
+     * horizon. The outage on 2026-08-16 lasted at least three minutes, so it never had a chance.
+     *
+     * <p>Raised from 120s after 2026-08-18, when Deribit returned HTTP 503 to this Lambda for roughly
+     * two hours while answering normally from a residential IP. Lambda egresses from a shared AWS NAT
+     * pool and Deribit rate-limits by IP, so another tenant's traffic can throttle a caller making six
+     * requests an hour. No per-call horizon survives two hours - Lambda's own ceiling is 900s - which
+     * is why the schedule now makes three attempts an hour rather than one.
      */
-    private static final long HTTP_RETRY_HORIZON_SECONDS = 120;
+    private static final long HTTP_RETRY_HORIZON_SECONDS = 240;
 
     /**
      * Ceiling on retrying across the whole invocation, in seconds.
@@ -107,6 +113,16 @@ public final class DeribitRecorderHandler implements RequestHandler<Map<String, 
 
         Instant snapshot = Instant.now().truncatedTo(ChronoUnit.HOURS);
         long expiresAt = snapshot.plus(retentionDays, ChronoUnit.DAYS).getEpochSecond();
+
+        // The schedule fires three times an hour so a transient venue outage does not cost the hour.
+        // Every run after the first is a no-op: the manifest is written last and only on success, so
+        // its presence means the hour is complete. Without this the later runs would re-fetch and
+        // overwrite a good hour with a later snapshot for no benefit.
+        if (alreadyRecorded(table, snapshot)) {
+            String done = "ALREADY RECORDED " + snapshot;
+            log(context, done);
+            return done;
+        }
 
         int total = 0;
         Map<String, Integer> byUnderlying = new HashMap<>();
@@ -149,6 +165,17 @@ public final class DeribitRecorderHandler implements RequestHandler<Map<String, 
                 .formatted(snapshot, total, byUnderlying.size());
         log(context, summary);
         return summary;
+    }
+
+    /** True when this hour's MANIFEST exists, which is written last and only on success. */
+    private static boolean alreadyRecorded(String table, Instant snapshot) {
+        GetItemResponse response = DYNAMO.getItem(GetItemRequest.builder()
+                .tableName(table)
+                .key(Map.of("snapshot_underlying", string(snapshot + "#MANIFEST"),
+                        "instrument_name", string("MANIFEST")))
+                .projectionExpression("item_count")
+                .build());
+        return response.hasItem() && !response.item().isEmpty();
     }
 
     /** One item per hour describing what that hour should contain. */

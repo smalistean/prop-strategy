@@ -57,14 +57,18 @@ Resources:
           KeyType: HASH
         - AttributeName: instrument_name
           KeyType: RANGE
-      # PROVISIONED at 25/25, not PAY_PER_REQUEST. On-demand would cost ~$1.85/month for 2.95M
-      # writes; 25 WCU is the always-free allowance and covers this comfortably - the workload needs
-      # 4,046 WCU once an hour against a burst bucket of 300s x 25 = 7,500 WCU that is always full
-      # after 59 idle minutes.
+      # PROVISIONED at 14/10, not PAY_PER_REQUEST. On-demand would cost ~$1.85/month for 2.95M
+      # writes, but the free allowance is 18,600 WCU-hours a month PER REGION - which is 25 WCU
+      # shared across every table in the account, NOT 25 per table. Two tables at 25 each were
+      # running at 50 WCU, on track to bill about $14/month from September.
+      #
+      # 14 WCU carries this table's share: the hour's 4,046 items need a burst bucket of at least
+      # that many, and burst is 300s of unused capacity - 300 x 14 = 4,200, always full after 59
+      # idle minutes. Reads at 10 drain a 1.5MB export in about 19 seconds.
       BillingMode: PROVISIONED
       ProvisionedThroughput:
-        ReadCapacityUnits: 25
-        WriteCapacityUnits: 25
+        ReadCapacityUnits: 10
+        WriteCapacityUnits: 14
       TimeToLiveSpecification:
         AttributeName: expires_at
         Enabled: true
@@ -96,7 +100,9 @@ Resources:
           RETENTION_DAYS: !Ref RetentionDays
           DERIBIT_CURRENCIES: !Ref DeribitCurrencies
       Policies:
-        - DynamoDBWritePolicy:
+        # Read as well as write: the handler checks for this hour's MANIFEST and returns early if it
+        # is present, so the extra scheduled attempts cost one GetItem instead of six venue calls.
+        - DynamoDBCrudPolicy:
             TableName: !Ref ChainTable
       Events:
         Hourly:
@@ -106,10 +112,13 @@ Resources:
           # on-failure destination below. A synchronous invoke would get neither.
           Type: Schedule
           Properties:
-            # :05 rather than :00. The snapshot is truncated to the hour, so anything landing before
-            # the next hour records the same slot - this leaves 55 minutes of room for retries to
-            # still fill the hour they were meant for.
-            Schedule: 'cron(5 * * * ? *)'
+            # Three attempts an hour, not one. On 2026-08-18 Deribit returned HTTP 503 to this
+            # Lambda for about two hours while answering normally from a residential IP - Lambda
+            # egresses from a shared AWS NAT pool and Deribit rate-limits by IP, so another tenant's
+            # traffic can throttle a caller making six requests an hour. Hours 09:00 and 10:00 were
+            # lost permanently. No per-call timeout survives that; spreading attempts across the hour
+            # does. Runs after the first are no-ops once the MANIFEST exists.
+            Schedule: 'cron(5,25,45 * * * ? *)'
             Description: Hourly Deribit option-chain snapshot
       EventInvokeConfig:
         MaximumRetryAttempts: 2

@@ -48,10 +48,14 @@ Resources:
           KeyType: HASH
         - AttributeName: venue_symbol
           KeyType: RANGE
+      # 10/9, not 25/25. The free allowance is 18,600 WCU-hours a month per REGION - 25 WCU shared
+      # across every table in the account, not per table. See the note in template.yaml.
+      #
+      # 10 WCU gives a 3,000-item burst against the 2,175 written each hour.
       BillingMode: PROVISIONED
       ProvisionedThroughput:
-        ReadCapacityUnits: 25
-        WriteCapacityUnits: 25
+        ReadCapacityUnits: 9
+        WriteCapacityUnits: 10
       TimeToLiveSpecification:
         AttributeName: expires_at
         Enabled: true
