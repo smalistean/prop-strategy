@@ -72,6 +72,17 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>url-connection-client</artifactId>
         </dependency>
+        <!-- Only HyperliquidGateway uses this: Keccak-256 and secp256k1 ECDSA signing for the
+             EIP-712 "phantom agent" scheme Hyperliquid requires on every signed exchange action.
+             Hand-rolling this is the wrong tradeoff - a wrong hash just makes the exchange reject the
+             order (safe), but a wrong SIGNATURE library (non-deterministic k, wrong recovery id) can
+             leak the private key or sign a different message than intended. web3j:crypto is the
+             standard, widely-audited choice for exactly this. -->
+        <dependency>
+            <groupId>org.web3j</groupId>
+            <artifactId>crypto</artifactId>
+            <version>6.0.0</version>
+        </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
