@@ -33,7 +33,8 @@ Three separate processes. They do not share memory and communicate only through 
 
 | Process | Entry point | Cadence | Sends orders |
 | --- | --- | --- | --- |
-| **Data refresh** | `scripts/xvf-refresh.sh` | daily | no |
+| **Data refresh** | `scripts/xvf-refresh.sh` | daily, launchd 06:45 | no |
+| **Observation export** | `scripts/xvf-funding-export.sh` | hourly, launchd `:20` | no |
 | **Signal / reporting** | `XvfSignalApplication` | on demand | no |
 | **Execution** | `XvfExecutionApplication` | every 3 days | yes, if `-DxvfDryRun=false` |
 
@@ -443,6 +444,33 @@ USDT-only symbols.
 be.** This section is why that assumption does not hold, and the haircut is material rather than a
 detail.
 
+### Decision: one quote currency per venue
+
+**USDT on Binance and Bybit, USDC on Hyperliquid and dYdX.** The two DEXs have no choice; the two CEXs
+are held on USDT deliberately, so each venue has exactly one collateral asset and a leg's currency is
+never a variable at execution time.
+
+Fee discounts were evaluated against that decision and none of them changes it. The bill they apply
+to is `20 positions x 2 legs x 2 fills x 122 rebalances x 3.3bp` = **8.05% of capital per year**,
+$805 on $10,000, split by measured leg share: dydx $250, binance $210, bybit $180, hyperliquid $146.
+
+| Option | Verdict | Measurement |
+| --- | --- | --- |
+| **BNB** on Binance | deferred | 10% off $210 = **$21/yr**. Consumed, not locked, so it needs only a float of ~0.2% of capital. |
+| **MNT** on Bybit | excluded | Bybit does not accept MNT fee payment on API orders, and XVF is entirely API-driven. |
+| **HYPE** staking | rejected | Smallest tier is 10 HYPE = $596 at $59.60, i.e. **6% of capital locked to save ~$7/yr**. Higher tiers are worse: 100 HYPE returns 0.24% on the stake. |
+| **DYDX** staking | rejected | Same shape against a $250 bill, plus ~30-day unbonding. |
+| **USDC contract choice** on Binance | deferred | Picking the quote that suits the leg direction is worth **+3.32% annualised per pair** (short +2.43%, long +0.89%, 850 base-weeks over 39 coins) - but only **9.9%** of selections have both contracts, so the book-level gain is **+0.33% of capital/yr**. |
+
+The staking options are rejected on capital, not on yield. Locking capital directly worsens the 1.53x
+funding constraint above, and a saving worth 2-3% of the fee bill cannot pay for capital removed from
+a book that is already a third underfunded.
+
+The two deferred items are together worth roughly **$54/yr on $10,000**, about 0.5% of capital against
+an 8% fee bill - real, but not worth the extra moving parts before the strategy has traded. Worth
+revisiting if Binance's promotional reduced-maker pricing on USDC pairs is live, since that attacks
+the 8% directly rather than discounting it.
+
 ---
 
 ## 8. Signal
@@ -569,8 +597,12 @@ it; holding lets it mean-revert.
 3. **`referencePrice()` returns `BigDecimal.ONE`.** A placeholder. Every quantity computed from it is
    wrong by the price of the asset. This alone makes `-DxvfDryRun=false` unsafe today.
 4. **Stop-loss before liquidation.** Designed but not coded. At 1x, 2.1% of legs still liquidate.
-5. **No launchd agent** for `scripts/xvf-refresh.sh`, so the freshness guard is satisfied only by
-   running it manually.
+5. ~~**No launchd agent** for `scripts/xvf-refresh.sh`.~~ Closed on 2026-08-18.
+   `com.smalistean.propstrategy.xvf-refresh` runs it daily at 06:45 local, and
+   `com.smalistean.propstrategy.xvf-funding-export` drains the DynamoDB observation buffer hourly at
+   `:20`. Both are loaded. What the gap cost while it was open: settled funding had gone six days
+   stale (bybit and hyperliquid last at 2026-08-12) and 43 hours of pending-rate observations were
+   sitting in a buffer with a 30-day TTL.
 
 ### Untested
 
@@ -673,10 +705,19 @@ it; holding lets it mean-revert.
 
 ## 13. Runbook
 
-Refresh the data (satisfies the freshness guard):
+Refresh the data (satisfies the freshness guard). Both now run from launchd, so this is only
+needed to force a run early:
 
 ```bash
 bash scripts/xvf-refresh.sh
+```
+
+Drain the DynamoDB observation buffer into `venue_funding_observation`. Distinct from the refresh
+above: that one backfills *settled* funding from the venue REST APIs and is refetchable, this one
+moves *pending-rate observations* that no endpoint will serve again once the 30-day TTL expires:
+
+```bash
+bash scripts/xvf-funding-export.sh
 ```
 
 Print the target book without sending anything:

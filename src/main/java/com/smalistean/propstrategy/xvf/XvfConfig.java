@@ -17,6 +17,26 @@ public final class XvfConfig {
     /** Venues with usable funding history. OKX, Gate and Bitget serve 1-3 months and are excluded. */
     public static final String[] VENUES = {"binance", "bybit", "hyperliquid", "dydx"};
 
+    /**
+     * Collateral asset per venue: USDT on the CEXs, USDC on the DEXs.
+     *
+     * <p>Hyperliquid and dYdX have no choice - Hyperliquid perps are bare coin names with one
+     * account-wide collateral asset, and USDT exists there only as the USDT0 spot token. Binance and
+     * Bybit are pinned to USDT deliberately so each venue has exactly one collateral asset and a
+     * leg's currency is never a variable at execution time.
+     *
+     * <p>Binance also lists USDC contracts on 39 bases, and choosing the quote that suits the leg
+     * direction is worth +3.32% annualised per pair. It is not taken: only 9.9% of selections have
+     * both contracts, so the book-level gain is +0.33% of capital a year, which does not justify a
+     * second collateral asset on a venue before the strategy has traded. See XVF_IMPLEMENTATION.md §7.
+     */
+    public static String collateral(String venue) {
+        return switch (venue) {
+            case "hyperliquid", "dydx" -> "USDC";
+            default -> "USDT";
+        };
+    }
+
     /** Trailing window for realised funding, in days. Carried over from cash-and-carry, not swept. */
     public static final int LOOKBACK_DAYS = 7;
 
