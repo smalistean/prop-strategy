@@ -352,6 +352,97 @@ the kline tables. The kline importers are backfills — Binance 1h currently hol
 last seven days where a full universe would carry ~140,000. A stale backfill makes the cap silently
 pass everything or silently block everything, and both look like a normal empty book.
 
+### Where the capital has to sit, and why an equal split does not work
+
+The sizing above assumes $250 is available on whichever venue a leg lands on. It is not. Legs are
+distributed across venues by the *signal*, and that distribution is never even. Measured over the 146
+weeks where all four venues have funding data:
+
+| venue | median legs | p90 | worst | (of 40) |
+| --- | ---: | ---: | ---: | --- |
+| dydx | 14 | 17 | 20 | |
+| hyperliquid | **5** | **17** | 20 | |
+| binance | 11 | 14 | 18 | |
+| bybit | 9 | 13 | 17 | |
+
+Hyperliquid is the extreme case: idle half the time, then wanting 42% of the book. dYdX carries a
+median of 14 of 40 legs, nearly double an equal share.
+
+The fear that the book collapses onto two venues does **not** happen — 145 of 146 weeks used all four
+venues and one used three, never two. The problem is the opposite: all four are always needed, in
+proportions that change every week.
+
+**Funding every venue for its own peak is arithmetically impossible.**
+
+| | Capital multiple |
+| --- | ---: |
+| Every venue funded to its p90 | **1.53x** |
+| Every venue funded to its worst case | **1.88x** |
+
+You cannot hold 188% of your capital, and the peaks do not coincide, so they cannot be netted.
+
+**An equal 25% split fills the intended book in 1 week out of 18.** At $2,500 per venue each supports
+10 legs; against the historical books that blocks 7.2 legs on average and 14 in the worst week, with
+only 5.5% of weeks fully filled. The lost positions are not random - they are the ones on whichever
+venue is currently most dislocated, which is where the widest spreads are.
+
+Three ways out, only one of which has a known cost:
+
+1. **Size down to fit.** Deploy `capital / 1.53` and hold the rest as venue buffer. Always fills, but
+   roughly a third of capital sits idle and return on total capital falls by about a third - a
+   nominal 19% becomes ~12.5%. This is the only option whose cost is measured.
+2. **Cap legs per venue in the signal.** Keeps 20 positions and full deployment, but the book is then
+   "top 20 subject to a constraint" rather than top 20 by spread, and nothing has measured what the
+   constraint costs. A small change to `topBook`; an open question.
+3. **Rebalance between venues each cycle.** On-chain, minutes to hours, and it fails precisely when
+   needed - during the volatility that created the dislocation.
+
+**More venues makes this worse, not better.** Re-running the same measurement over the 14 weeks where
+OKX and Bitget also have data:
+
+| | 4 venues | 6 venues |
+| --- | ---: | ---: |
+| Capital multiple at p90 | 1.25x | **1.40x** |
+| Capital multiple at worst | 1.43x | **1.55x** |
+
+Individual peaks do fall - Binance's worst drops 18 to 15 - but the venue count rises faster, so the
+*sum* of peaks grows. There is a second effect pushing the same way: the spread is
+`max(rate) - min(rate)` across venues, so a wider venue set takes extremes from a larger sample. That
+is the best-of-N selection inflation already documented as a bug here, and it pushes the chosen legs
+toward whichever venue is currently most extreme - usually a smaller one, which is the worst place to
+be forced to hold capital. The four-venue configuration was chosen for data availability; this is a
+second, independent reason for it.
+
+(The 14-week window is benign compared with the full 146 - 1.25x against 1.53x - so the comparison
+between the two columns is what holds, not the absolute figures. Gate is excluded entirely at 5 weeks
+of history, so a genuine 7-venue answer does not exist yet.)
+
+### Collateral is not one currency
+
+The moves above are not just transfers, because the four venues do not share a settlement asset:
+
+| Venue | Perp collateral |
+| --- | --- |
+| Hyperliquid | **USDC only** - perps are bare coin names (`BTC`, not `BTCUSDT`) with a single account-wide collateral asset. USDT exists only as the `USDT0` spot token and cannot margin a perp. |
+| dYdX | USDC |
+| Binance | USDT, plus USDC contracts on the larger symbols |
+| Bybit | USDT |
+
+So topping up the Hyperliquid leg from a Binance balance crosses a stablecoin as well as a chain. That
+lands on exactly the worst leg: Hyperliquid has the most volatile allocation of the four (median 5,
+p90 17), so it is the venue most often needing a top-up and the one where topping up costs a
+conversion too.
+
+Two things reduce it. Binance has USDC-margined contracts for larger symbols, with a better fee tier
+than USDT - keeping that side in USDC where the pair allows removes one conversion. And dYdX settles
+in USDC as well, so the two thinnest venues share an asset and move between each other without
+touching a stablecoin pair. That leaves USDT genuinely required only for Bybit and for Binance's
+USDT-only symbols.
+
+**Every return figure in this document and in `XVF_STRATEGY.md` assumes capital is where it needs to
+be.** This section is why that assumption does not hold, and the haircut is material rather than a
+detail.
+
 ---
 
 ## 8. Signal
@@ -563,9 +654,17 @@ it; holding lets it mean-revert.
     books; fills will be worse and crossing more expensive.
 17. **Survivorship.** Hyperliquid, Bybit and dYdX universes come from currently-listed endpoints —
     every coin in the backtest survived to today. Only Binance's archive includes delistings.
-18. **Cross-venue collateral.** Legs sit on separate venues with no cross-margining. Moving funds is
-    an on-chain withdrawal taking minutes to hours. Each venue needs its own standing buffer, and
-    that idle capital is not charged anywhere in the returns.
+18. **Cross-venue collateral — now partly measured, see §7.** Legs sit on separate venues with no
+    cross-margining, and moving funds is an on-chain withdrawal taking minutes to hours. What §7 adds
+    is the size of it: funding every venue for its own peak needs **1.53x capital at p90 and 1.88x at
+    worst case**, an equal split fills the intended book in only **5.5% of weeks**, and the venues do
+    not even share a settlement asset — Hyperliquid and dYdX are USDC, Bybit is USDT, so a top-up
+    crosses a stablecoin as well as a chain.
+
+    What remains unmeasured is the *cost* of each way out. Sizing down is quantified (return on total
+    capital falls by roughly a third); capping legs per venue and rebalancing between venues are not.
+    Until one is chosen and measured, every return figure here assumes capital is already where it
+    needs to be, which §7 shows it cannot be.
 19. **Reconciliation.** This project has produced 7.5%, 10.98%, 18.5%, 19.0%, 19.6%, 22.0% and 28%
     from pipelines built at different times over different periods. They have not been collapsed into
     one number from one code path. Treat any single figure as indicative until they are.

@@ -134,9 +134,16 @@ Capacity is not the constraint at any realistic personal scale. Return is.
    books; their fills will be worse and crossing more expensive.
 3. **Survivorship.** Hyperliquid, Bybit and dYdX universes come from currently-listed endpoints. Every
    coin in the backtest survived to today. Binance's archive includes delistings; the others do not.
-4. **Cross-venue collateral.** Legs sit on separate venues with no cross-margining. Moving funds is
-   an on-chain withdrawal taking minutes to hours. Each venue needs its own standing buffer, and that
-   idle capital is not charged anywhere above.
+4. **Cross-venue collateral — measured; see `XVF_IMPLEMENTATION.md` §7.** Legs sit on separate venues
+   with no cross-margining, and every figure in §4 above assumes capital is already on the venue a
+   leg lands on. It cannot be. Funding each venue for its own peak needs **1.53x capital at p90,
+   1.88x at worst**; an equal 25% split fills the intended book in **5.5% of weeks**. Sizing down to
+   fit is the only remedy with a measured cost, and it cuts return on total capital by roughly a
+   third — a nominal 19% becomes ~12.5%.
+
+   Adding venues makes it worse, not better: on the same 14 weeks, six venues need 1.40x at p90
+   against four venues' 1.25x. The venues also do not share a settlement asset — Hyperliquid and dYdX
+   are USDC-only, Bybit USDT — so a top-up crosses a stablecoin as well as a chain.
 5. **Reconciliation.** This project produced 7.5%, 10.98%, 18.5%, 19.0%, 19.6%, 22.0% and 28% from
    pipelines built at different times over different periods. They have not been collapsed into one
    number from one code path. Until they are, treat any single figure as indicative.
