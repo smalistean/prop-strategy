@@ -518,6 +518,39 @@ USDT-only symbols.
 be.** This section is why that assumption does not hold, and the haircut is material rather than a
 detail.
 
+### Recommended split — proposed, NOT yet adopted
+
+The three options above are a choice about which percentile to fund each venue to. Funding every
+venue at its own peak is what makes the multiple exceed 1.0, so the anchor sets both how often the
+book is fillable and how much capital sits idle:
+
+| Anchor | Leg slots funded | Leg notional at $10k | Deployed | 19% gross becomes |
+| --- | ---: | ---: | ---: | ---: |
+| median | 39 | $256 | 102.6% (infeasible) | ~19.5%, book truncated ~half the time |
+| **p90** | **61** | **$163.93** | **65.6%** | **12.5%** |
+| worst case | 75 | $133 | 53.3% | 10.1% |
+
+p90 is the recommendation: it fills the book in nine venue-weeks out of ten while leaving a third less
+idle than funding to the worst case. Anchoring to it gives:
+
+| Venue | p90 legs | Share | At $10,000 | Idle on a median week |
+| --- | ---: | ---: | ---: | ---: |
+| dydx | 17 | 27.9% | $2,787 | $492 |
+| hyperliquid | 17 | 27.9% | $2,787 | **$1,967** |
+| binance | 14 | 23.0% | $2,295 | $492 |
+| bybit | 13 | 21.3% | $2,131 | $656 |
+
+Leg notional is `capital / 61`, not `capital / 40` - the 40 legs of a full book draw on 61 funded
+slots, and the difference is the buffer that absorbs an uneven week. Hyperliquid carries most of the
+idle capital because its allocation is the most volatile of the four (median 5 legs, p90 17).
+
+Combined with the collateral split below, that is **55.7% USDC and 44.3% USDT** - slightly more USDC
+than USDT, which is the opposite of what holding the CEXs on USDT suggests at a glance.
+
+**Not adopted.** Nothing in `XvfConfig` encodes it and no capital has been placed. It is written down
+so the choice is explicit rather than made by default at funding time, and because option 2 - capping
+legs per venue in the signal - could beat it and has never been measured.
+
 ### Decision: one quote currency per venue
 
 **USDT on Binance and Bybit, USDC on Hyperliquid and dYdX.** The two DEXs have no choice; the two CEXs
@@ -682,8 +715,23 @@ it; holding lets it mean-revert.
 
 6. **The Binance user data stream.** Never run against a live account. The entire entry design
    depends on the fill event arriving.
-7. **Hysteresis for mid-week switching.** No rule for what happens when a held pair leaves the top 20
-   between rebalances.
+7. **Hysteresis for mid-week switching — the largest unclaimed item here.** No rule exists for what
+   happens when a held pair stops being worth holding between rebalances. Positions are opened on a
+   3-day schedule and closed on it, and nothing looks at them in between.
+
+   The stamp-timing work in §4 is what makes the size of this visible. That analysis chased ~$7/yr by
+   moving entries and exits across individual stamps, and along the way established the diagnostic:
+   **a pair whose net cashflow at its shared stamps has turned negative is a pair that should be
+   closed**, not one whose exit should be nudged. The trailing signal cannot see this, because it is
+   computed once at rebalance and the rates move afterwards.
+
+   Two thresholds are needed and neither has been measured: how far the realised spread must fall
+   before closing early, and how much it must recover before re-entering — the gap between them being
+   the hysteresis, which exists to stop a pair oscillating across the boundary and paying a 13bp round
+   trip each time. The cost of getting the band wrong is bounded by that 13bp; the cost of having no
+   rule at all is unbounded, since a pair can sit inverted for the remainder of a 3-day hold.
+
+   Worth far more than the timing optimisations that surfaced it, and it is the next thing to measure.
 
 ### Discrepancies between the documented strategy and the code
 
