@@ -51,9 +51,15 @@ public final class PairedEntryEngine implements AutoCloseable {
 
     public enum PairState { WORKING, MAKER_FILLED, HEDGED, ABANDONED, UNHEDGED_ALERT }
 
+    /**
+     * @param hedgedQuantity high-water mark of maker fill that has already been hedged. Venue order
+     *                       updates carry a CUMULATIVE filled quantity, so this is what converts
+     *                       them into the increment that actually needs offsetting.
+     */
     private record Pair(String base, Leg maker, Leg taker, BigDecimal makerLimit,
                         AtomicReference<PairState> state, Instant opened,
-                        AtomicReference<OrderHandle> makerHandle) { }
+                        AtomicReference<OrderHandle> makerHandle,
+                        AtomicReference<BigDecimal> hedgedQuantity) { }
 
     private final Map<String, Pair> byClientId = new ConcurrentHashMap<>();
     private final ScheduledExecutorService timers = Executors.newScheduledThreadPool(2);
@@ -72,7 +78,8 @@ public final class PairedEntryEngine implements AutoCloseable {
     public void open(String base, Leg makerLeg, Leg takerLeg, BigDecimal makerLimit) {
         String clientId = "xvf-" + base + "-" + System.nanoTime();
         Pair pair = new Pair(base, makerLeg, takerLeg, makerLimit,
-                new AtomicReference<>(PairState.WORKING), Instant.now(), new AtomicReference<>());
+                new AtomicReference<>(PairState.WORKING), Instant.now(), new AtomicReference<>(),
+                new AtomicReference<>(BigDecimal.ZERO));
         byClientId.put(clientId, pair);
 
         OrderHandle handle = makerLeg.gateway().placePostOnly(
@@ -95,8 +102,24 @@ public final class PairedEntryEngine implements AutoCloseable {
     /**
      * Wire this to every gateway's {@code streamOrderUpdates}.
      *
-     * <p>Partial fills hedge the filled portion rather than waiting for the remainder: a half-filled
-     * maker leg is half-naked, and the exposure is what matters, not the tidiness of the fill.
+     * <p>Partial fills hedge immediately rather than waiting for the remainder: a half-filled maker
+     * leg is half-naked, and the exposure is what matters, not the tidiness of the fill.
+     *
+     * <h2>Only the INCREMENT is hedged</h2>
+     * {@link OrderUpdate#filledQuantity()} is <b>cumulative</b> — Binance's {@code z} field is the
+     * running total for the order, not the size of the latest fill. Offsetting it on every event
+     * would hedge 1x, then 2x, then 3x of an order arriving in three equal partials: 2Q sent against
+     * a maker fill of Q, leaving a naked short of Q in a coin selected for being dislocated. In
+     * general the excess is {@code Q(N-1)/2} for N partials. That is the exact state this class
+     * exists to prevent, so the cumulative figure is differenced against a high-water mark.
+     *
+     * <p>Differencing a cumulative total is deliberately preferred to reading a per-event increment
+     * ({@code l} on Binance). A dropped or duplicated message leaves the cumulative figure
+     * self-correcting on the next event, where summing increments would be permanently wrong.
+     *
+     * <p>The watermark advances before the hedge is attempted. That direction is chosen on purpose:
+     * a failed hedge under-hedges and raises {@link PairState#UNHEDGED_ALERT}, which a human sees,
+     * while the alternative risks a silent double hedge, which nobody sees.
      */
     public void onOrderUpdate(OrderUpdate update) {
         Pair pair = byClientId.get(update.clientOrderId());
@@ -109,13 +132,38 @@ public final class PairedEntryEngine implements AutoCloseable {
             return;
         }
         pair.state().compareAndSet(PairState.WORKING, PairState.MAKER_FILLED);
-        hedge(pair, update.filledQuantity());
+
+        BigDecimal increment;
+        // Serialised per pair: two updates racing here would each read the same watermark and both
+        // hedge the same increment.
+        synchronized (pair) {
+            BigDecimal alreadyHedged = pair.hedgedQuantity().get();
+            increment = update.filledQuantity().subtract(alreadyHedged);
+            if (increment.signum() <= 0) {
+                return;  // duplicate or out-of-order event; nothing new is exposed
+            }
+            pair.hedgedQuantity().set(update.filledQuantity());
+        }
+        hedge(pair, increment);
     }
 
-    /** Sends the offsetting market order. Retries rather than giving up: giving up leaves it naked. */
+    /**
+     * Sends the offsetting order for ONE increment of maker fill. Retries rather than giving up:
+     * giving up leaves the increment naked.
+     *
+     * @param makerFilled the newly filled amount, already differenced from the cumulative total
+     */
     private void hedge(Pair pair, BigDecimal makerFilled) {
         Leg taker = pair.taker();
         BigDecimal quantity = round(makerFilled, taker.gateway().rules(taker.venueSymbol()).stepSize());
+        if (quantity.signum() <= 0) {
+            // The increment rounded below one step. Leaving the watermark advanced would strand it,
+            // so hand it back to be swept up with the next fill.
+            synchronized (pair) {
+                pair.hedgedQuantity().set(pair.hedgedQuantity().get().subtract(makerFilled));
+            }
+            return;
+        }
         for (int attempt = 1; attempt <= 5; attempt++) {
             try {
                 taker.gateway().placeMarket(taker.venueSymbol(), taker.side(), quantity);

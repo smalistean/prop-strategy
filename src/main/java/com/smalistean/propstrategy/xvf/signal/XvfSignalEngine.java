@@ -192,8 +192,13 @@ public final class XvfSignalEngine {
             if (venueLegs.size() < 2) {
                 continue;
             }
-            Leg expensive = venueLegs.stream().max(Comparator.comparingDouble(Leg::trailingRate)).orElseThrow();
-            Leg cheap = venueLegs.stream().min(Comparator.comparingDouble(Leg::trailingRate)).orElseThrow();
+            Leg expensive = bestCrossVenuePair(venueLegs);
+            if (expensive == null) {
+                continue;   // every leg sits on one venue
+            }
+            Leg cheap = venueLegs.stream()
+                    .filter(leg -> !leg.venue().equals(expensive.venue()))
+                    .min(Comparator.comparingDouble(Leg::trailingRate)).orElseThrow();
             double spread = (expensive.trailingRate() - cheap.trailingRate())
                     * (365.0 / XvfConfig.LOOKBACK_DAYS) * 100;
             double thin = Math.min(expensive.weeklyQuoteVolume(), cheap.weeklyQuoteVolume());
@@ -203,5 +208,41 @@ public final class XvfSignalEngine {
         }
         out.sort(Comparator.comparingDouble(Candidate::spreadAnnualPct).reversed());
         return out.size() > XvfConfig.POSITIONS ? out.subList(0, XvfConfig.POSITIONS) : out;
+    }
+
+    /**
+     * The short leg of the widest spread whose two legs sit on DIFFERENT venues, or null if they
+     * cannot.
+     *
+     * <p>Taking a plain max and min lets both legs land on one exchange. Binance lists KAITOUSDC and
+     * KAITOUSDT, both normalising to KAITO, and on 2026-08-15 they were the widest "spread" for that
+     * base at 38.3% — a pair the engine would have placed, because nothing downstream objects:
+     * {@code isThinner("binance","binance")} is true on the {@code <=}, so maker and taker resolve to
+     * the same gateway. A USDT/USDC funding spread on one venue is a real trade, but it is
+     * cross-margined with no withdrawal latency and no second-venue risk, so none of the measurement
+     * behind XVF describes it.
+     *
+     * <p>Skipping such a base outright would be wrong too: one with two Binance contracts AND a Bybit
+     * leg still has a valid cross-venue pair. So the widest legitimate combination is chosen instead,
+     * evaluated from both ends because the best short and the best long need not be the extremes of
+     * the whole set once a venue is excluded.
+     */
+    private static Leg bestCrossVenuePair(List<Leg> legs) {
+        Leg best = null;
+        double bestSpread = Double.NEGATIVE_INFINITY;
+        for (Leg candidate : legs) {
+            double cheapest = legs.stream()
+                    .filter(leg -> !leg.venue().equals(candidate.venue()))
+                    .mapToDouble(Leg::trailingRate).min().orElse(Double.NaN);
+            if (Double.isNaN(cheapest)) {
+                continue;
+            }
+            double spread = candidate.trailingRate() - cheapest;
+            if (spread > bestSpread) {
+                bestSpread = spread;
+                best = candidate;
+            }
+        }
+        return best;
     }
 }
