@@ -13,9 +13,17 @@ Parameters:
   LookbackDays:
     Type: Number
     Default: 7
+    MinValue: 1
+    MaxValue: 30
     Description: >
-      Trailing window. Observations began 2026-08-16, so a full 7-day window is only available from
-      2026-08-23; until then a shorter value produces a book from what exists.
+      Trailing window in days, and the strategy specifies 7. It is a fixed setting rather than a
+      measurement: the ranker reads it and scans exactly that many hours back, so it does not widen as
+      history accumulates and must be raised deliberately. Recording began 2026-08-16 around midday,
+      so 7 became available on 2026-08-23; a smaller value before then produced a book from what
+      existed rather than failing the 0.9 completeness ratio on empty hours.
+      Cost note: the ranker issues LookbackDays x 24 x 3 queries per hourly run - 144 at 2, 504 at 7 -
+      against a table provisioned at 9 RCU, so raising this multiplies read load rather than adding to
+      it.
   RetentionDays:
     Type: Number
     Default: 365

@@ -81,9 +81,17 @@ const venueClass = (v: string) => `venue venue-${v}`
         <div><dt>venues</dt><dd>{{ data.venues }}</dd></div>
       </dl>
 
+      <!--
+        Deliberately says nothing about when recording started. lookbackDays is the ranker's
+        LOOKBACK_DAYS setting, not a measurement of how much history exists, so an earlier version of
+        this notice - "observations began 2026-08-16, so the window is short" - implied it would widen
+        on its own. It will not: it changes when the stack parameter changes, and the hardcoded date
+        went stale the moment it was written.
+      -->
       <p v-if="(data.lookbackDays ?? 7) < 7" class="notice warn">
-        Lookback is {{ data.lookbackDays }} days, not 7. Observations began 2026-08-16, so spreads are
-        annualised from a short window and are noisier than the production figure.
+        Lookback is {{ data.lookbackDays }} days rather than the 7 the strategy specifies, so spreads
+        are annualised from a shorter window and are noisier than the production figure. This is a
+        configured setting, not a limit of the data.
       </p>
 
       <table>
