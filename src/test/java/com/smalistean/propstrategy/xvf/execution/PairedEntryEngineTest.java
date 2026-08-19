@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -31,6 +32,8 @@ class PairedEntryEngineTest {
         private final String name;
         final List<BigDecimal> marketOrders = new ArrayList<>();
         final List<BigDecimal> caps = new ArrayList<>();
+        final List<Boolean> makerReduceOnly = new ArrayList<>();
+        final List<Boolean> takerReduceOnly = new ArrayList<>();
         Consumer<OrderUpdate> listener;
 
         RecordingGateway(String name) {
@@ -40,18 +43,25 @@ class PairedEntryEngineTest {
         @Override public String name() {
             return name;
         }
+
+        @Override public java.util.List<PositionSnapshot> positions() {
+            return java.util.List.of();   // these tests assert on orders sent, not on venue state
+        }
         SubmitOutcome nextOutcome = SubmitOutcome.ACCEPTED;
         OrderSnapshot lookupAnswer;
         int lookups;
 
         @Override public SubmitResult placePostOnly(String s, Side side, BigDecimal q, BigDecimal p,
-                                                    String clientOrderId) {
+                                                    String clientOrderId, boolean reduceOnly) {
+            makerReduceOnly.add(reduceOnly);
             return new SubmitResult(nextOutcome, new OrderHandle(name, s, "V1", clientOrderId), "test");
         }
         @Override public SubmitResult placeCappedIoc(String s, Side side, BigDecimal q,
-                                                     BigDecimal worst, String clientOrderId) {
+                                                     BigDecimal worst, String clientOrderId,
+                                                     boolean reduceOnly) {
             marketOrders.add(q);
             caps.add(worst);
+            takerReduceOnly.add(reduceOnly);
             return new SubmitResult(nextOutcome, new OrderHandle(name, s, "V2", clientOrderId), "test");
         }
         @Override public java.util.Optional<OrderSnapshot> orderByClientId(String s, String c) {
@@ -92,6 +102,48 @@ class PairedEntryEngineTest {
         @SuppressWarnings("unchecked")
         var map = (java.util.Map<String, ?>) field.get(engine);
         return map.keySet().iterator().next();
+    }
+
+    @Test
+    void openingIsNotReduceOnlyButClosingIsOnBothLegs() throws Exception {
+        RecordingGateway maker = new RecordingGateway("maker");
+        RecordingGateway taker = new RecordingGateway("taker");
+        try (PairedEntryEngine engine = new PairedEntryEngine(Duration.ofMinutes(30))) {
+            engine.open("X",
+                    new PairedEntryEngine.Leg(maker, "XUSDT", VenueGateway.Side.SELL, new BigDecimal("3")),
+                    new PairedEntryEngine.Leg(taker, "XUSDT", VenueGateway.Side.BUY, new BigDecimal("3")),
+                    new BigDecimal("100"));
+            assertEquals(List.of(false), maker.makerReduceOnly,
+                    "an opening maker must NOT be reduce-only or it can never open anything");
+
+            // Closing is the mirror: opposite sides, and reduce-only on both. Without it, an order
+            // arriving after its leg has gone flat opens a fresh position the other way - a naked leg
+            // created by the code meant to remove one.
+            engine.close("Y",
+                    new PairedEntryEngine.Leg(maker, "YUSDT", VenueGateway.Side.BUY, new BigDecimal("3")),
+                    new PairedEntryEngine.Leg(taker, "YUSDT", VenueGateway.Side.SELL, new BigDecimal("3")),
+                    new BigDecimal("100"));
+            assertEquals(List.of(false, true), maker.makerReduceOnly,
+                    "a closing maker must be reduce-only");
+
+            String closingId = null;
+            java.lang.reflect.Field field = PairedEntryEngine.class.getDeclaredField("byClientId");
+            field.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            var map = (java.util.Map<String, ?>) field.get(engine);
+            for (String id : map.keySet()) {
+                if (id.startsWith("xvfx-")) {
+                    closingId = id;
+                }
+            }
+            assertNotNull(closingId, "the closing pair should be registered under its own prefix");
+
+            engine.onOrderUpdate(new VenueGateway.OrderUpdate("maker", "YUSDT", closingId,
+                    VenueGateway.OrderState.FILLED, new BigDecimal("3"), new BigDecimal("100"), 0L));
+            Thread.sleep(150);
+            assertEquals(List.of(true), taker.takerReduceOnly,
+                    "the hedge that offsets a closing fill must also be reduce-only");
+        }
     }
 
     @Test

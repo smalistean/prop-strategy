@@ -65,7 +65,7 @@ public final class PairedEntryEngine implements AutoCloseable {
                         AtomicReference<PairState> state, Instant opened,
                         AtomicReference<OrderHandle> makerHandle,
                         AtomicReference<BigDecimal> hedgedQuantity,
-                        BigDecimal hedgeRatio) { }
+                        BigDecimal hedgeRatio, boolean closing) { }
 
     private final Map<String, Pair> byClientId = new ConcurrentHashMap<>();
     private final ScheduledExecutorService timers = Executors.newScheduledThreadPool(2);
@@ -82,7 +82,34 @@ public final class PairedEntryEngine implements AutoCloseable {
      * @param takerLeg  the more liquid venue — crossed on fill
      */
     public void open(String base, Leg makerLeg, Leg takerLeg, BigDecimal makerLimit) {
-        String clientId = "xvf-" + base + "-" + System.nanoTime();
+        work(base, makerLeg, takerLeg, makerLimit, false);
+    }
+
+    /**
+     * Unwinds a pair the same way it was opened: resting on the thin venue, crossing on the fill.
+     *
+     * <p>The shape is identical to {@link #open} and the economics are why. All-taker execution costs
+     * about 34bp for a pair's open and close against roughly 21bp of funding per 3-day cycle, so an
+     * exit that always crosses spends more than the position earns. Resting the exit on the thinner
+     * venue recovers most of that, which is what makes the strategy solvent rather than merely correct.
+     *
+     * <p><b>Both legs are reduce-only</b>, so an order arriving after its leg has already gone flat is
+     * ignored by the venue rather than opening a fresh position in the opposite direction.
+     *
+     * <h2>Where this differs from opening, and it is the important part</h2>
+     * An entry whose maker never fills is a missed opportunity, so {@link #open} simply cancels and
+     * forgets. An exit whose maker never fills still holds the position - forgetting it would leave a
+     * pair open that the book has already decided to be rid of, and the caller would have been told it
+     * was closed. So the timeout here cancels and then <em>crosses</em>. Paying the spread is the
+     * point: the position has to go, and 5bp is the price of certainty.
+     */
+    public void close(String base, Leg makerLeg, Leg takerLeg, BigDecimal makerLimit) {
+        work(base, makerLeg, takerLeg, makerLimit, true);
+    }
+
+    private void work(String base, Leg makerLeg, Leg takerLeg, BigDecimal makerLimit,
+                      boolean closing) {
+        String clientId = (closing ? "xvfx-" : "xvf-") + base + "-" + System.nanoTime();
         // Taker units per maker unit. The two venues may quote different contract sizes for the
         // same asset - 1000PEPE against PEPE - so hedging the maker's NATIVE filled quantity on the
         // taker venue would be out by that multiple. The caller has already sized both legs to equal
@@ -91,13 +118,13 @@ public final class PairedEntryEngine implements AutoCloseable {
                 .divide(makerLeg.quantity(), 12, RoundingMode.HALF_UP);
         Pair pair = new Pair(base, makerLeg, takerLeg, makerLimit,
                 new AtomicReference<>(PairState.WORKING), Instant.now(), new AtomicReference<>(),
-                new AtomicReference<>(BigDecimal.ZERO), hedgeRatio);
+                new AtomicReference<>(BigDecimal.ZERO), hedgeRatio, closing);
         byClientId.put(clientId, pair);
 
         SubmitResult submitted = makerLeg.gateway().placePostOnly(
                 makerLeg.venueSymbol(), makerLeg.side(),
                 round(makerLeg.quantity(), makerLeg.gateway().rules(makerLeg.venueSymbol()).stepSize()),
-                makerLimit, clientId);
+                makerLimit, clientId, closing);
         // An UNKNOWN maker submission may already be resting. Resolving it by the client ID the
         // caller owns is the only safe move: retrying would place a second order, and treating it as
         // rejected would leave a live order nobody is tracking.
@@ -125,9 +152,46 @@ public final class PairedEntryEngine implements AutoCloseable {
         timers.schedule(() -> {
             if (pair.state().compareAndSet(PairState.WORKING, PairState.ABANDONED)) {
                 makerLeg.gateway().cancel(handle);
-                System.out.printf("%s abandoned: maker never filled within %s%n", base, abandonAfter);
+                if (!closing) {
+                    System.out.printf("%s abandoned: maker never filled within %s%n", base, abandonAfter);
+                    return;
+                }
+                // Closing, so giving up is not available: the position is still open and the caller
+                // has been told it is going away. Cancel, then cross. The cancel can race a fill, so
+                // the quantity crossed is whatever the venue still shows rather than what was asked
+                // for - crossing the original size after a partial fill would open a position the
+                // other way, except that reduce-only stops it, which is the second reason this is
+                // reduce-only.
+                System.out.printf("%s exit maker never filled within %s — crossing instead%n",
+                        base, abandonAfter);
+                crossToClose(pair, makerLeg);
             }
         }, abandonAfter.toMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    /** Last resort for an exit: take the spread rather than leave a position the book has dropped. */
+    private void crossToClose(Pair pair, Leg makerLeg) {
+        BigDecimal remaining = BigDecimal.ZERO;
+        for (VenueGateway.PositionSnapshot p : makerLeg.gateway().positions()) {
+            if (p.venueSymbol().equals(makerLeg.venueSymbol())) {
+                remaining = p.signedQuantity().abs();
+            }
+        }
+        BigDecimal quantity = round(remaining.min(makerLeg.quantity()),
+                makerLeg.gateway().rules(makerLeg.venueSymbol()).stepSize());
+        if (quantity.signum() <= 0) {
+            return;   // already flat; the cancel won or the fill did
+        }
+        String crossId = "xvfxc-" + pair.base() + "-" + System.nanoTime();
+        SubmitResult crossed = makerLeg.gateway().placeCappedIoc(makerLeg.venueSymbol(),
+                makerLeg.side(), quantity, worstAcceptable(makerLeg), crossId, true);
+        if (crossed.accepted()) {
+            System.out.printf("%s exit crossed %s on %s%n",
+                    pair.base(), quantity, makerLeg.gateway().name());
+        } else {
+            System.out.printf("!!!! %s exit could NOT be crossed: %s — the pair is still open%n",
+                    pair.base(), crossed.detail());
+        }
     }
 
     /**
@@ -207,7 +271,7 @@ public final class PairedEntryEngine implements AutoCloseable {
                 // price is not, and this hedges into a coin selected for being dislocated.
                 BigDecimal worst = worstAcceptable(taker);
                 SubmitResult result = taker.gateway().placeCappedIoc(
-                        taker.venueSymbol(), taker.side(), quantity, worst, hedgeId);
+                        taker.venueSymbol(), taker.side(), quantity, worst, hedgeId, pair.closing());
                 if (result.outcome() == SubmitOutcome.UNKNOWN) {
                     result = resolve(taker, hedgeId, result);
                 }

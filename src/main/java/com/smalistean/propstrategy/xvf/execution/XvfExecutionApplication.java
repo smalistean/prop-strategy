@@ -81,6 +81,16 @@ public final class XvfExecutionApplication {
                 .map(XvfExecutionApplication::toTarget).toList();
         double legNotional = capital * XvfConfig.LEG_LEVERAGE / (XvfConfig.POSITIONS * 2.0);
 
+        String mode = System.getProperty("xvfMode", "enter");
+        if ("reconcile".equals(mode)) {
+            reconcile(gateways, book, legNotional, live);
+            return;
+        }
+        if ("brackets".equals(mode)) {
+            brackets(gateways, live);
+            return;
+        }
+
         try (PairedEntryEngine engine = new PairedEntryEngine(Duration.ofMinutes(30))) {
             // One listener per venue, wired before any order is placed. Placing first would open a
             // window in which a fill arrives with nothing listening for it.
@@ -171,6 +181,117 @@ public final class XvfExecutionApplication {
             for (AutoCloseable stream : streams) {
                 stream.close();
             }
+        }
+    }
+
+    /**
+     * Closes whatever the account holds that the current book does not want.
+     *
+     * <p>This is the rebalance exit. It does not need to know that a rebalance happened, or which pairs
+     * the previous run opened, or whether that run finished - a book arrives, the account is compared
+     * against it, and the difference is closed. A pair stranded by a crash three days ago is
+     * indistinguishable from one the latest signal simply dropped, and both are handled the same way.
+     */
+    private static void reconcile(Map<String, VenueGateway> gateways, List<Target> book,
+                                  double legNotional, boolean live) {
+        List<XvfReconciler.DesiredLeg> desired = new ArrayList<>();
+        for (Target t : book) {
+            VenueGateway shortGw = gateways.get(t.shortVenue());
+            VenueGateway longGw = gateways.get(t.longVenue());
+            if (shortGw == null || longGw == null) {
+                continue;
+            }
+            // Sized from each venue's own price, exactly as the entry does, so a position opened by
+            // the entry path is not mistaken for an oversized one here.
+            Sizing sizing = size(legNotional,
+                    referencePrice(shortGw, t.shortSymbol(), Side.SELL), shortGw.rules(t.shortSymbol()),
+                    referencePrice(longGw, t.longSymbol(), Side.BUY), longGw.rules(t.longSymbol()));
+            if (sizing.rejection() != null) {
+                continue;
+            }
+            desired.add(new XvfReconciler.DesiredLeg(t.base(), t.shortVenue(), t.shortSymbol(),
+                    sizing.makerQty().negate()));
+            desired.add(new XvfReconciler.DesiredLeg(t.base(), t.longVenue(), t.longSymbol(),
+                    sizing.takerQty()));
+        }
+
+        System.out.printf("%nreconciling %d booked legs against the accounts%n", desired.size());
+        List<XvfReconciler.Drift> drifts = XvfReconciler.plan(gateways, desired);
+        if (drifts.isEmpty()) {
+            System.out.println("  accounts match the book; nothing to do.");
+            return;
+        }
+        boolean done = XvfReconciler.apply(gateways, drifts, live);
+        System.out.println(done
+                ? "\nreconciled."
+                : "\n!!!! NOT fully reconciled — see above. The account is directional until resolved.");
+    }
+
+    /**
+     * Puts resting exit triggers around every open leg, so the book survives not being watched.
+     *
+     * <p>Run after entry, and again after anything changes the size of a leg. The triggers are the
+     * only part of this system that keeps working when the process does not, which is precisely why
+     * they are placed by an explicit command rather than left as a side effect of entry.
+     */
+    private static void brackets(Map<String, VenueGateway> gateways, boolean live) {
+        System.out.printf("%nplacing brackets around every open pair%n");
+
+        // Grouped by base, because a band is a property of the pair rather than of either leg. A leg
+        // bracketed on its own margin fires at a different price from its partner, which closes one
+        // side of the hedge and leaves the other outright.
+        Map<String, List<VenueGateway.PositionSnapshot>> byBase = new LinkedHashMap<>();
+        Map<String, VenueGateway> ownerOf = new LinkedHashMap<>();
+        for (Map.Entry<String, VenueGateway> entry : gateways.entrySet()) {
+            for (VenueGateway.PositionSnapshot p : entry.getValue().positions()) {
+                String base = XvfConfig.normaliseBase(entry.getKey(), p.venueSymbol());
+                byBase.computeIfAbsent(base, k -> new ArrayList<>()).add(p);
+                ownerOf.put(entry.getKey() + "|" + p.venueSymbol(), entry.getValue());
+            }
+        }
+
+        int placed = 0;
+        int failed = 0;
+        for (Map.Entry<String, List<VenueGateway.PositionSnapshot>> e : byBase.entrySet()) {
+            List<VenueGateway.PositionSnapshot> legs = e.getValue();
+            if (legs.size() != 2) {
+                // One leg, or three. Either way this is not a hedged pair and bracketing it as one
+                // would be a guess about which position protects which.
+                System.out.printf("  !! %s has %d leg(s), not a pair — not bracketed, and if it is "
+                        + "genuinely unpaired it is already directional%n", e.getKey(), legs.size());
+                failed += legs.size();
+                continue;
+            }
+            VenueGateway gwA = ownerOf.get(legs.get(0).venue() + "|" + legs.get(0).venueSymbol());
+            VenueGateway gwB = ownerOf.get(legs.get(1).venue() + "|" + legs.get(1).venueSymbol());
+            BigDecimal markA = referencePrice(gwA, legs.get(0).venueSymbol(),
+                    legs.get(0).signedQuantity().signum() > 0 ? Side.SELL : Side.BUY);
+            BigDecimal markB = referencePrice(gwB, legs.get(1).venueSymbol(),
+                    legs.get(1).signedQuantity().signum() > 0 ? Side.SELL : Side.BUY);
+
+            List<XvfBrackets.Band> bands = XvfBrackets.pair(legs.get(0), markA, legs.get(1), markB);
+            System.out.printf("  %s%n", e.getKey());
+            for (int i = 0; i < bands.size(); i++) {
+                XvfBrackets.Band band = bands.get(i);
+                VenueGateway gateway = i == 0 ? gwA : gwB;
+                if (!live) {
+                    System.out.printf("   [dry-run] %-12s %-10s %s %s brackets %s .. %s (%s)%n",
+                            band.venue(), band.venueSymbol(), band.closingSide(), band.quantity(),
+                            band.lower().setScale(6, RoundingMode.HALF_UP),
+                            band.upper().setScale(6, RoundingMode.HALF_UP), band.derivedFrom());
+                    continue;
+                }
+                if (XvfBrackets.place(gateway, band,
+                        "xvfbr-" + band.venueSymbol() + "-" + System.nanoTime())) {
+                    placed++;
+                } else {
+                    failed++;
+                }
+            }
+        }
+        System.out.printf("%n%d legs bracketed, %d failed.%n", placed, failed);
+        if (failed > 0) {
+            System.out.println("A leg without brackets is unprotected while nothing is watching it.");
         }
     }
 
