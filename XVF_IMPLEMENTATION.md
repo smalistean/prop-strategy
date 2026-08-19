@@ -728,7 +728,7 @@ All in `XvfConfig`. Every value below was measured, not chosen.
 | Constant | Value | Settled by |
 | --- | --- | --- |
 | `VENUES` | binance, bybit, hyperliquid, dydx | the four with usable funding history; OKX/Gate/Bitget serve 1–3 months |
-| `LOOKBACK_DAYS` | 7 | carried over from cash-and-carry, not swept |
+| `LOOKBACK_DAYS` | 7 | swept 3-21 days, 2026-08-19 - `XVF_STRATEGY.md` §2b. Plateau from 7-21, not a peak; 3 and 5 lose on turnover despite matching gross return |
 | `MIN_SPREAD_ANNUAL_PCT` | 20.0 | 12.0% net at a 0% threshold, 19.0% at 20%, 25.4% at 40% but only 6 positions |
 | `POSITIONS` | 20 | Sharpe 5.12 vs 4.83 at top 10; ranks 11–20 realise 23.0% forward funding vs 22.3% for 6–10 |
 | `REBALANCE_DAYS` | 3 | swept 1/2/3/5/7/10/14 → 14.7 / 17.8 / **22.0** / 19.7 / 19.5 / 15.9 / 13.4 |

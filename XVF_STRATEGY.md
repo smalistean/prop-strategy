@@ -29,7 +29,7 @@ below.
 | Parameter | Value | How it was settled |
 | --- | --- | --- |
 | Venues | binance, bybit, hyperliquid, dydx | the four with usable funding history |
-| Signal | trailing **7-day** realised funding per venue, per coin | carried over from cash-and-carry |
+| Signal | trailing **7-day** realised funding per venue, per coin | swept 3-21 days, 2026-08-19 - see §2b. Sits on a plateau, not a peak |
 | Spread | `max(rate) - min(rate)` across venues, annualised | — |
 | Entry | spread **> 20% annualised** | Sharpe peak; 12.0% at 0%, 25.4% at 40% but only 6 positions |
 | Positions | **top 20** by spread | Sharpe 5.12 vs 4.83 at top 10; ranks 11-20 earn as much as 6-10 |
@@ -39,12 +39,68 @@ below.
 | Liquidity floor | **$500k** weekly quote volume on the thinner leg | removes untradeable prints; basis goes to zero |
 | Execution | **post-only**, cross the laggard after ~1 minute | 3.2bp to cross vs 92bp of naked drift |
 
+### 2b. The 7-day lookback, actually swept
+
+It was not, until 2026-08-19: `LOOKBACK_DAYS` had been carried over from an earlier cash-and-carry
+strategy and never re-validated for XVF. The prompt to check it was a live-execution question -
+whether Postgres and a shorter-window DynamoDB signal pipeline would rank pairs the same way - which
+turned up first that Postgres's own completeness filter cannot run at a 3-day window at all (it
+compares a trailing count against a fixed *weekly* median regardless of the window, so anything
+short of ~7 days fails almost every symbol), and second that the question underneath - is 7 actually
+right - had never been answered.
+
+**Method.** 315 rebalances, every 3 days from 2024-01-01 to 2026-08-01, on the same ranking logic as
+production: trailing sum of realised funding, best cross-venue pair per base, $500k weekly quote-
+volume floor, top 20 by annualised spread, >20% entry threshold. Windows of 3, 5, 7, 10, 14 and 21
+days, each scored against realised funding over the following 3 days - the actual holding period.
+Binance volume from hourly klines; Bybit and Hyperliquid have only daily klines and store base
+volume, so quote volume is `base_volume x close_price`, a reconstruction rather than a stored figure.
+
+**Gross realised funding, annualised, paired against L=7 on identical rebalance dates:**
+
+| Lookback | Gross | vs L=7 | t-stat | |
+| ---: | ---: | ---: | ---: | --- |
+| 3 | 27.45% | -0.39pp | 0.17 | tied |
+| 5 | 26.69% | -1.16pp | 0.53 | tied |
+| **7** | **27.84%** | - | - | - |
+| 10 | 26.54% | -1.31pp | 2.07 | marginal |
+| 14 | 24.90% | -2.95pp | 2.93 | **worse** |
+| 21 | 23.86% | -3.98pp | 3.72 | **worse** |
+
+Gross funding alone says 3 and 5 are free - identical return to 7, for less code complexity. They
+are not: turnover at 3 days is **62.7%** of the book per rebalance against **40.8%** at 7, and
+turnover is what realises basis drag and execution cost, neither of which appears in a funding-only
+number. Net of a 21.5bp-per-replacement cost (13bp execution + 8.5bp basis drag, both from §3 -
+8.5bp is -10.4% spread over the same 122 rebalances/year), L=7 nets 17.2% against L=3's 11.0%.
+
+That 21.5bp assumes the 54% maker-fill rate §3 was built on. Live testing has not matched it - see
+`XVF_LIVE_FINDINGS.md` §5 - and the fees actually measured there run 18bp (binance-hyperliquid) to
+29bp (binance-bybit) per round trip on an all-taker fill alone, before basis drag. Re-running the net
+figures at 26.5-37.5bp per replacement widens the gap further rather than closing it: L=3's extra
+turnover costs more, not less, the worse execution actually is.
+
+**So 7 turns out to be defensible, but not because it is a peak.** It sits on a plateau from about 7
+to 21 days that is flat inside the ~2pp standard error the 315-rebalance sample carries; only the
+short end (3, 5) is genuinely worse, on turnover rather than on signal. If anything the honest
+argument from this data is for *longer* than 7 - 14 gives up a little gross return for nearly half
+the churn - but that argument is operational (fewer fills, less exposure to the basis-divergence risk
+measured in `XVF_LIVE_FINDINGS.md` §10), not a return argument, and it is not strong enough to move a
+number that was never wrong on its own terms.
+
+One instability worth recording rather than smoothing over: splitting by year, L=7's edge is carried
+almost entirely by 2026 (32.2% against 24-29% for the other windows), while L=3 led in 2025. A ranking
+that reorders year to year is further evidence these differences are noise, not structure - which is
+itself the reason to leave `LOOKBACK_DAYS` alone rather than chase whichever window happened to win
+on the most recent slice.
+
 ### Values deliberately NOT swept further
 
-The 7-day lookback, the 20-position cap, the $500k floor. The entry threshold and rebalance cadence
-were swept and both landed on interior optima, which is itself a reason for suspicion - a parameter
-sitting on a peak is what an overfit looks like even when it was not fitted. Treat the cadence as
-"2 to 5 days" and the threshold as "around 20%", not as 3 and 20.
+The 20-position cap and the $500k floor. The entry threshold and rebalance cadence were swept and
+both landed on interior optima, which is itself a reason for suspicion - a parameter sitting on a
+peak is what an overfit looks like even when it was not fitted. Treat the cadence as "2 to 5 days"
+and the threshold as "around 20%", not as 3 and 20. The lookback was swept too, above, and did not
+land on a peak at all - a flat region from 7 to 21 with only the short end distinguishable, which is
+a much less suspicious shape.
 
 ## 3. Costs, measured not assumed
 

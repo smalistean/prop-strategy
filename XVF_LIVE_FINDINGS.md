@@ -1,12 +1,13 @@
 # XVF — what live execution found
 
-First real orders, 2026-08-18. Six ordered venue pairs, ATOM, $12 a leg, about **30 cents** in total
-cost. `XVF_EXECUTION_DESIGN.md` is what the execution path is meant to do and `XVF_V1_SCOPE.md` is what
+First real orders, 2026-08-18, continued 2026-08-19. Six ordered venue pairs, ATOM, $12 a leg, well
+under a dollar in total cost. `XVF_EXECUTION_DESIGN.md` is what the execution path is meant to do and `XVF_V1_SCOPE.md` is what
 v1 covers; this is what actually happened when orders reached venues, and it is deliberately separate
 because almost none of it could have been found any other way.
 
-Three defects here would each have stranded a real position at full size. All three were invisible in
-dry run, and two were invisible in the logs of the live run that contained them.
+Four defects here would each have stranded a real position at full size. All were invisible in dry
+run, three were invisible in the logs of the live run that contained them, and one - §3b - was the fix
+for two of the others.
 
 ---
 
@@ -103,30 +104,82 @@ over-hedged. Still open.
 
 ---
 
-## 4. Execution costs, measured from real fills
+## 3b. The fix for §1 and §3 was itself checking the same broken source
 
-| | Binance / Bybit | Hyperliquid |
-| --- | ---: | ---: |
-| Taker fee | **5.0 bp** | **4.5 bp** |
-| Spread on ATOM | 7.0 bp | 2.1 bp |
-| Round trip per venue, all taker | **~17 bp** | **~9 bp** |
+The answer to a silent stream, adopted after §3, was: before concluding nothing filled, ask the venue
+by client id. On Hyperliquid that check read the filled quantity from `cumulativeFilled` - the local
+map the `userFills` websocket populates.
 
-Derived from the fills themselves: `0.0059892 / 11.978 = 5.0bp`, `0.0084 / 11.978 = 7.0bp`.
+So it was not a second opinion. It was the same opinion, asked twice, and a fill the stream missed
+produced a confident zero from both. On 2026-08-19 that left a live short of 8.5 ATOM while the
+harness printed `IOC filled nothing on hyperliquid` and moved on. Only the final position sweep caught
+it.
 
-So a full pair open-and-close costs about **34 bp** CEX-CEX and about **26 bp** CEX-Hyperliquid.
+The venue had been unambiguous the whole time:
+
+```json
+{"status": "order",
+ "order": {"order": {"oid": 519515305389, "origSz": "8.5", "sz": "0.0"},
+           "status": "filled"}}
+```
+
+`origSz - sz` is what traded, and is correct for a partial, a completed order and an IOC whose
+remainder was cancelled alike. `HyperliquidGateway.filledFrom` now reads exactly that, pinned by a
+test built from the response above.
+
+Binance (`executedQty`) and Bybit (`cumExecQty`) always read the response. Only Hyperliquid short-
+circuited to local state, which is why five of six pairs passed and the sixth stranded a leg.
+
+**The general rule this earns:** a fallback that shares a data source with the thing it is checking is
+not a fallback. Both §1 and §3 were failures to hear about a fill; this was a failure to ask anyone
+else.
+
+---
+
+## 4. Execution costs, read from the fee rows rather than the fee schedule
+
+Every figure below is the venue's own commission on a real fill, divided by that fill's notional. The
+published schedule was wrong about two of the three.
+
+| | Binance | Bybit | Hyperliquid |
+| --- | ---: | ---: | ---: |
+| Taker fee | **4.50 bp** | **10.00 bp** | **4.50 bp** |
+| Maker fee | - | **3.60 bp** | - |
+| Published non-VIP taker | 5.0 bp | 5.5 bp | 4.5 bp |
+| Spread on ATOM | 7.0 bp | 7.0 bp | 2.1 bp |
+
+Two surprises, in opposite directions.
+
+**Binance is cheaper than the schedule**, because commission now settles in BNB: the fee row reads
+`0.00000896 BNB` rather than a USDT amount, which at 601.77 is `0.005392` on `$11.99` - **4.498 bp**,
+exactly the 10% BNB discount. `XVF_STRATEGY.md` §7 lists this as deferred and worth about $21/yr. It
+is not deferred; it is on.
+
+**Bybit is nearly double the schedule.** `feeRate` comes back as `0.001` - 10.00 bp taker and 3.60 bp
+maker, against a published non-VIP 5.5 / 2.0. That is not a tier explicable from the outside and may
+be an account setting rather than a real rate, but it is what the fills are charged.
+
+So the cost of a pair, fees only, open and close, all taker:
+
+| Pair | Fees |
+| --- | ---: |
+| binance <-> hyperliquid | **18 bp** |
+| binance <-> bybit | **29 bp** |
 
 ### The number that matters
 
 At the 25.5% realised return in `XVF_V1_SCOPE.md`, a 3-day cycle captures `25.5% x 3/365 ~ 21 bp`.
 
-**All-taker execution costs more than the funding it collects.** Substituting a post-only leg at the
-2 bp maker fee brings a pair to roughly `4 + 17 = 21 bp` - about break-even.
+**A Bybit-legged pair costs more in fees alone than the funding it collects**, before a single basis
+point of spread. Five of the eight candidates in the 2026-08-19T05:00 book have a Bybit leg.
 
-The maker leg is therefore not an optimisation. It is the difference between a strategy that pays and
+Even the cheap pairing only works with a resting leg. All-taker binance-hyperliquid is 18 bp of fees
+plus roughly 9 bp of spread against 21 bp of funding; moving one leg to post-only is what turns that
+positive. The maker leg is not an optimisation, it is the difference between a strategy that pays and
 one that does not, and `-DrtCrossFirstLeg=true` must stay a test mode.
 
-Hyperliquid being the cheaper venue to cross reinforces the venue ranking on grounds independent of
-funding.
+Hyperliquid being both the cheapest to cross and the tightest quoted reinforces the venue ranking on
+grounds entirely independent of funding.
 
 ---
 
@@ -271,16 +324,99 @@ for the same reason.
 
 ---
 
-## 10. Still unproven
+## 10. A funding capture, held across a real settlement, and what basis divergence cost it
+
+**The trade.** 2026-08-19, hyperliquid ACE short (rate -0.0341%, hourly) against binance ACEUSDT long
+(rate -0.1758%, 8h, stamp at 08:00Z). Projected net at the stamp: +0.1416% on $12/leg, about
+$0.017 - the rate check run minutes before entry, since rates move. Hyperliquid rested one tick
+inside a 2-tick book (`-DrtImproveTicks=1`) and filled on the third chase - the first proven resting
+maker fill in this entire test campaign, every earlier attempt having either crossed the first leg or
+failed outright on a one-tick book (§5). Binance crossed to hedge. Held about 15 minutes across the
+stamp, then closed the same way in reverse.
+
+**Full settlement, from the actual fills, funding rows and fee rows - not projected:**
+
+| Leg | Price P&L | Funding | Fees | Net |
+| --- | ---: | ---: | ---: | ---: |
+| binance (long) | -0.19834 | +0.01869 | -0.01068 | **-0.19032** |
+| hyperliquid (short) | +0.10796 | -0.00362 | -0.00357 | **+0.10077** |
+| **Total** | | | | **-0.08955** |
+
+Net funding alone: **+0.01508**, close to the +0.0170 projected. The funding mechanism worked
+exactly as designed. The loss came from somewhere else entirely.
+
+**Basis divergence, not funding, drove the result.** Over the ~15-minute hold:
+
+```
+binance ACE:      -1.655%
+hyperliquid ACE:   -0.902%
+divergence:        -0.753 percentage points
+```
+
+Both venues sold off together; Binance sold off harder. The position was long the leg that fell more
+and short the leg that fell less, so the two price P&Ls did not cancel the way a delta-neutral pair
+is supposed to. That single divergence, on ~$12 notional, is effectively the whole loss.
+
+**Not leverage.** Binance was on 20x - an account default, never set by any code path here -
+Hyperliquid on 3x. Price P&L on a perpetual is `quantity x price change`; leverage does not appear in
+that formula, only in the margin posted to hold a given quantity. The Binance loss of -0.19834 is
+exactly `53.75 x (0.21932 - 0.22301)` and would be identical in dollars at 1x - only the margin
+behind it would move, from $0.59 to $11.87. Neither leg came near liquidation (Binance reported
+`liquidationPrice: "0"` at $12 notional on 20x).
+
+**Not the quantity mismatch either, though it looks like a candidate.** The legs were 53.75
+(binance) against 53.98 (hyperliquid), a 0.43% gap. Splitting the total price P&L into a basis term
+(at the average of the two quantities) and a mismatch term (at the quantity difference):
+
+```
+basis-divergence term  : -0.09103   (100.7% of the loss)
+quantity-mismatch term : +0.00065   (-0.7% of the loss)
+```
+
+The mismatch contributed under a tenth of a percent of notional, in the direction that slightly
+reduced the loss. It is not the cause - but it is not unrelated either. `crossToHedge` sizes the
+taker leg to match USD notional at the moment of hedging (`usd = makerFilled x makerMid`,
+`quantity = usd / takerMid`, both mids read live) rather than a fixed unit ratio - correct for
+contract-multiplier differences like PEPE vs 1000PEPE, but it means any divergence already present
+in the few seconds between the maker fill and the hedge computation gets baked straight into the
+unit count. The 0.43% gap is consistent with the same divergence that later widened to 0.753 points -
+a symptom of the cause above, not a second cause.
+
+**Is this ignorable at the strategy's real 3-day cadence?** `XVF_STRATEGY.md` has already measured
+this exact phenomenon, and the direction is unambiguous: basis drag *shrinks* the longer a pair is
+held, because divergence mean-reverts given time - `-22.6%` at daily rebalancing, `-10.4%` at three
+days, `-3.4%` weekly, `-1.3%` at fourteen. A 15-minute hold is shorter than the "daily" figure in
+that table by two orders of magnitude, so this result sits at the extreme worst-duration end of a
+spectrum whose entire point is that duration helps. Reading it as "the strategy loses 0.75% every
+3-day cycle" would be wrong - a 15-minute snapshot cannot measure a 3-day outcome, and linearly
+extrapolating it contradicts the strategy's own backtested economics.
+
+What it does establish, first-hand rather than from a backtest: the mechanism is real, and it can
+bite within minutes on a thin, chosen-for-its-spread symbol like ACE - exactly the class of coin this
+strategy selects for. At the strategy's real position size (`legNotional = capital x LEG_LEVERAGE /
+(POSITIONS x 2)`, $250 at $10,000 capital against this test's $12), the same percentage move is
+roughly $1.87 rather than $0.09 per pair. Across a 20-position book an idiosyncratic divergence like
+this one should average out; a correlated one - a venue-wide dislocation hitting every pair at once -
+would not, and is the tail risk `XVF_STRATEGY.md` already flags under adverse selection.
+
+What would actually answer the question: holding a pair the real 3 days, through `XvfReconciler`
+rather than the harness, on binance<->hyperliquid where the fee economics are already favourable.
+Not yet run.
+
+---
+
+## 11. Still unproven
 
 | | Why it matters |
 | --- | --- |
-| The maker path | §4 - the economics need it, and §5 says it cannot be summoned on demand |
+| The maker path at real notional, on a one-tick book | proven once at $12 on a 2-tick book (ACE, hyperliquid) with one tick of price improvement - §10. Every other liquid perp measured quotes one tick, where improvement is impossible (§5) |
 | Trigger order placement | geometry is tested, the wire format has never reached a venue. Expect at least one rejection on first contact, as the tick bug was |
 | `XvfReconciler` end to end | plan/apply are unit-tested; the Postgres book path is not exercised |
 | `PairedEntryEngine` marking `HEDGED` on acceptance | under-hedges where §3 over-hedged |
-| Hyperliquid as the resting venue for a real maker fill | it has crossed live, never rested |
+| Basis divergence over a real 3-day hold | §10 measured it at 15 minutes, which the strategy's own research says is the worst-case duration for this effect, not a representative one |
+| Leverage set per-account rather than per-strategy | tonight's ACE pair ran 20x on one leg and 3x on the other, neither matching `LEG_LEVERAGE=1.0`. Harmless at $12 notional; not designed-for at real size |
 
-Six pairs proving the crossing path is not the same as proving the strategy. What was demonstrated is
-that orders reach venues, fills reach the system, hedges fire from them, and both legs close - which is
-the plumbing v1 exists to test, and which three separate defects would have prevented a week ago.
+Six pairs proving the crossing path, and one proving the resting path once, is not the same as proving
+the strategy. What has been demonstrated is that orders reach venues, fills reach the system, hedges
+fire from them, both legs close, and funding settles as designed - which is the plumbing v1 exists to
+test, and which four separate defects would have prevented a week ago.
