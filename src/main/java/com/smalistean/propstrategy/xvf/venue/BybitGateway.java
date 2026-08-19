@@ -119,7 +119,8 @@ public final class BybitGateway implements VenueGateway {
             BigDecimal signed = "Sell".equals(p.path("side").asText()) ? size.negate() : size;
             out.add(new PositionSnapshot("bybit", p.path("symbol").asText(), signed,
                     new BigDecimal(p.path("avgPrice").asText("0").isEmpty()
-                            ? "0" : p.path("avgPrice").asText("0"))));
+                            ? "0" : p.path("avgPrice").asText("0")),
+                    VenueGateway.optionalPrice(p.path("liqPrice").asText(""))));
         }
         return out;
     }
@@ -140,6 +141,28 @@ public final class BybitGateway implements VenueGateway {
         if (reduceOnly) {
             body.put("reduceOnly", true);
         }
+        return post("/v5/order/create", body, venueSymbol, clientOrderId);
+    }
+
+    @Override
+    public SubmitResult placeReduceOnlyTrigger(String venueSymbol, Side side, BigDecimal quantity,
+                                               BigDecimal triggerPrice, TriggerWhen when,
+                                               String clientOrderId) {
+        ObjectNode body = MAPPER.createObjectNode();
+        body.put("category", CATEGORY);
+        body.put("symbol", venueSymbol);
+        body.put("side", side == Side.BUY ? "Buy" : "Sell");
+        body.put("orderType", "Market");
+        body.put("qty", quantity.toPlainString());
+        body.put("triggerPrice", VenueGateway.roundToTick(
+                triggerPrice, rules(venueSymbol).tickSize(), side, true).toPlainString());
+        // Bybit takes the raw direction and works the rest out itself: 1 rises to, 2 falls to.
+        body.put("triggerDirection", when == TriggerWhen.PRICE_RISES_TO ? 1 : 2);
+        // Mark price, matching Binance: one venue's wick must not unwind a hedged pair.
+        body.put("triggerBy", "MarkPrice");
+        body.put("reduceOnly", true);
+        body.put("orderLinkId", clientOrderId);
+        body.put("positionIdx", 0);
         return post("/v5/order/create", body, venueSymbol, clientOrderId);
     }
 

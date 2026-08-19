@@ -125,6 +125,26 @@ public final class BinanceGateway implements VenueGateway {
     }
 
     @Override
+    public SubmitResult placeReduceOnlyTrigger(String venueSymbol, Side side, BigDecimal quantity,
+                                               BigDecimal triggerPrice, TriggerWhen when,
+                                               String clientOrderId) {
+        Map<String, String> params = new HashMap<>();
+        params.put("symbol", venueSymbol);
+        params.put("side", side.name());
+        params.put("type", VenueGateway.isLossSide(side, when) ? "STOP_MARKET" : "TAKE_PROFIT_MARKET");
+        params.put("quantity", quantity.toPlainString());
+        // The trigger is a level, not a price to trade at, so it rounds toward the side that fires
+        // marginally sooner rather than one that could be skipped past.
+        params.put("stopPrice", VenueGateway.roundToTick(
+                triggerPrice, rules(venueSymbol).tickSize(), side, true).toPlainString());
+        // Mark price, not last: a single wick on one venue should not unwind a hedged pair.
+        params.put("workingType", "MARK_PRICE");
+        params.put("reduceOnly", "true");
+        params.put("newClientOrderId", clientOrderId);
+        return send("POST", "/fapi/v1/order", params, venueSymbol, clientOrderId);
+    }
+
+    @Override
     public java.util.List<PositionSnapshot> positions() {
         if (dryRun) {
             return java.util.List.of();
@@ -137,7 +157,8 @@ public final class BinanceGateway implements VenueGateway {
                 if (amt.signum() != 0) {
                     // positionAmt is already signed on Binance: negative is short.
                     out.add(new PositionSnapshot("binance", p.path("symbol").asText(), amt,
-                            new BigDecimal(p.path("entryPrice").asText("0"))));
+                            new BigDecimal(p.path("entryPrice").asText("0")),
+                            VenueGateway.optionalPrice(p.path("liquidationPrice").asText("0"))));
                 }
             }
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {

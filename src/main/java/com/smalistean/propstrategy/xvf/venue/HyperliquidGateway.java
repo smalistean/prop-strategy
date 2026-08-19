@@ -167,28 +167,54 @@ public final class HyperliquidGateway implements VenueGateway {
             if (szi.signum() != 0) {
                 // szi is already signed on Hyperliquid: negative is short.
                 out.add(new PositionSnapshot("hyperliquid", p.path("coin").asText(), szi,
-                        new BigDecimal(p.path("entryPx").asText("0"))));
+                        new BigDecimal(p.path("entryPx").asText("0")),
+                        VenueGateway.optionalPrice(p.path("liquidationPx").asText(""))));
             }
         }
         return out;
     }
 
+    @Override
+    public SubmitResult placeReduceOnlyTrigger(String venueSymbol, Side side, BigDecimal quantity,
+                                               BigDecimal triggerPrice, TriggerWhen when,
+                                               String clientOrderId) {
+        BigDecimal trigger = VenueGateway.roundToTick(
+                triggerPrice, rules(venueSymbol).tickSize(), side, true);
+        Map<String, Object> triggerMap = new LinkedHashMap<>();
+        triggerMap.put("isMarket", true);
+        triggerMap.put("triggerPx", wireDecimal(trigger));
+        triggerMap.put("tpsl", VenueGateway.isLossSide(side, when) ? "sl" : "tp");
+        Map<String, Object> orderType = new LinkedHashMap<>();
+        orderType.put("trigger", triggerMap);
+        // Hyperliquid still wants a limit price on a trigger order. It is the price the market order
+        // is submitted at once armed, so it must be marketable in the direction being closed - a
+        // trigger that fires into an unfillable price is not an exit.
+        return submit(venueSymbol, side, quantity, trigger, orderType, true, clientOrderId,
+                "trigger " + triggerMap.get("tpsl") + " @ " + trigger);
+    }
+
     private SubmitResult submit(String venueSymbol, Side side, BigDecimal quantity, BigDecimal price,
                                 String tif, boolean reduceOnly, String clientOrderId) {
+        Map<String, Object> tifMap = new LinkedHashMap<>();
+        tifMap.put("tif", tif);
+        Map<String, Object> orderType = new LinkedHashMap<>();
+        orderType.put("limit", tifMap);
+        return submit(venueSymbol, side, quantity, price, orderType, reduceOnly, clientOrderId, tif);
+    }
+
+    /** Shared by limit and trigger orders; only the {@code t} field of the wire order differs. */
+    private SubmitResult submit(String venueSymbol, Side side, BigDecimal quantity, BigDecimal price,
+                                Map<String, Object> orderType, boolean reduceOnly,
+                                String clientOrderId, String describe) {
         OrderHandle handle = new OrderHandle("hyperliquid", venueSymbol, "", clientOrderId);
         if (dryRun) {
             System.out.printf("  [dry-run] hyperliquid order %s %s %s @ %s (%s)%n",
-                    side, quantity, venueSymbol, price, tif);
+                    side, quantity, venueSymbol, price, describe);
             return new SubmitResult(SubmitOutcome.ACCEPTED,
                     new OrderHandle("hyperliquid", venueSymbol, "DRYRUN", clientOrderId), "dry run");
         }
         int assetIndex = assetIndex(venueSymbol);
         String cloid = cloidFor(clientOrderId);
-
-        Map<String, Object> tifMap = new LinkedHashMap<>();
-        tifMap.put("tif", tif);
-        Map<String, Object> orderType = new LinkedHashMap<>();
-        orderType.put("limit", tifMap);
 
         Map<String, Object> orderWire = new LinkedHashMap<>();
         orderWire.put("a", assetIndex);

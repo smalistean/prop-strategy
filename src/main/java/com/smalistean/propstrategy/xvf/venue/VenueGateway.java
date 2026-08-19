@@ -104,6 +104,70 @@ public interface VenueGateway {
     SubmitResult placeCappedIoc(String venueSymbol, Side side, BigDecimal quantity,
                                 BigDecimal worstPrice, String clientOrderId, boolean reduceOnly);
 
+    /**
+     * Rests a reduce-only market order at the venue that fires when price crosses {@code triggerPrice}.
+     *
+     * <p>Unlike everything else here, this order survives the process that placed it. That is the
+     * entire point: it is the exit that still works when the JVM is dead, the machine is asleep or the
+     * network is gone, none of which the venue can distinguish from a strategy that has simply stopped
+     * caring about its position.
+     *
+     * <p>A pair needs <b>four</b> of these, two per leg, one either side. A single trigger per leg is
+     * the dangerous arrangement: the two legs of an XVF pair move together and oppositely, so a stop on
+     * only the losing leg closes the hedge and leaves the winning leg naked, converting a market-
+     * neutral position into a directional one during the exact move that provoked it. With a trigger
+     * on both sides of both legs, any move far enough in either direction closes all four.
+     *
+     * @param side         the side that shrinks the position: SELL closes a long, BUY closes a short
+     * @param triggerPrice the price that arms it, on the venue's own tick grid
+     * @param when         which direction of crossing fires it
+     */
+    default SubmitResult placeReduceOnlyTrigger(String venueSymbol, Side side, BigDecimal quantity,
+                                                BigDecimal triggerPrice, TriggerWhen when,
+                                                String clientOrderId) {
+        throw new UnsupportedOperationException(name() + " does not implement trigger orders");
+    }
+
+    enum TriggerWhen { PRICE_RISES_TO, PRICE_FALLS_TO }
+
+    /**
+     * Whether this trigger is the loss-side one, which is how every venue names the two variants.
+     *
+     * <p>Binance picks between STOP_MARKET and TAKE_PROFIT_MARKET, Hyperliquid between {@code "sl"} and
+     * {@code "tp"}, and both mean the same thing: does this trigger fire when the position is losing or
+     * when it is winning. A SELL closes a long, so falling price is its loss side; a BUY closes a short,
+     * so rising price is. Bybit needs only the raw direction and ignores this.
+     *
+     * <p>For XVF neither name is meaningful - the pair earns funding, not price - and both orders exist
+     * only so the two legs close together. The distinction is kept because the venues insist on it.
+     */
+    static boolean isLossSide(Side side, TriggerWhen when) {
+        return side == Side.SELL
+                ? when == TriggerWhen.PRICE_FALLS_TO
+                : when == TriggerWhen.PRICE_RISES_TO;
+    }
+
+    /**
+     * Parses a price that the venue may legitimately not have, returning null when it does not.
+     *
+     * <p>Liquidation price is the case that matters: Binance sends {@code "0"}, Bybit an empty string,
+     * Hyperliquid {@code null}, and all three mean the same thing - the position is small enough
+     * against its cross-margin collateral that no liquidation level applies. Parsing that into
+     * {@code BigDecimal.ZERO} would be read as "liquidates at zero", which is the widest possible band
+     * rather than no band at all.
+     */
+    static BigDecimal optionalPrice(String raw) {
+        if (raw == null || raw.isBlank() || "null".equals(raw)) {
+            return null;
+        }
+        try {
+            BigDecimal parsed = new BigDecimal(raw);
+            return parsed.signum() > 0 ? parsed : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     /** Best effort; a fill that has already happened cannot be cancelled. */
     void cancel(OrderHandle handle);
 
@@ -183,11 +247,21 @@ public interface VenueGateway {
                        BigDecimal filledQuantity, BigDecimal averagePrice, long eventTimeMillis) { }
 
     /**
-     * @param signedQuantity positive is long, negative is short, zero never appears - a flat symbol
-     *                       is simply absent from {@link #positions()}
+     * @param signedQuantity  positive is long, negative is short, zero never appears - a flat symbol
+     *                        is simply absent from {@link #positions()}
+     * @param liquidationPrice where the venue will close this leg for us, or null when it reports
+     *                        none - which happens when cross-margin collateral dwarfs the position.
+     *                        Null means "no meaningful liquidation risk", not "unknown"
      */
     record PositionSnapshot(String venue, String venueSymbol, BigDecimal signedQuantity,
-                            BigDecimal entryPrice) { }
+                            BigDecimal entryPrice, BigDecimal liquidationPrice) {
+
+        /** Kept for callers that only care about size and side. */
+        public PositionSnapshot(String venue, String venueSymbol, BigDecimal signedQuantity,
+                                BigDecimal entryPrice) {
+            this(venue, venueSymbol, signedQuantity, entryPrice, null);
+        }
+    }
 
     record TopOfBook(BigDecimal bid, BigDecimal ask, long eventTimeMillis) {
         public BigDecimal touch(Side side) {
