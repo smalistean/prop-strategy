@@ -130,6 +130,9 @@ class XvfReconcilerTest {
             @Override public List<PositionSnapshot> positions() {
                 return List.of(held);
             }
+            @Override public void setLeverage(String venueSymbol, int leverage) {
+                throw new UnsupportedOperationException("plan() must not touch account settings");
+            }
             @Override public SubmitResult placePostOnly(String s, Side side, BigDecimal q,
                                                         BigDecimal p, String c, boolean r) {
                 throw new UnsupportedOperationException("plan() must not place orders");

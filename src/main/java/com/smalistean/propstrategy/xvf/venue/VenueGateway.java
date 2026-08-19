@@ -208,6 +208,23 @@ public interface VenueGateway {
      */
     List<PositionSnapshot> positions();
 
+    /**
+     * Sets the leverage this account uses for a symbol, on both sides of a one-way position.
+     *
+     * <p>Must be called before opening, never attached to an order. Every venue measured here
+     * defaulted a fresh symbol to whatever an earlier session had left set - 20x on Binance, 3x on
+     * Hyperliquid, on the very account this project trades with - which has nothing to do with
+     * {@code XvfConfig.LEG_LEVERAGE} and can differ leg to leg. A caller that opens a position
+     * without calling this first is trusting leftover account state, and the two legs of a pair can
+     * end up carrying wildly different risk for a reason neither leg chose.
+     *
+     * <p>Throws rather than returning a boolean: a leverage call that silently failed and left a leg
+     * at 20x is a correctness problem the caller cannot detect from a {@code false}, and every call
+     * site opens real money moments later. Most venues reject a leverage change against a symbol
+     * that already has an open position or a resting order, so this belongs strictly before either.
+     */
+    void setLeverage(String venueSymbol, int leverage);
+
     enum Side {
         BUY, SELL;
 

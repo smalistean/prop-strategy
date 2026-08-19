@@ -65,6 +65,11 @@ import java.util.Map;
  *   -DrtChases=6           how many times to re-place an unfilled maker
  *   -DrtChaseSeconds=20    how long to rest before re-placing
  *   -DrtCrossFirstLeg=true first leg crosses instead of resting — see {@code crossLeg}
+ *   -DrtLeverage=1         set before opening on both venues; never touched on close
+ *   -DrtPhase=open|close   OPEN leaves the position on to hold across a funding stamp; CLOSE reads
+ *                          it back from the venues rather than from anything this process remembers
+ *   -DrtMakerSide=SELL     which side the RESTING leg takes; the crossing leg is the opposite
+ *   -DrtImproveTicks=1     rest this many ticks better than the touch, when the book has room
  * </pre>
  *
  * <h2>Why {@code -DrtCrossFirstLeg=true} exists</h2>
@@ -82,6 +87,9 @@ public final class XvfRoundTripTest {
 
     /** Every venue this harness knows how to gateway to, independent of which pairs get requested. */
     private static final List<String> KNOWN_VENUES = List.of("binance", "bybit", "hyperliquid");
+
+    /** OPEN and CLOSE are separate processes so a position can be held across a funding stamp. */
+    private enum Phase { OPEN, CLOSE, BOTH }
 
     private record Venue(String name, String symbol, VenueGateway gateway) { }
 
@@ -209,9 +217,29 @@ public final class XvfRoundTripTest {
     private static boolean runPair(Venue maker, Venue taker, double notional, FillTracker tracker,
                                    int chases, Duration chaseFor, boolean live,
                                    boolean crossFirstLeg, boolean[] opened) throws Exception {
-        // Direction is arbitrary for a plumbing test - what matters is that the two legs oppose.
-        Side makerOpen = Side.SELL;
-        Side takerOpen = Side.BUY;
+        // Default SELL/BUY is arbitrary and fine for a plumbing test, where all that matters is that
+        // the legs oppose. A funding test is not arbitrary: the direction is the whole point, because
+        // holding the wrong way round pays the spread instead of collecting it. -DrtMakerSide names
+        // the side the RESTING leg takes, and the crossing leg mirrors it.
+        Side makerOpen = Side.valueOf(System.getProperty("rtMakerSide", "SELL").toUpperCase());
+        Side takerOpen = makerOpen.opposite();
+
+        Phase phase = Phase.valueOf(System.getProperty("rtPhase", "BOTH").toUpperCase());
+        if (phase == Phase.CLOSE) {
+            // Nothing was opened in this process, so the venue is the only source of what to close.
+            return closeFromPositions(maker, taker, tracker, chases, chaseFor, live);
+        }
+
+        // Before opening, never before closing: a leverage change against an open position or a
+        // resting order is rejected by most venues, and by here there is neither. Every venue
+        // measured has opened a position at whatever an earlier session last left set - 20x on
+        // Binance, 3x on Hyperliquid, on this very account - which has nothing to do with what the
+        // test asked for and can differ leg to leg. -DrtLeverage names what it should be. Each
+        // gateway's own dry-run flag decides whether this reaches the network, matching every other
+        // call in this method.
+        int leverage = Integer.getInteger("rtLeverage", 1);
+        maker.gateway().setLeverage(maker.symbol(), leverage);
+        taker.gateway().setLeverage(taker.symbol(), leverage);
 
         // Size is decided once, from the current touch, and then worked. Re-deriving it on every
         // chase would let the quantity drift with the price while the order is being worked.
@@ -249,6 +277,14 @@ public final class XvfRoundTripTest {
 
         if (live) {
             reportPositions(maker, taker, "after open");
+        }
+
+        if (phase == Phase.OPEN) {
+            // Deliberately leaves the pair on. A funding test has to hold across a settlement stamp,
+            // which no single process should sit and wait for: the position is now the state, and the
+            // CLOSE run reads it back from the venues.
+            System.out.printf("   OPEN COMPLETE — position left on. Close with -DrtPhase=close%n");
+            return true;
         }
 
         // Close is the mirror image: same shape, opposite sides, reduce-only on both legs.
@@ -299,7 +335,7 @@ public final class XvfRoundTripTest {
         for (int attempt = 1; attempt <= chases; attempt++) {
             VenueGateway.TopOfBook book = venue.gateway().topOfBook(venue.symbol());
             // Join the near side rather than crossing: a resting SELL sits at the ask, a BUY at the bid.
-            BigDecimal price = book.touch(side);
+            BigDecimal price = improve(book, side, rules.tickSize());
             BigDecimal quantity = floorToStep(targetQuantity.subtract(totalFilled), rules.stepSize());
             if (quantity.signum() <= 0) {
                 break;   // whatever is left rounds below one step; treat as complete
@@ -503,6 +539,101 @@ public final class XvfRoundTripTest {
             }
             System.out.println(flat ? "  all venues flat." : "  STILL NOT FLAT.");
         }
+    }
+
+    /**
+     * Closes whatever the two venues currently hold for this pair, resting the maker leg as usual.
+     *
+     * <p>Reads the quantity from the venues rather than from anything this process remembers, because
+     * it remembers nothing: the OPEN run has exited, the position has sat through a funding stamp, and
+     * the venue is the only record of what is actually held. That also makes this correct after a
+     * partial fill, a manual adjustment, or a crash between the two runs.
+     */
+    private static boolean closeFromPositions(Venue maker, Venue taker, FillTracker tracker,
+                                              int chases, Duration chaseFor, boolean live)
+            throws Exception {
+        PositionSnapshot makerHeld = heldOn(maker);
+        PositionSnapshot takerHeld = heldOn(taker);
+        if (makerHeld == null && takerHeld == null) {
+            System.out.printf("   nothing open on %s or %s — nothing to close.%n",
+                    maker.name(), taker.name());
+            return true;
+        }
+        if (makerHeld == null || takerHeld == null) {
+            // One leg only. Closing it is still right - an unpaired leg is directional - but say so
+            // loudly, because it means the pair was already broken before this run started.
+            System.out.printf("!!!! only one leg is open (%s on %s, %s on %s). Closing it, but the "
+                    + "pair was already directional.%n",
+                    makerHeld == null ? "nothing" : makerHeld.signedQuantity().toPlainString(), maker.name(),
+                    takerHeld == null ? "nothing" : takerHeld.signedQuantity().toPlainString(), taker.name());
+        }
+        reportPositions(maker, taker, "before close");
+
+        if (makerHeld != null) {
+            Side closing = makerHeld.signedQuantity().signum() > 0 ? Side.SELL : Side.BUY;
+            Leg closed = restUntilFilled(maker, closing, makerHeld.signedQuantity().abs(),
+                    tracker, chases, chaseFor, true);
+            if (closed == null || closed.filled().signum() == 0) {
+                System.out.printf("!!!! %s maker close never filled — still holding %s%n",
+                        maker.name(), makerHeld.signedQuantity());
+                return false;
+            }
+            System.out.printf("   maker closed %s %s @ %s%n", closing, closed.filled(), closed.price());
+        }
+        if (takerHeld != null) {
+            Side closing = takerHeld.signedQuantity().signum() > 0 ? Side.SELL : Side.BUY;
+            // Crossing rather than resting: the hedge leg must not be left half-closed while the other
+            // side is already flat, which is a directional position created by the close itself.
+            Leg closed = crossLeg(taker, closing, takerHeld.signedQuantity().abs(), tracker, true);
+            if (closed == null) {
+                System.out.printf("!!!! %s taker close did not fill — still holding %s%n",
+                        taker.name(), takerHeld.signedQuantity());
+                return false;
+            }
+            System.out.printf("   taker closed %s %s @ %s%n", closing, closed.filled(), closed.price());
+        }
+        return !live || reportPositions(maker, taker, "after close");
+    }
+
+    /**
+     * Where to rest: at the touch by default, or {@code -DrtImproveTicks} better than it.
+     *
+     * <h2>Why improving matters more than the price it costs</h2>
+     * Resting AT the touch joins the back of whatever queue is already there, and on a one-tick spread
+     * that is the only option - there is no room between bid and ask to stand in. But a wider book has
+     * room, and one tick of improvement makes the order the best bid or offer, which is first in the
+     * queue rather than last. On Bybit's BMT, ten ticks wide, that is 0.6bp of price for the
+     * difference between filling and waiting indefinitely - and an unfilled maker leg is not a cheaper
+     * entry, it is no entry at all.
+     *
+     * <p>Never crosses. An improvement that would reach the other side is clamped back to the touch,
+     * because a post-only order that crosses is rejected rather than filled, and the caller would read
+     * that rejection as a market that moved rather than a price it chose.
+     */
+    static BigDecimal improve(VenueGateway.TopOfBook book, Side side, BigDecimal tick) {
+        BigDecimal touch = book.touch(side);
+        int ticks = Integer.getInteger("rtImproveTicks", 0);
+        if (ticks <= 0 || tick == null || tick.signum() <= 0) {
+            return touch;
+        }
+        BigDecimal step = tick.multiply(BigDecimal.valueOf(ticks));
+        if (side == Side.BUY) {
+            BigDecimal better = touch.add(step);
+            // Strictly inside: equalling the ask would cross.
+            return better.compareTo(book.ask()) < 0 ? better : touch;
+        }
+        BigDecimal better = touch.subtract(step);
+        return better.compareTo(book.bid()) > 0 ? better : touch;
+    }
+
+    /** What this venue holds for the pair's symbol, or null when flat. */
+    private static PositionSnapshot heldOn(Venue venue) {
+        for (PositionSnapshot p : venue.gateway().positions()) {
+            if (p.venueSymbol().equals(venue.symbol())) {
+                return p;
+            }
+        }
+        return null;
     }
 
     /** Reads both venues and prints what they hold. Returns true when both are flat. */

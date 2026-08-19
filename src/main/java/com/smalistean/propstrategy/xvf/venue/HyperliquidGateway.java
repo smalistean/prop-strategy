@@ -155,6 +155,37 @@ public final class HyperliquidGateway implements VenueGateway {
     }
 
     @Override
+    public void setLeverage(String venueSymbol, int leverage) {
+        if (dryRun) {
+            System.out.printf("  [dry-run] hyperliquid leverage %s -> %dx%n", venueSymbol, leverage);
+            return;
+        }
+        // Cross first, matching how every other position here is margined. Some listings - CASHCAT,
+        // confirmed live 2026-08-19 - refuse cross outright with "Cross margin is not allowed for
+        // this asset", which is presumably a risk control on newer or thinner symbols. Isolated is
+        // the only way to leverage such an asset at all, not a preference, so it is tried only as a
+        // fallback for that specific rejection rather than as the default for every symbol.
+        JsonNode response = updateLeverage(venueSymbol, leverage, true);
+        if (!"ok".equals(response.path("status").asText())
+                && response.path("response").asText("").contains("Cross margin is not allowed")) {
+            response = updateLeverage(venueSymbol, leverage, false);
+        }
+        if (!"ok".equals(response.path("status").asText())) {
+            throw new IllegalStateException("hyperliquid leverage " + venueSymbol + " -> " + leverage
+                    + "x rejected: " + response);
+        }
+    }
+
+    private JsonNode updateLeverage(String venueSymbol, int leverage, boolean isCross) {
+        Map<String, Object> action = new LinkedHashMap<>();
+        action.put("type", "updateLeverage");
+        action.put("asset", assetIndex(venueSymbol));
+        action.put("isCross", isCross);
+        action.put("leverage", leverage);
+        return postSigned(action);
+    }
+
+    @Override
     public java.util.List<PositionSnapshot> positions() {
         if (dryRun) {
             return java.util.List.of();
@@ -322,10 +353,34 @@ public final class HyperliquidGateway implements VenueGateway {
         JsonNode order = response.path("order").path("order");
         long oid = order.path("oid").asLong();
         String hlStatus = response.path("order").path("status").asText();
-        BigDecimal filled = cumulativeFilled.getOrDefault(oid, BigDecimal.ZERO);
+
+        // Filled comes from the RESPONSE, not from cumulativeFilled.
+        //
+        // Reading the local map here made this method worthless for the one job it exists to do. It is
+        // the check a caller runs when the stream reported nothing, to find out whether that silence
+        // meant "no fill" or "no message" - and cumulativeFilled is built from that same stream, so a
+        // missed fill produced a confident zero from both. That is not a fallback, it is the same
+        // answer asked twice. It cost a live unhedged short of 8.5 ATOM: the venue was reporting
+        // status "filled" with origSz 8.5 and sz 0.0 while this returned zero.
+        //
+        BigDecimal filled = filledFrom(order);
+
         return Optional.of(new OrderSnapshot(
                 new OrderHandle("hyperliquid", venueSymbol, Long.toString(oid), clientOrderId),
                 parseState(hlStatus), filled, new BigDecimal(order.path("limitPx").asText("0"))));
+    }
+
+    /**
+     * How much of an order filled, from the venue's own {@code orderStatus} order node.
+     *
+     * <p>{@code origSz} is what was submitted, {@code sz} is what still rests, so the difference is
+     * what traded - equally true of a partial, a completed order, and an IOC whose remainder was
+     * cancelled. Package-private so the arithmetic can be pinned against a real response.
+     */
+    static BigDecimal filledFrom(JsonNode order) {
+        BigDecimal originalSize = new BigDecimal(order.path("origSz").asText("0"));
+        BigDecimal resting = new BigDecimal(order.path("sz").asText("0"));
+        return originalSize.subtract(resting).max(BigDecimal.ZERO);
     }
 
     @Override

@@ -91,12 +91,29 @@ public final class XvfExecutionApplication {
             return;
         }
 
-        try (PairedEntryEngine engine = new PairedEntryEngine(Duration.ofMinutes(30))) {
+        Duration abandonAfter = Duration.ofMinutes(30);
+        Duration chaseEvery = Duration.ofSeconds(Integer.getInteger("xvfChaseSeconds", 30));
+        try (PairedEntryEngine engine = new PairedEntryEngine(abandonAfter, chaseEvery)) {
             // One listener per venue, wired before any order is placed. Placing first would open a
             // window in which a fill arrives with nothing listening for it.
             List<AutoCloseable> streams = new ArrayList<>();
             for (VenueGateway gateway : gateways.values()) {
                 streams.add(gateway.streamOrderUpdates(engine::onOrderUpdate));
+            }
+
+            // One positions() call per venue, not one per candidate: this run is resumable by
+            // construction rather than by tracking what a PREVIOUS process did, since that process
+            // may have crashed, been interrupted, or simply be a different invocation entirely. The
+            // venues are the only durable record of what already opened.
+            Map<String, java.util.Set<String>> alreadyOpenSymbols = new LinkedHashMap<>();
+            for (var entry : gateways.entrySet()) {
+                java.util.Set<String> symbols = new java.util.HashSet<>();
+                for (VenueGateway.PositionSnapshot p : entry.getValue().positions()) {
+                    if (p.signedQuantity().signum() != 0) {
+                        symbols.add(p.venueSymbol());
+                    }
+                }
+                alreadyOpenSymbols.put(entry.getKey(), symbols);
             }
 
             for (Target t : book) {
@@ -135,6 +152,17 @@ public final class XvfExecutionApplication {
                 Side makerSide = shortIsThinner ? Side.SELL : Side.BUY;
                 Side takerSide = shortIsThinner ? Side.BUY : Side.SELL;
 
+                // Checked before any pricing work, so a re-run of the same command does not try to
+                // add to a leg a previous run already opened. Sizing here assumes starting from
+                // flat; a second post-only order on a symbol that already has a live position would
+                // resize it in a way nothing downstream accounts for.
+                if (alreadyOpenSymbols.getOrDefault(makerGw.name(), java.util.Set.of()).contains(makerSymbol)
+                        || alreadyOpenSymbols.getOrDefault(takerGw.name(), java.util.Set.of()).contains(takerSymbol)) {
+                    System.out.printf("  skip %s: already open on %s or %s - resuming, not reopening%n",
+                            t.base(), makerGw.name(), takerGw.name());
+                    continue;
+                }
+
                 // Each leg is priced and sized on its OWN venue. Using one price for both was wrong
                 // whenever the venues quote different contract units - 1000PEPE against PEPE, kPEPE
                 // against PEPE - which is 3.6% of historical selections. On those the hedge was out
@@ -151,8 +179,19 @@ public final class XvfExecutionApplication {
                     continue;
                 }
 
-                Sizing sized = size(capped, makerPrice, makerGw.rules(makerSymbol),
-                        takerPrice, takerGw.rules(takerSymbol));
+                // rules() can refuse a symbol outright - a stock-perpetual ticker collision,
+                // confirmed live on Bybit's ON (ON Semiconductor, not the Orochi Network crypto
+                // token Binance lists under the same three letters). Skip the PAIR, not the run,
+                // for exactly the same reason an unimplemented venue does: one bad candidate must
+                // not cost the other nineteen.
+                Sizing sized;
+                try {
+                    sized = size(capped, makerPrice, makerGw.rules(makerSymbol),
+                            takerPrice, takerGw.rules(takerSymbol));
+                } catch (IllegalStateException e) {
+                    System.out.printf("  skip %s: %s%n", t.base(), e.getMessage());
+                    continue;
+                }
                 if (sized.rejection() != null) {
                     System.out.printf("  skip %s: %s%n", t.base(), sized.rejection());
                     continue;
@@ -166,20 +205,62 @@ public final class XvfExecutionApplication {
                         t.base(), makerGw.name(), makerSide, makerSymbol,
                         takerGw.name(), takerSide, takerSymbol, capped, imbalance * 100);
 
+                if (live && !setLegLeverage(makerGw, makerSymbol, takerGw, takerSymbol)) {
+                    // Skip the PAIR, not the run - same reasoning as an unwired venue above. Opening
+                    // at whatever leverage a symbol happened to have left over from earlier manual
+                    // use is not a smaller version of this bug, it is the bug: measured live on ACE,
+                    // 20x on one leg against 3x on the other, neither matching LEG_LEVERAGE.
+                    System.out.printf("  skip %s: leverage could not be confirmed at %.0fx on both "
+                            + "legs%n", t.base(), XvfConfig.LEG_LEVERAGE);
+                    continue;
+                }
+
                 engine.open(t.base(),
                         new PairedEntryEngine.Leg(makerGw, makerSymbol, makerSide, makerQty),
                         new PairedEntryEngine.Leg(takerGw, takerSymbol, takerSide, takerQty),
                         makerPrice);
             }
 
-            System.out.printf("%n%d pairs working. Outstanding (unhedged) positions are reported "
-                    + "below; anything listed here needs manual attention.%n", book.size());
-            Thread.sleep(2_000);
+            System.out.printf("%n%d pairs working.%n", book.size());
+            if (live) {
+                // A dry run never opens a stream and never delivers a fill event, so every pair
+                // would sit WORKING forever - waiting for resolution here would just be waiting out
+                // the clock on nothing. Only a live run has a real fill to wait for.
+                System.out.println("  waiting for every pair to resolve (hedged, abandoned, or "
+                        + "given up on) before closing the venue streams - a maker fill that "
+                        + "arrives after that point has nothing listening for it.");
+                waitForResolution(engine, abandonAfter);
+            }
+
             engine.outstanding().forEach((base, state) ->
-                    System.out.printf("  !! %s %s%n", base, state));
+                    System.out.printf("  !! %s %s — needs manual attention%n", base, state));
 
             for (AutoCloseable stream : streams) {
                 stream.close();
+            }
+        }
+    }
+
+    /**
+     * Blocks until every pair is done or {@code ceiling} has passed, whichever comes first, printing
+     * progress along the way so a run does not look hung during what can legitimately be up to 30
+     * minutes of silence while post-only orders rest.
+     *
+     * <p>The ceiling matches the engine's own {@code abandonAfter}: that is when its last internal
+     * timer fires, so waiting any less would race the engine's own cleanup, and any more only delays
+     * an already-abandoned run for no benefit.
+     */
+    private static void waitForResolution(PairedEntryEngine engine, Duration ceiling)
+            throws InterruptedException {
+        long deadline = System.nanoTime() + ceiling.toNanos() + Duration.ofSeconds(5).toNanos();
+        long lastReport = 0;
+        while (!engine.allResolved() && System.nanoTime() < deadline) {
+            Thread.sleep(2_000);
+            long elapsedSeconds = (ceiling.toNanos() - (deadline - System.nanoTime())) / 1_000_000_000;
+            if (elapsedSeconds - lastReport >= 30) {
+                lastReport = elapsedSeconds;
+                System.out.printf("  ... %d still working after %ds%n",
+                        engine.unresolvedCount(), elapsedSeconds);
             }
         }
     }
@@ -202,10 +283,20 @@ public final class XvfExecutionApplication {
                 continue;
             }
             // Sized from each venue's own price, exactly as the entry does, so a position opened by
-            // the entry path is not mistaken for an oversized one here.
-            Sizing sizing = size(legNotional,
-                    referencePrice(shortGw, t.shortSymbol(), Side.SELL), shortGw.rules(t.shortSymbol()),
-                    referencePrice(longGw, t.longSymbol(), Side.BUY), longGw.rules(t.longSymbol()));
+            // the entry path is not mistaken for an oversized one here. rules() can refuse a
+            // symbol outright (a stock-perpetual ticker collision) - skip that ONE candidate's
+            // desired legs rather than aborting reconciliation for the whole book, which is the
+            // one mode where aborting is worst: it exists specifically to close what should not
+            // be open.
+            Sizing sizing;
+            try {
+                sizing = size(legNotional,
+                        referencePrice(shortGw, t.shortSymbol(), Side.SELL), shortGw.rules(t.shortSymbol()),
+                        referencePrice(longGw, t.longSymbol(), Side.BUY), longGw.rules(t.longSymbol()));
+            } catch (IllegalStateException e) {
+                System.out.printf("  skip %s from reconciliation: %s%n", t.base(), e.getMessage());
+                continue;
+            }
             if (sizing.rejection() != null) {
                 continue;
             }
@@ -326,6 +417,28 @@ public final class XvfExecutionApplication {
     }
 
     /**
+     * Sets both legs to {@code XvfConfig.LEG_LEVERAGE} before either is opened.
+     *
+     * <p>Called for every pair, not once at startup, because leverage is per symbol per venue - the
+     * account's leftover setting for one base tells you nothing about the next. Returns false rather
+     * than propagating the exception: a leverage call that failed is exactly as disqualifying as an
+     * unwired venue, and the caller already knows how to turn that into "skip this pair, keep the
+     * run going" rather than aborting twenty positions over one.
+     */
+    private static boolean setLegLeverage(VenueGateway makerGw, String makerSymbol,
+                                          VenueGateway takerGw, String takerSymbol) {
+        int leverage = (int) Math.round(XvfConfig.LEG_LEVERAGE);
+        try {
+            makerGw.setLeverage(makerSymbol, leverage);
+            takerGw.setLeverage(takerSymbol, leverage);
+            return true;
+        } catch (RuntimeException e) {
+            System.out.printf("  leverage call failed: %s%n", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Both legs' native quantities, and how far apart their USD notionals end up.
      *
      * @param rejection null when the pair is safe to open; otherwise why it is not
@@ -400,6 +513,9 @@ public final class XvfExecutionApplication {
             return false;
         }
         @Override public java.util.List<VenueGateway.PositionSnapshot> positions() {
+            throw new UnsupportedOperationException(venue + " gateway not implemented");
+        }
+        @Override public void setLeverage(String venueSymbol, int leverage) {
             throw new UnsupportedOperationException(venue + " gateway not implemented");
         }
         @Override public SubmitResult placePostOnly(String s, Side side, BigDecimal q, BigDecimal p,

@@ -98,6 +98,52 @@ public final class BybitGateway implements VenueGateway {
     }
 
     @Override
+    public void setLeverage(String venueSymbol, int leverage) {
+        if (dryRun) {
+            System.out.printf("  [dry-run] bybit leverage %s -> %dx%n", venueSymbol, leverage);
+            return;
+        }
+        ObjectNode body = MAPPER.createObjectNode();
+        body.put("category", CATEGORY);
+        body.put("symbol", venueSymbol);
+        // One-way mode requires both, and they must agree.
+        body.put("buyLeverage", Integer.toString(leverage));
+        body.put("sellLeverage", Integer.toString(leverage));
+        String raw = body.toString();
+        String timestamp = Long.toString(System.currentTimeMillis());
+        try {
+            HttpResponse<String> response = http.send(HttpRequest.newBuilder(
+                            URI.create(REST + "/v5/position/set-leverage"))
+                    .timeout(Duration.ofSeconds(15))
+                    .header("Content-Type", "application/json")
+                    .header("X-BAPI-API-KEY", apiKey)
+                    .header("X-BAPI-TIMESTAMP", timestamp)
+                    .header("X-BAPI-RECV-WINDOW", RECV_WINDOW)
+                    .header("X-BAPI-SIGN", sign(timestamp + apiKey + RECV_WINDOW + raw))
+                    .POST(HttpRequest.BodyPublishers.ofString(raw)).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                throw new IllegalStateException("bybit leverage " + venueSymbol + " -> " + leverage
+                        + "x rejected: HTTP " + response.statusCode() + " " + response.body());
+            }
+            JsonNode json = MAPPER.readTree(response.body());
+            int code = json.path("retCode").asInt(-1);
+            // 110043 is Bybit's "leverage not modified" - already at this value, which is the
+            // outcome this call wanted, not a failure.
+            if (code != 0 && code != 110043) {
+                throw new IllegalStateException("bybit leverage " + venueSymbol + " -> " + leverage
+                        + "x retCode " + code + ": " + json.path("retMsg").asText());
+            }
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("bybit leverage " + venueSymbol + " -> " + leverage
+                    + "x failed: " + e.getMessage(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted setting bybit leverage", e);
+        }
+    }
+
+    @Override
     public java.util.List<PositionSnapshot> positions() {
         if (dryRun) {
             return java.util.List.of();
@@ -219,6 +265,26 @@ public final class BybitGateway implements VenueGateway {
                 body.path("time").asLong(System.currentTimeMillis()));
     }
 
+    /**
+     * Refuses a symbol that is not a genuine crypto perpetual.
+     *
+     * <p>Bybit tags every non-crypto listing with a non-empty {@code symbolType} - confirmed live
+     * 2026-08-19 on ONUSDT, {@code "symbolType":"stock"}, which turned out to be ON Semiconductor
+     * Corp (NASDAQ: ON) rather than the Orochi Network crypto token Binance lists under the
+     * identical three-letter ticker. A funding-spread pair built from that match was two
+     * unrelated, uncorrelated directional bets wearing a hedge's clothes - the sizing math cannot
+     * catch it, because both legs price to their own venue's ~notional target regardless of what
+     * asset either one actually is. Every genuine crypto perpetual carries {@code ""}.
+     */
+    static void requireCryptoPerp(String venueSymbol, JsonNode instrument) {
+        String symbolType = instrument.path("symbolType").asText("");
+        if (!symbolType.isEmpty()) {
+            throw new IllegalStateException("bybit " + venueSymbol + " is a " + symbolType
+                    + " listing, not a crypto perpetual - refusing rather than risking a ticker "
+                    + "collision with whatever the same base means on another venue");
+        }
+    }
+
     @Override
     public SymbolRules rules(String venueSymbol) {
         return ruleCache.computeIfAbsent(venueSymbol, symbol -> {
@@ -229,6 +295,7 @@ public final class BybitGateway implements VenueGateway {
                 throw new IllegalStateException("no bybit rules for " + symbol);
             }
             JsonNode i = list.get(0);
+            requireCryptoPerp(symbol, i);
             JsonNode lot = i.path("lotSizeFilter");
             String minNotional = lot.path("minNotionalValue").asText("5");
             return new SymbolRules(

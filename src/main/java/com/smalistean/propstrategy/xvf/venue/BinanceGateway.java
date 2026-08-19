@@ -145,6 +145,37 @@ public final class BinanceGateway implements VenueGateway {
     }
 
     @Override
+    public void setLeverage(String venueSymbol, int leverage) {
+        if (dryRun) {
+            System.out.printf("  [dry-run] binance leverage %s -> %dx%n", venueSymbol, leverage);
+            return;
+        }
+        Map<String, String> params = new HashMap<>();
+        params.put("symbol", venueSymbol);
+        params.put("leverage", Integer.toString(leverage));
+        params.put("timestamp", Long.toString(System.currentTimeMillis()));
+        params.put("recvWindow", "5000");
+        String signed = query(params) + "&signature=" + sign(query(params));
+        try {
+            HttpResponse<String> response = http.send(
+                    HttpRequest.newBuilder(URI.create(REST + "/fapi/v1/leverage?" + signed))
+                            .header("X-MBX-APIKEY", apiKey).timeout(Duration.ofSeconds(15))
+                            .POST(HttpRequest.BodyPublishers.noBody()).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                throw new IllegalStateException("binance leverage " + venueSymbol + " -> " + leverage
+                        + "x rejected: HTTP " + response.statusCode() + " " + response.body());
+            }
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("binance leverage " + venueSymbol + " -> " + leverage
+                    + "x failed: " + e.getMessage(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted setting binance leverage", e);
+        }
+    }
+
+    @Override
     public java.util.List<PositionSnapshot> positions() {
         if (dryRun) {
             return java.util.List.of();
