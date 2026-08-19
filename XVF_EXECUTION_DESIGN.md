@@ -7,6 +7,11 @@ Derived from a review of `XVF_EXECUTION_API_REQUIREMENTS.md` (Codex, 2026-08-17)
 API survey; this one is the subset implemented, with the reasoning that survived scrutiny. Scope is
 `XVF_V1_SCOPE.md`: Binance, Bybit, Hyperliquid.
 
+This is design intent. **`XVF_LIVE_FINDINGS.md` is what happened when it met real venues** - three
+defects that each would have stranded a position at full size, the measured cost of a round trip, and
+the several places where two venues disagree in ways that only hurt when they are paired. Read it
+before changing anything here.
+
 ---
 
 ## 1. The rule everything follows
@@ -173,7 +178,8 @@ away:
 | Codex section | Status |
 | --- | --- |
 | 3.5 order/fill event model | **adopted** — client IDs, UNKNOWN, cumulative-vs-incremental |
-| 4 venue-neutral API | **adopted in part** — submit/cancel/query/topOfBook/stream; no `capabilities()`, `serverTime()`, `positions()`, `fillsSince()` yet |
+| 4 venue-neutral API | **adopted in part** — submit/cancel/query/topOfBook/stream, and `positions()` added 2026-08-18 when verifying "both legs closed" needed venue truth rather than local bookkeeping; no `capabilities()`, `serverTime()`, `fillsSince()` yet |
+| 6.2 routed WebSocket endpoints | **flagged by the review and not adopted — this one cost money.** Codex wrote that the `wss://fstream.binance.com/ws/<listenKey>` form was "stale under Binance's 2026 WebSocket routing change". It was: the URL was decommissioned 2026-04-23, still handshakes, still pings, and delivers nothing. A maker leg filled with no hedge before this was traced. `XVF_LIVE_FINDINGS.md` §1 |
 | 10 recovery sequence | **partially adopted** — UNKNOWN resolution and the cancel/fill race; steps needing durable state are not |
 | 12 security | **adopted** — credentials off the command line |
 | 11 execution ledger | **not adopted** — needs schema and a rebalance-slot lease |
@@ -188,12 +194,19 @@ away:
    Caller-owned client IDs make the fix possible; nothing yet writes them down.
 2. **No frozen signal run.** `XvfExecutionApplication` calls `topBook()` at startup, so a restart
    mid-rebalance trades a *different* book from the one it was partway through.
-3. **No exit path.** Nothing closes a position. The 3-day rebalance is a backtest parameter with no
-   runtime counterpart.
+3. ~~**No exit path.**~~ Built 2026-08-19: `XvfReconciler` for the scheduled unwind,
+   `PairedEntryEngine.close` for the watched one, `XvfBrackets` for the unwatched brake. None has run
+   live, and the trigger-order wire format has never reached a venue.
 4. **No supervision between rebalances.** Positions sit for three days with nothing watching them.
    The §2 argument in `XVF_IMPLEMENTATION.md` for a short-lived process covers the rebalance only, and
-   Codex is right that it does not extend to the hold.
-5. **Bybit and Hyperliquid gateways** are unimplemented; `UnwiredGateway` throws rather than silently
-   opening one leg.
-6. **The Binance user data stream has never run against a live account.** The entire entry design
-   depends on the fill event arriving.
+   Codex is right that it does not extend to the hold. `XvfBrackets` narrows this to a price brake;
+   it does not replace supervision.
+5. ~~**Bybit and Hyperliquid gateways** are unimplemented.~~ Both built and proven live 2026-08-18
+   across all six ordered venue pairs.
+6. ~~**The Binance user data stream has never run against a live account.**~~ Run 2026-08-18. It was
+   dead, for four months, on a decommissioned URL — see §11 and `XVF_LIVE_FINDINGS.md` §1.
+7. **The maker path is still unproven.** Every pair was proven by crossing the first leg, because a
+   post-only order cannot be made to fill on demand on a one-tick spread. This is an economic gap, not
+   a coverage one: all-taker costs ~34bp against ~21bp of funding per cycle.
+8. **`HEDGED` is set on IOC acceptance, not on a fill.** The under-hedging mirror of the over-hedge
+   bug fixed on 2026-08-18.

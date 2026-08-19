@@ -97,14 +97,16 @@ on-chain leg. That is the price of the 16%.
 | 5 | Signal: 7-day trailing, >20% entry, top 20, 3-day rebalance | built |
 | 6 | Freshness guard counting usable symbols | built, verified refusing |
 | 7 | Reject same-venue pairs | fixed 2026-08-18 |
-| 8 | Post-only on thinner venue, market hedge on the fill event | built, untested live |
+| 8 | Post-only on thinner venue, market hedge on the fill event | crossing path proven live on all 6 pairs 2026-08-18; **the resting path is still unproven** — see `XVF_LIVE_FINDINGS.md` §5 |
 | 9 | Real `referencePrice()` from best bid/ask | fixed 2026-08-18 |
-| 10 | Exit path: market both legs at rebalance | **must build** — the only remaining blocker |
+| 10 | Exit path | built 2026-08-19: `XvfReconciler` for the scheduled unwind, `PairedEntryEngine.close` for the watched one, `XvfBrackets` for the unwatched brake. Untested live |
 | 11 | Bybit gateway (HMAC REST, mirrors Binance) | built, verified live 2026-08-18 |
 | 11b | Hyperliquid gateway (EIP-712 signing) | built, verified live 2026-08-18 — see §12 |
 | 12 | Entry inside the pre-stamp window | **must build**, cheap, measured 21.9bp vs 26.2bp |
 | 13 | Scheduled `xvf-refresh.sh` | done — launchd agent, daily 06:45 |
 | 14 | Dry-run default, `-DxvfDryRun=false` to trade | built |
+| 15 | Tick-rounding on every derived price | fixed 2026-08-18 after it stranded a live leg — `XVF_LIVE_FINDINGS.md` §2 |
+| 16 | Binance user data stream on `/private` | fixed 2026-08-18; the legacy `/ws` URL was decommissioned 2026-04-23 and had been silently delivering nothing — §1 |
 
 ## Out of scope, with where each is recorded
 
@@ -143,18 +145,31 @@ Each step leaves the system in a state that can be dry-run.
 - ~~**Same-venue pairs / referencePrice / all three gateways wired.**~~ Confirmed together: a full dry
   run against all three real credentials placed correctly-sized orders on Bybit, Binance and
   Hyperliquid in one book, imbalance under 0.28% throughout.
+- ~~**Verify the user data streams against live accounts.**~~ Done 2026-08-18, and it found that
+  Binance's had been dead since the legacy `/ws` URL was decommissioned on 2026-04-23. Fixed and
+  re-verified against a control socket. `XVF_LIVE_FINDINGS.md` §1.
+- ~~**Exit path.**~~ Built 2026-08-19. `XvfReconciler` compares the book against the accounts and
+  closes the difference; `PairedEntryEngine.close` is the watched unwind, resting on the thin venue
+  and crossing on the fill; `XvfBrackets` rests triggers for when nothing is watching. None of it has
+  run live.
+- ~~**Six ordered venue pairs, open and close, real money.**~~ Done 2026-08-18, ~30 cents total. Three
+  defects found that would each have stranded a position at full size - `XVF_LIVE_FINDINGS.md`.
 
 ### Remaining
-1. **Exit path.** Nothing closes a position - grep finds no `reduceOnly`, no close, no unwind
-   anywhere in `xvf/`. The 3-day rebalance is a backtest parameter with no runtime counterpart. The
-   only remaining blocker: the system can open positions on all three wired venues and close none of
-   them programmatically.
-2. **Pre-stamp entry window.** Place orders at `HH:57`-`HH:59` before the slower leg's stamp hour;
+1. **Prove the maker path.** All six pairs were proven by crossing the first leg, because a post-only
+   order cannot be made to fill on demand - every liquid perp quotes a one-tick spread, so it can only
+   join the back of a queue. This is not a coverage gap but an economic one: all-taker execution costs
+   ~34bp against ~21bp of funding per 3-day cycle, so the resting leg is what makes the strategy
+   solvent. `XVF_LIVE_FINDINGS.md` §4 and §5.
+2. **Fix the chase.** Re-placing an unfilled maker on a timer surrenders the queue position it just
+   built. It should re-price when the touch moves away, not every 20 seconds.
+3. **Test trigger orders against a venue.** `XvfBrackets` geometry is unit-tested; the wire format has
+   never been sent. Each venue spells it differently enough to expect a rejection first time.
+4. **Confirm a hedge before marking `HEDGED`.** `PairedEntryEngine` treats IOC acceptance as success
+   without waiting for a fill - the under-hedging mirror of the over-hedge bug fixed on 2026-08-18.
+5. **Pre-stamp entry window.** Place orders at `HH:57`-`HH:59` before the slower leg's stamp hour;
    Hyperliquid is hourly so the CEX leg sets the timing. Small, measured at 21.9bp against 26.2bp.
-3. **Verify the Binance and Bybit user data streams against live accounts.** The entire entry design
-   depends on the fill event arriving; neither has run outside dry-run. Hyperliquid's fill accounting
-   (`userFills`) and signing were verified live on 2026-08-18 - see §12.
-4. **Paper, then minimum size.** $3,000 is the step-rounding floor; $10,000 is comfortable.
+6. **Paper, then minimum size.** $3,000 is the step-rounding floor; $10,000 is comfortable.
 
 Also stale: `dydx` still appears in the unwired-gateway array in `XvfExecutionApplication`. The venue
 measurement dropped it, so it should be removed rather than left as a gateway nobody will write.

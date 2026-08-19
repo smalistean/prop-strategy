@@ -671,12 +671,22 @@ xvf/
 │   ├── XvfSignalApplication.java        prints the book, never sends an order
 │   └── LiveVolume.java                  24h quote volume from venue tickers
 ├── venue/
-│   ├── VenueGateway.java                interface + per-venue stream endpoints
-│   └── BinanceGateway.java              HMAC-SHA256 REST, GTX post-only, listenKey websocket
+│   ├── VenueGateway.java                interface, tick rounding, trigger orders, positions
+│   ├── BinanceGateway.java              HMAC-SHA256 REST, GTX post-only, listenKey websocket
+│   ├── BybitGateway.java                same shape; retCode not HTTP status decides the outcome
+│   └── HyperliquidGateway.java          EIP-712 signed actions, userFills for fill accounting
 └── execution/
-    ├── PairedEntryEngine.java           the state machine in §6
-    └── XvfExecutionApplication.java     wiring, sizing, dry-run gate
+    ├── PairedEntryEngine.java           the state machine in §6; open() and close()
+    ├── XvfReconciler.java               book vs accounts, closes the difference — only ever reduces
+    ├── XvfBrackets.java                 resting exit triggers for when nothing is watching
+    ├── FillTracker.java                 cumulative fill accounting, max() never sum()
+    ├── XvfRoundTripTest.java            live harness, one venue pair at a time, dry-run by default
+    └── XvfExecutionApplication.java     wiring, sizing, dry-run gate, -DxvfMode
 ```
+
+Lambda handlers live in the separate `aws/recorder` module, not here, and deliberately: AWS's managed
+Java runtime tops out at 21 while this tree compiles to 25, and a recorder that dragged in Postgres and
+Flyway would cold-start slower for no benefit. The module's own pom records this.
 
 `VenueGateway` is deliberately about **order events**, not market data. What matters is hearing your
 own fill in a network round trip; the market data stream is not on the critical path.
@@ -689,7 +699,7 @@ overrides `toString()` so credentials cannot leak through a debug print of the o
 
 | Venue | Endpoint | Notes |
 | --- | --- | --- |
-| Binance | `POST /fapi/v1/listenKey` → `wss://fstream.binance.com/ws/<key>` | event `ORDER_TRADE_UPDATE`; key expires 60 min, `PUT` every 30 |
+| Binance | `POST /fapi/v1/listenKey` → `wss://fstream.binance.com/private/ws/<key>` | event `ORDER_TRADE_UPDATE`; key expires 60 min, `PUT` every 30. **`/private`, not `/ws`** — the unified URL was decommissioned 2026-04-23 and delivers nothing while still handshaking and pinging. `XVF_LIVE_FINDINGS.md` §1 |
 | Bybit | `wss://stream.bybit.com/v5/private` | authenticate, then subscribe `order` + `execution` |
 | Hyperliquid | `wss://api.hyperliquid.xyz/ws` | subscribe `{"type":"userFills","user":"0x..."}` |
 | dYdX | `wss://indexer.dydx.trade/v4/ws` | channel `v4_subaccounts` |
