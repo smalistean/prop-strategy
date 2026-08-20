@@ -198,6 +198,25 @@ public final class BinanceGateway implements VenueGateway {
         return out;
     }
 
+    /** USDT wallet balance on the futures account. BNB held for the fee discount is not collateral. */
+    @Override
+    public BigDecimal availableCapital() {
+        if (dryRun) {
+            return BigDecimal.ZERO;
+        }
+        try {
+            JsonNode body = MAPPER.readTree(signedGet("/fapi/v2/balance", new HashMap<>()));
+            for (JsonNode b : body) {
+                if ("USDT".equals(b.path("asset").asText())) {
+                    return new BigDecimal(b.path("balance").asText("0"));
+                }
+            }
+            return BigDecimal.ZERO;
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("binance balance unparsed", e);
+        }
+    }
+
     @Override
     public void cancel(OrderHandle handle) {
         Map<String, String> params = new HashMap<>();

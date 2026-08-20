@@ -363,6 +363,28 @@ public final class BybitGateway implements VenueGateway {
         }
     }
 
+    /** USDT wallet balance on the unified trading account. */
+    @Override
+    public BigDecimal availableCapital() {
+        if (dryRun) {
+            return BigDecimal.ZERO;
+        }
+        JsonNode response = signedGet("/v5/account/wallet-balance", "accountType=UNIFIED");
+        int code = response.path("retCode").asInt(-1);
+        if (code != 0) {
+            throw new IllegalStateException("bybit wallet-balance retCode " + code + ": "
+                    + response.path("retMsg").asText());
+        }
+        for (JsonNode account : response.path("result").path("list")) {
+            for (JsonNode coin : account.path("coin")) {
+                if ("USDT".equals(coin.path("coin").asText())) {
+                    return new BigDecimal(coin.path("walletBalance").asText("0"));
+                }
+            }
+        }
+        return BigDecimal.ZERO;
+    }
+
     private JsonNode signedGet(String path, String query) {
         String timestamp = Long.toString(System.currentTimeMillis());
         HttpRequest request = HttpRequest.newBuilder(URI.create(REST + path + "?" + query))

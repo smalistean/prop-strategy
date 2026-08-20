@@ -209,6 +209,22 @@ public interface VenueGateway {
     List<PositionSnapshot> positions();
 
     /**
+     * Collateral this venue can put behind XVF legs, in USD.
+     *
+     * <p>Capital is siloed per venue - there is no cross-margin between Binance, Bybit and
+     * Hyperliquid - so a book that fits the TOTAL can still fail on the one venue that happens to
+     * carry the most legs. That is not a hypothetical: with 18 of 20 pairs CEX-CEX on 2026-08-20,
+     * Bybit had to carry 20 legs against Binance's 18 and Hyperliquid's 2, and Bybit alone decided
+     * the largest workable capital figure.
+     *
+     * <p>Reported as ONE number per venue, including on Hyperliquid, whose unified account splits the
+     * same balance across two {@code info} responses - a perp side that can read {@code 0.0} while
+     * the USDC sits under the spot side. Both are spendable, so both are counted; reading only the
+     * perp figure reports a funded account as empty.
+     */
+    BigDecimal availableCapital();
+
+    /**
      * Sets the leverage this account uses for a symbol, on both sides of a one-way position.
      *
      * <p>Must be called before opening, never attached to an order. Every venue measured here

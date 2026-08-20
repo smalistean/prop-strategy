@@ -72,8 +72,22 @@ public final class XvfExecutionApplication {
         gateways.put("binance", new BinanceGateway(!live));
         gateways.put("bybit", new BybitGateway(!live));
         gateways.put("hyperliquid", new HyperliquidGateway(!live));
-        // dydx is deliberately absent rather than unwired: the venue measurement excluded it, so a
-        // gateway will never be written. See XVF_V1_SCOPE.md.
+        // dYdX has no entry here, and none is coming: it is not in XvfConfig.VENUES, so no candidate
+        // can name it and there is nothing for a gateway to serve. See XVF_V1_SCOPE.md.
+
+        // Checked before the signal pipeline runs, and before it, deliberately: closing every open leg
+        // must not depend on perp_funding_all being fresh. An operator reaching for closeall is either
+        // starting over deliberately or reacting to something wrong - either way it must still work if
+        // requireFreshFunding would otherwise refuse to produce a book.
+        String earlyMode = System.getProperty("xvfMode", "enter");
+        if ("closeall".equals(earlyMode)) {
+            closeAll(gateways, live);
+            return;
+        }
+        if ("closeallmaker".equals(earlyMode)) {
+            closeAllMaker(gateways, live);
+            return;
+        }
 
         DatabaseConfig database = DatabaseConfig.fromEnvironment();
         XvfSignalEngine.requireFreshFunding(database, java.time.LocalDate.now());
@@ -298,6 +312,118 @@ public final class XvfExecutionApplication {
     }
 
     /**
+     * Closes every open leg on every venue, regardless of what any book wants.
+     *
+     * <p>Reuses {@link XvfReconciler} with an empty desired book rather than a separate close path:
+     * reconciling against nothing makes every held leg {@link XvfReconciler.Reason#NOT_IN_BOOK}, which
+     * is exactly the ordinary rebalance-exit case {@link #reconcile} already sends through the same
+     * tested close logic. There is nothing "close everything" needs that closing a normal drift does
+     * not already do correctly.
+     */
+    private static void closeAll(Map<String, VenueGateway> gateways, boolean live) {
+        System.out.printf("%nclosing every open leg on every venue (xvfMode=closeall)%n");
+        List<XvfReconciler.Drift> drifts = XvfReconciler.plan(gateways, List.of());
+        if (drifts.isEmpty()) {
+            System.out.println("  nothing open; nothing to do.");
+            return;
+        }
+        for (XvfReconciler.Drift d : drifts) {
+            System.out.printf("  %-12s %-10s %-12s held %s%n", d.base(), d.venue(), d.venueSymbol(), d.actual());
+        }
+        boolean done = XvfReconciler.apply(gateways, drifts, live);
+        System.out.println(done
+                ? "\nclosed."
+                : "\n!!!! NOT fully closed — see above. The account may still hold naked legs.");
+    }
+
+    /**
+     * Closes every open pair the same way {@link PairedEntryEngine#close} was built to: resting on the
+     * thinner venue, chasing until it fills, crossing only once {@code abandonAfter} passes. Unlike
+     * {@link #closeAll}, which always crosses immediately - all-taker costs roughly 34bp for an
+     * open-and-close pair against roughly 21bp of funding per 3-day cycle, so an exit that always
+     * crosses spends more than the position earned. This is the exit brackets and the ordinary
+     * rebalance both use; {@link #closeAll} exists only for when certainty matters more than the
+     * basis points.
+     */
+    private static void closeAllMaker(Map<String, VenueGateway> gateways, boolean live) throws Exception {
+        System.out.printf("%nclosing every open pair with a resting maker order (xvfMode=closeallmaker)%n");
+
+        Map<String, List<VenueGateway.PositionSnapshot>> byBase = new LinkedHashMap<>();
+        Map<String, VenueGateway> ownerOf = new LinkedHashMap<>();
+        for (Map.Entry<String, VenueGateway> entry : gateways.entrySet()) {
+            for (VenueGateway.PositionSnapshot p : entry.getValue().positions()) {
+                if (p.signedQuantity().signum() == 0) {
+                    continue;
+                }
+                String base = XvfConfig.normaliseBase(entry.getKey(), p.venueSymbol());
+                byBase.computeIfAbsent(base, k -> new ArrayList<>()).add(p);
+                ownerOf.put(entry.getKey() + "|" + p.venueSymbol(), entry.getValue());
+            }
+        }
+        if (byBase.isEmpty()) {
+            System.out.println("  nothing open; nothing to do.");
+            return;
+        }
+
+        Duration abandonAfter = Duration.ofMinutes(30);
+        Duration chaseEvery = Duration.ofSeconds(Integer.getInteger("xvfChaseSeconds", 30));
+        try (PairedEntryEngine engine = new PairedEntryEngine(abandonAfter, chaseEvery)) {
+            List<AutoCloseable> streams = new ArrayList<>();
+            for (VenueGateway gateway : gateways.values()) {
+                streams.add(gateway.streamOrderUpdates(engine::onOrderUpdate));
+            }
+
+            int started = 0;
+            for (var e : byBase.entrySet()) {
+                List<VenueGateway.PositionSnapshot> legs = e.getValue();
+                if (legs.size() != 2) {
+                    System.out.printf("  !! %s has %d leg(s), not a pair — skipped, close it by hand%n",
+                            e.getKey(), legs.size());
+                    continue;
+                }
+                VenueGateway.PositionSnapshot pA = legs.get(0);
+                VenueGateway.PositionSnapshot pB = legs.get(1);
+                boolean aIsThinner = isThinner(pA.venue(), pB.venue());
+                VenueGateway.PositionSnapshot makerPos = aIsThinner ? pA : pB;
+                VenueGateway.PositionSnapshot takerPos = aIsThinner ? pB : pA;
+                VenueGateway makerGw = ownerOf.get(makerPos.venue() + "|" + makerPos.venueSymbol());
+                VenueGateway takerGw = ownerOf.get(takerPos.venue() + "|" + takerPos.venueSymbol());
+
+                // Reducing a long means selling; reducing a short means buying - the opposite of the
+                // sign the position is already held at.
+                Side makerSide = makerPos.signedQuantity().signum() > 0 ? Side.SELL : Side.BUY;
+                Side takerSide = takerPos.signedQuantity().signum() > 0 ? Side.SELL : Side.BUY;
+                BigDecimal makerPrice = referencePrice(makerGw, makerPos.venueSymbol(), makerSide);
+                if (makerPrice.signum() <= 0) {
+                    System.out.printf("  skip %s: no price on %s%n", e.getKey(), makerGw.name());
+                    continue;
+                }
+
+                engine.close(e.getKey(),
+                        new PairedEntryEngine.Leg(makerGw, makerPos.venueSymbol(), makerSide,
+                                makerPos.signedQuantity().abs()),
+                        new PairedEntryEngine.Leg(takerGw, takerPos.venueSymbol(), takerSide,
+                                takerPos.signedQuantity().abs()),
+                        makerPrice);
+                started++;
+            }
+
+            System.out.printf("%n%d pair(s) closing.%n", started);
+            if (live) {
+                System.out.println("  waiting for every pair to resolve before closing the venue "
+                        + "streams - a maker fill that arrives after that point has nothing "
+                        + "listening for it.");
+                waitForResolution(engine, abandonAfter);
+            }
+            engine.outstanding().forEach((base, state) ->
+                    System.out.printf("  !! %s %s — needs manual attention%n", base, state));
+            for (AutoCloseable stream : streams) {
+                stream.close();
+            }
+        }
+    }
+
+    /**
      * Closes whatever the account holds that the current book does not want.
      *
      * <p>This is the rebalance exit. It does not need to know that a rebalance happened, or which pairs
@@ -440,7 +566,6 @@ public final class XvfExecutionApplication {
 
     private static int venueDepthRank(String venue) {
         return switch (venue) {
-            case "dydx" -> 0;
             case "hyperliquid" -> 1;
             case "bybit" -> 2;
             default -> 3;   // binance deepest
@@ -555,6 +680,9 @@ public final class XvfExecutionApplication {
             return false;
         }
         @Override public java.util.List<VenueGateway.PositionSnapshot> positions() {
+            throw new UnsupportedOperationException(venue + " gateway not implemented");
+        }
+        @Override public BigDecimal availableCapital() {
             throw new UnsupportedOperationException(venue + " gateway not implemented");
         }
         @Override public void setLeverage(String venueSymbol, int leverage) {

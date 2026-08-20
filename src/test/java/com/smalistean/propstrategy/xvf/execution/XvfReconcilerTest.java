@@ -130,6 +130,9 @@ class XvfReconcilerTest {
             @Override public List<PositionSnapshot> positions() {
                 return List.of(held);
             }
+            @Override public BigDecimal availableCapital() {
+                throw new UnsupportedOperationException("plan() must not read balances");
+            }
             @Override public void setLeverage(String venueSymbol, int leverage) {
                 throw new UnsupportedOperationException("plan() must not touch account settings");
             }

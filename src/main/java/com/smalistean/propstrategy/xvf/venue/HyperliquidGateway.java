@@ -548,6 +548,32 @@ public final class HyperliquidGateway implements VenueGateway {
 
     // ---------- REST info ----------
 
+    /**
+     * Perp collateral plus spot USDC, as one figure.
+     *
+     * <p>Hyperliquid is a unified account, but its {@code info} API reports the two sides separately:
+     * {@code clearinghouseState.marginSummary.accountValue} covers perps and reads {@code 0.0} while
+     * the balance sits under {@code spotClearinghouseState}. Reading only the perp figure reports a
+     * funded account as empty - measured 2026-08-20, perp {@code 0.0} against 1,542 USDC in spot.
+     * Both are spendable, so both are counted.
+     */
+    @Override
+    public BigDecimal availableCapital() {
+        if (dryRun) {
+            return BigDecimal.ZERO;
+        }
+        JsonNode perp = infoPost(Map.of("type", "clearinghouseState", "user", accountAddress));
+        BigDecimal total = new BigDecimal(
+                perp.path("marginSummary").path("accountValue").asText("0"));
+        JsonNode spot = infoPost(Map.of("type", "spotClearinghouseState", "user", accountAddress));
+        for (JsonNode balance : spot.path("balances")) {
+            if ("USDC".equals(balance.path("coin").asText())) {
+                total = total.add(new BigDecimal(balance.path("total").asText("0")));
+            }
+        }
+        return total;
+    }
+
     private JsonNode infoPost(Map<String, Object> body) {
         try {
             String json = MAPPER.writeValueAsString(body);
