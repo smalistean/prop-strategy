@@ -38,8 +38,8 @@ public final class XvfSignalApplication {
         List<Candidate> book = XvfSignalEngine.topBook(database, asOf);
 
         double legNotional = capital * XvfConfig.LEG_LEVERAGE / (XvfConfig.POSITIONS * 2.0);
-        System.out.printf("%nXVF %s  capital %,.0f  lookback %dd  entry >%.0f%%  top %d%n%n",
-                asOf, capital, XvfConfig.LOOKBACK_DAYS,
+        System.out.printf("%nXVF %s  capital %,.0f  lookback %dd cex-cex / %dd cex-dex  entry >%.0f%%  top %d%n%n",
+                asOf, capital, XvfConfig.LOOKBACK_DAYS_CEX_CEX, XvfConfig.LOOKBACK_DAYS,
                 XvfConfig.MIN_SPREAD_ANNUAL_PCT, XvfConfig.POSITIONS);
         System.out.printf("%-10s %-24s %-24s %9s %10s %14s%n",
                 "base", "SHORT (pays more)", "LONG (pays less)", "spread%", "leg USD", "thin leg vol");

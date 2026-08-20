@@ -11,8 +11,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Ranks XVF candidates. The single source of truth for what the book should be.
@@ -23,12 +25,25 @@ import java.util.Map;
  */
 public final class XvfSignalEngine {
 
-    /** One venue's trailing funding for one asset. */
-    public record Leg(String venue, String venueSymbol, double trailingRate, double weeklyQuoteVolume) { }
+    /**
+     * One venue's trailing funding for one asset, summed over both lookback windows since which one
+     * applies depends on the venue it ends up paired against, not on this leg alone.
+     */
+    public record Leg(String venue, String venueSymbol, double rateCexDex, double rateCexCex,
+                      double weeklyQuoteVolume) {
+        double annualPct(boolean cexDex) {
+            return cexDex
+                    ? rateCexDex * (365.0 / XvfConfig.LOOKBACK_DAYS) * 100
+                    : rateCexCex * (365.0 / XvfConfig.LOOKBACK_DAYS_CEX_CEX) * 100;
+        }
+    }
 
     /** A tradeable pair: short the venue paying more, long the one paying less. */
     public record Candidate(String base, Leg shortLeg, Leg longLeg, double spreadAnnualPct,
                             double thinLegWeeklyVolume) { }
+
+    /** Hyperliquid is the DEX leg; a pair touching it is CEX-DEX, otherwise CEX-CEX. */
+    private static final Set<String> DEX_VENUES = Set.of("hyperliquid");
 
     private XvfSignalEngine() {
     }
@@ -146,16 +161,72 @@ public final class XvfSignalEngine {
     }
 
     /**
+     * {@link #rankedCandidatesRaw}, with the signal discounted for every candidate that was already
+     * eligible yesterday.
+     *
+     * <p>Measured 2024-01 to 2026-08 by comparing what a candidate's trailing signal read against what
+     * it went on to actually realise over the following hold: a candidate on its FIRST eligible day
+     * reads a well-calibrated number - 99% of realised for CEX-CEX, 90% for CEX-DEX - but a candidate
+     * that was ALSO eligible the day before reads roughly double what it goes on to pay (46% of
+     * realised for CEX-CEX, 51% for CEX-DEX, flat across every later streak length tested). The
+     * trailing window is a sum, so a gap that has been open for days keeps accumulating in it even as
+     * the forward-looking reality - what is left to capture - has already started shrinking. Confirmed
+     * live 2026-08-20: a book reading a 20-30% blended signal at entry realised 9.6% annualised.
+     *
+     * <p>Applied as a flat discount rather than a smooth decay because the ratio does not decay further
+     * past the first extra day - streak 2, streak 3-5 and streak 6+ all measured within a few points of
+     * each other, so a single step from "first day" to "not first day" captures the effect.
+     */
+    private static List<Candidate> rankedCandidates(DatabaseConfig database, LocalDate asOf) throws Exception {
+        // Liquidity comes from the venues, not from the kline backfill. See LiveVolume for why.
+        Map<String, Double> volume24h = LiveVolume.fetch();
+        List<Candidate> today = rankedCandidatesRaw(database, asOf, volume24h);
+        Set<String> eligibleYesterday = new HashSet<>();
+        for (Candidate c : rankedCandidatesRaw(database, asOf.minusDays(1), volume24h)) {
+            eligibleYesterday.add(c.base());
+        }
+
+        List<Candidate> out = new ArrayList<>();
+        for (Candidate c : today) {
+            boolean fresh = !eligibleYesterday.contains(c.base());
+            double adjusted = fresh ? c.spreadAnnualPct() : c.spreadAnnualPct() * XvfConfig.STALE_SIGNAL_DISCOUNT;
+            if (adjusted > XvfConfig.MIN_SPREAD_ANNUAL_PCT) {
+                out.add(new Candidate(c.base(), c.shortLeg(), c.longLeg(), adjusted, c.thinLegWeeklyVolume()));
+            }
+        }
+        out.sort(Comparator.comparingDouble(Candidate::spreadAnnualPct).reversed());
+        return out;
+    }
+
+    /**
      * Trailing funding per venue and asset, paired into the widest spread, and ranked. Every candidate
      * that clears the spread and volume floors, in rank order - callers decide how many they can use.
      *
      * <p>Weekly quote volume comes from the venue kline tables so the participation cap is applied to
      * a real figure. Where a venue has no price row the leg is dropped rather than defaulted -
      * REN paid 507% annualised on $289 of weekly volume, and a default would have let it through.
+     *
+     * <p>Each leg is summed over BOTH lookback windows: which one is the right one is not known until
+     * pairing decides whether the pair is CEX-CEX or CEX-DEX. The CEX-CEX completeness check is
+     * scaled by {@code LOOKBACK_DAYS_CEX_CEX / 7.0} against the same weekly median, since 90% of a
+     * week's payments inside a 3-day window is not the bar a real symbol clears.
+     *
+     * <p>Undiscounted - {@link #rankedCandidates} is what applies the freshness discount, calling this
+     * twice (today and yesterday) to see which candidates are new. {@code volume24h} is a parameter
+     * rather than fetched here so that second call does not hit every venue's live ticker again for
+     * data that has not changed between the two calls.
      */
-    private static List<Candidate> rankedCandidates(DatabaseConfig database, LocalDate asOf) throws Exception {
+    private static List<Candidate> rankedCandidatesRaw(DatabaseConfig database, LocalDate asOf,
+                                                        Map<String, Double> volume24h) throws Exception {
         String sql = """
-                WITH trail AS (
+                WITH trail_cex_dex AS (
+                  SELECT venue, venue_symbol, sum(funding_rate) AS rate, count(*) AS payments
+                  FROM perp_funding_all
+                  WHERE venue = ANY (?)
+                    AND funding_time >  ?::date - ?::int
+                    AND funding_time <= ?::date
+                  GROUP BY 1, 2),
+                trail_cex_cex AS (
                   SELECT venue, venue_symbol, sum(funding_rate) AS rate, count(*) AS payments
                   FROM perp_funding_all
                   WHERE venue = ANY (?)
@@ -169,13 +240,13 @@ public final class XvfSignalEngine {
                         WHERE venue = ANY (?) AND funding_time >= ?::date - ?::int
                         GROUP BY 1,2,3) x
                   GROUP BY 1,2)
-                SELECT t.venue, t.venue_symbol, t.rate
-                FROM trail t
+                SELECT d.venue, d.venue_symbol, d.rate, c.rate
+                FROM trail_cex_dex d
+                JOIN trail_cex_cex c USING (venue, venue_symbol)
                 JOIN typical y USING (venue, venue_symbol)
-                WHERE t.payments >= ? * y.med
+                WHERE d.payments >= ? * y.med
+                  AND c.payments >= ? * y.med * ? / 7.0
                 """;
-        // Liquidity comes from the venues, not from the kline backfill. See LiveVolume for why.
-        Map<String, Double> volume24h = LiveVolume.fetch();
         List<Leg> legs = new ArrayList<>();
         try (Connection connection = DriverManager.getConnection(
                 database.url(), database.user(), database.password());
@@ -187,15 +258,21 @@ public final class XvfSignalEngine {
             statement.setObject(4, asOf);
             statement.setArray(5, venues);
             statement.setObject(6, asOf);
-            statement.setInt(7, XvfConfig.TYPICAL_WINDOW_DAYS);
-            statement.setDouble(8, XvfConfig.COMPLETENESS_RATIO);
+            statement.setInt(7, XvfConfig.LOOKBACK_DAYS_CEX_CEX);
+            statement.setObject(8, asOf);
+            statement.setArray(9, venues);
+            statement.setObject(10, asOf);
+            statement.setInt(11, XvfConfig.TYPICAL_WINDOW_DAYS);
+            statement.setDouble(12, XvfConfig.COMPLETENESS_RATIO);
+            statement.setDouble(13, XvfConfig.COMPLETENESS_RATIO);
+            statement.setInt(14, XvfConfig.LOOKBACK_DAYS_CEX_CEX);
             try (ResultSet results = statement.executeQuery()) {
                 while (results.next()) {
                     String venue = results.getString(1);
                     String symbol = results.getString(2);
                     // x7 converts a 24h figure to the weekly basis the floor is expressed in.
                     double weekly = volume24h.getOrDefault(venue + "|" + symbol, 0.0) * 7;
-                    legs.add(new Leg(venue, symbol, results.getDouble(3), weekly));
+                    legs.add(new Leg(venue, symbol, results.getDouble(3), results.getDouble(4), weekly));
                 }
             }
         }
@@ -212,18 +289,13 @@ public final class XvfSignalEngine {
             if (venueLegs.size() < 2) {
                 continue;
             }
-            Leg expensive = bestCrossVenuePair(venueLegs);
-            if (expensive == null) {
+            Candidate best = bestCrossVenuePair(entry.getKey(), venueLegs);
+            if (best == null) {
                 continue;   // every leg sits on one venue
             }
-            Leg cheap = venueLegs.stream()
-                    .filter(leg -> !leg.venue().equals(expensive.venue()))
-                    .min(Comparator.comparingDouble(Leg::trailingRate)).orElseThrow();
-            double spread = (expensive.trailingRate() - cheap.trailingRate())
-                    * (365.0 / XvfConfig.LOOKBACK_DAYS) * 100;
-            double thin = Math.min(expensive.weeklyQuoteVolume(), cheap.weeklyQuoteVolume());
-            if (spread > XvfConfig.MIN_SPREAD_ANNUAL_PCT && thin >= XvfConfig.MIN_WEEKLY_QUOTE_VOLUME) {
-                out.add(new Candidate(entry.getKey(), expensive, cheap, spread, thin));
+            if (best.spreadAnnualPct() > XvfConfig.MIN_SPREAD_ANNUAL_PCT
+                    && best.thinLegWeeklyVolume() >= XvfConfig.MIN_WEEKLY_QUOTE_VOLUME) {
+                out.add(best);
             }
         }
         out.sort(Comparator.comparingDouble(Candidate::spreadAnnualPct).reversed());
@@ -231,38 +303,47 @@ public final class XvfSignalEngine {
     }
 
     /**
-     * The short leg of the widest spread whose two legs sit on DIFFERENT venues, or null if they
-     * cannot.
+     * The widest legitimate cross-venue spread for one base, or null if every leg sits on one venue.
      *
-     * <p>Taking a plain max and min lets both legs land on one exchange. Binance lists KAITOUSDC and
-     * KAITOUSDT, both normalising to KAITO, and on 2026-08-15 they were the widest "spread" for that
-     * base at 38.3% — a pair the engine would have placed, because nothing downstream objects:
-     * {@code isThinner("binance","binance")} is true on the {@code <=}, so maker and taker resolve to
-     * the same gateway. A USDT/USDC funding spread on one venue is a real trade, but it is
-     * cross-margined with no withdrawal latency and no second-venue risk, so none of the measurement
-     * behind XVF describes it.
+     * <p>Evaluated as every ordered (short, long) pair of legs on different venues, because which
+     * lookback window applies - and so the annualised rate itself - depends on which two venues end
+     * up paired: hyperliquid on either side makes it CEX-DEX ({@link XvfConfig#LOOKBACK_DAYS}),
+     * anything else is CEX-CEX ({@link XvfConfig#LOOKBACK_DAYS_CEX_CEX}). A base has at most three
+     * legs, so the full scan costs nothing.
+     *
+     * <p>Same-venue combinations are excluded by the venue check in the inner loop. Binance lists
+     * KAITOUSDC and KAITOUSDT, both normalising to KAITO, and on 2026-08-15 they were the widest
+     * "spread" for that base at 38.3% — a pair the engine would have placed, because nothing
+     * downstream objects: {@code isThinner("binance","binance")} is true on the {@code <=}, so maker
+     * and taker resolve to the same gateway. A USDT/USDC funding spread on one venue is a real trade,
+     * but it is cross-margined with no withdrawal latency and no second-venue risk, so none of the
+     * measurement behind XVF describes it.
      *
      * <p>Skipping such a base outright would be wrong too: one with two Binance contracts AND a Bybit
-     * leg still has a valid cross-venue pair. So the widest legitimate combination is chosen instead,
-     * evaluated from both ends because the best short and the best long need not be the extremes of
-     * the whole set once a venue is excluded.
+     * leg still has a valid cross-venue pair. So the widest legitimate combination is chosen instead.
      */
-    private static Leg bestCrossVenuePair(List<Leg> legs) {
-        Leg best = null;
+    private static Candidate bestCrossVenuePair(String base, List<Leg> legs) {
+        Leg bestShort = null;
+        Leg bestLong = null;
         double bestSpread = Double.NEGATIVE_INFINITY;
-        for (Leg candidate : legs) {
-            double cheapest = legs.stream()
-                    .filter(leg -> !leg.venue().equals(candidate.venue()))
-                    .mapToDouble(Leg::trailingRate).min().orElse(Double.NaN);
-            if (Double.isNaN(cheapest)) {
-                continue;
-            }
-            double spread = candidate.trailingRate() - cheapest;
-            if (spread > bestSpread) {
-                bestSpread = spread;
-                best = candidate;
+        for (Leg a : legs) {
+            for (Leg b : legs) {
+                if (a.venue().equals(b.venue())) {
+                    continue;
+                }
+                boolean cexDex = DEX_VENUES.contains(a.venue()) || DEX_VENUES.contains(b.venue());
+                double spread = a.annualPct(cexDex) - b.annualPct(cexDex);
+                if (spread > bestSpread) {
+                    bestSpread = spread;
+                    bestShort = a;
+                    bestLong = b;
+                }
             }
         }
-        return best;
+        if (bestShort == null) {
+            return null;
+        }
+        double thin = Math.min(bestShort.weeklyQuoteVolume(), bestLong.weeklyQuoteVolume());
+        return new Candidate(base, bestShort, bestLong, bestSpread, thin);
     }
 }

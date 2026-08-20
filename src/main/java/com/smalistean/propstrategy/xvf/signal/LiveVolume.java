@@ -43,9 +43,6 @@ public final class LiveVolume {
                 .path("result").path("list")) {
             out.put("bybit|" + t.path("symbol").asText(), t.path("turnover24h").asDouble());
         }
-        for (JsonNode t : get(client, "https://indexer.dydx.trade/v4/perpetualMarkets").path("markets")) {
-            out.put("dydx|" + t.path("ticker").asText(), t.path("volume24H").asDouble());
-        }
         // Hyperliquid returns [meta, contexts] as parallel arrays rather than one keyed object.
         JsonNode hl = post(client, "https://api.hyperliquid.xyz/info", "{\"type\":\"metaAndAssetCtxs\"}");
         JsonNode universe = hl.get(0).path("universe");

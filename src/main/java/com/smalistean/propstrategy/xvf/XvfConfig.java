@@ -14,16 +14,24 @@ public final class XvfConfig {
     private XvfConfig() {
     }
 
-    /** Venues with usable funding history. OKX, Gate and Bitget serve 1-3 months and are excluded. */
-    public static final String[] VENUES = {"binance", "bybit", "hyperliquid", "dydx"};
+    /**
+     * Venues XVF actually trades. OKX, Gate and Bitget serve only 1-3 months of funding history and
+     * are excluded on that alone. dYdX cleared the history bar but not the venue-combination one -
+     * XVF_V1_SCOPE.md measured all ten combinations of the four candidate venues with the liquidity
+     * floor applied, and adding dYdX to binance+bybit+hyperliquid made the book worse (Score 16.7 to
+     * 16.0): its tradeable universe under the $500k floor is too thin to be worth a fourth gateway
+     * and a second on-chain auth model. It earns its place only in a book that is candidate-starved,
+     * which this one is not.
+     */
+    public static final String[] VENUES = {"binance", "bybit", "hyperliquid"};
 
     /**
-     * Collateral asset per venue: USDT on the CEXs, USDC on the DEXs.
+     * Collateral asset per venue: USDT on the CEXs, USDC on Hyperliquid.
      *
-     * <p>Hyperliquid and dYdX have no choice - Hyperliquid perps are bare coin names with one
-     * account-wide collateral asset, and USDT exists there only as the USDT0 spot token. Binance and
-     * Bybit are pinned to USDT deliberately so each venue has exactly one collateral asset and a
-     * leg's currency is never a variable at execution time.
+     * <p>Hyperliquid has no choice - its perps are bare coin names with one account-wide collateral
+     * asset, and USDT exists there only as the USDT0 spot token. Binance and Bybit are pinned to USDT
+     * deliberately so each venue has exactly one collateral asset and a leg's currency is never a
+     * variable at execution time.
      *
      * <p>Binance also lists USDC contracts on 39 bases, and choosing the quote that suits the leg
      * direction is worth +3.32% annualised per pair. It is not taken: only 9.9% of selections have
@@ -32,19 +40,47 @@ public final class XvfConfig {
      */
     public static String collateral(String venue) {
         return switch (venue) {
-            case "hyperliquid", "dydx" -> "USDC";
+            case "hyperliquid" -> "USDC";
             default -> "USDT";
         };
     }
 
-    /** Trailing window for realised funding, in days. Carried over from cash-and-carry, not swept. */
+    /**
+     * Trailing window for realised funding on CEX-DEX pairs, in days, matching their 7-day hold.
+     * Also what {@code requireFreshFunding} checks data freshness against: it is the wider of the
+     * two lookback windows, so a leg clearing it clears {@link #LOOKBACK_DAYS_CEX_CEX} too.
+     */
     public static final int LOOKBACK_DAYS = 7;
+
+    /**
+     * Trailing window for realised funding on CEX-CEX pairs, in days, matching their 3-day hold.
+     * A shared 7-day window used to be applied here too; candidates it selected went on to realise
+     * 50.4% annualised over the following 3 days against 61.3% for a 3-day-lookback selection
+     * (2024-01 to 2026-08, n=2546 vs 2573 candidate-days). CEX-CEX gaps get arbed shut within days,
+     * so the extra 4 days of history in the 7-day window were diluting the signal with a gap that
+     * had already started closing.
+     */
+    public static final int LOOKBACK_DAYS_CEX_CEX = 3;
 
     /**
      * Minimum annualised spread to open. Swept: 12.0% net at a 0% threshold, 19.0% at 20%, 25.4% at
      * 40% but with only 6 positions. Sharpe peaks here at 5.12.
      */
     public static final double MIN_SPREAD_ANNUAL_PCT = 20.0;
+
+    /**
+     * Multiplier applied to a candidate's signal when it was already eligible the day before, in
+     * {@code XvfSignalEngine.rankedCandidates}.
+     *
+     * <p>Measured 2024-01 to 2026-08: a candidate on its first eligible day realises close to what it
+     * reads (99% for CEX-CEX, 90% for CEX-DEX), but a candidate that was also eligible the day before
+     * realises roughly half (46% for CEX-CEX, 51% for CEX-DEX) - and that ratio does not decay further
+     * with more days eligible, it is flat from the second day on. The trailing window is a sum, so a
+     * gap that has been open for days keeps accumulating in it after the forward-looking opportunity
+     * has already started closing. Confirmed live 2026-08-20: a book that read a 20-30% blended signal
+     * at entry realised 9.6% annualised.
+     */
+    public static final double STALE_SIGNAL_DISCOUNT = 0.5;
 
     /**
      * Book size. Top 20 beat top 10 on Sharpe (5.12 vs 4.83) because ranks 11-20 realise as much
@@ -157,9 +193,6 @@ public final class XvfConfig {
      */
     public static String normaliseBase(String venue, String venueSymbol) {
         String raw = switch (venue) {
-            // dYdX permissionless markets embed a DEX and a contract address:
-            // "FARTCOIN,RAYDIUM,9BB6NF...PUMP-USD". Take the segment before the first comma.
-            case "dydx" -> venueSymbol.split(",")[0].split("-")[0];
             case "hyperliquid" -> venueSymbol;
             default -> venueSymbol.endsWith("USDT") || venueSymbol.endsWith("USDC")
                     ? venueSymbol.substring(0, venueSymbol.length() - 4) : venueSymbol;
