@@ -34,7 +34,7 @@ below.
 | Entry | spread **> 20% annualised** | Sharpe peak; 12.0% at 0%, 25.4% at 40% but only 6 positions |
 | Positions | **top 20** by spread | Sharpe 5.12 vs 4.83 at top 10; ranks 11-20 earn as much as 6-10 |
 | Weighting | **equal** | spread-weighting cost a third of the Sharpe for one point of return |
-| Rebalance | **every 3 days** | 22.0% vs 14.7% daily and 19.5% weekly |
+| Rebalance | **every 3 days** | 22.0% vs 14.7% daily and 19.5% weekly. One cadence for both pair types blends two different optima - see §2c |
 | Leverage | **1x per leg** (capital = total notional) | 2x/3x/5x all worse once friction charged |
 | Liquidity floor | **$500k** weekly quote volume on the thinner leg | removes untradeable prints; basis goes to zero |
 | Execution | **post-only**, cross the laggard after ~1 minute | 3.2bp to cross vs 92bp of naked drift |
@@ -92,6 +92,40 @@ almost entirely by 2026 (32.2% against 24-29% for the other windows), while L=3 
 that reorders year to year is further evidence these differences are noise, not structure - which is
 itself the reason to leave `LOOKBACK_DAYS` alone rather than chase whichever window happened to win
 on the most recent slice.
+
+### 2c. Rebalance cadence, split by pair type (2026-08-20)
+
+§2b's sweep is REBALANCE_DAYS - how far back the signal looks. This is a different question: how
+long to HOLD, and whether one answer serves both pair types the current book mixes. Prompted by a
+live observation - realized funding on the current book was running well below its entry-time
+signal, and CEX-CEX pairs specifically are where XVF_V1_SCOPE.md already found gaps close fast.
+
+**Method.** Same 20-candidate weekly selection as the live signal, split into CEX-CEX and CEX-DEX by
+whether hyperliquid is one of the two legs, 2023-11 to present. Realized funding spread measured
+over 1/2/3/5/7/10/14 days starting one week after signal (matching §2b's convention), netted against
+a 13bp round-trip fee annualized at each cadence - a fixed per-cycle cost that penalizes short
+cadences disproportionately, which a gross-only number would miss.
+
+**Net of fees, annualized:**
+
+| Pair type | 1d | 2d | 3d | 5d | 7d | 10d | 14d |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| CEX-CEX | -8.8% | +9.8% | **+16.0%** | **+16.4%** | +15.4% | +14.1% | +12.4% |
+| CEX-DEX | -17.2% | +3.2% | +10.5% | +14.4% | +16.1% | **+16.8%** | +16.7% |
+
+**CEX-CEX peaks at 3-5 days - close to where the book already sits - then declines steadily out to
+14.** CEX-DEX peaks at 7-10 days, a wide plateau, and is still climbing past where CEX-CEX has
+already turned over. The single 3-day cadence is close to optimal for CEX-CEX (16.0% against a 16.4%
+peak) and leaves real money on the table for CEX-DEX (10.5% against a 16.8% peak six points higher).
+Gross spread decays for both (CEX-CEX front-loads harder: 38.6% at day 1 falling to 15.0%/day by
+days 4-7, against CEX-DEX's gentler 30.4% to 20.4%) but the fee-netted optimum is what should drive
+cadence, not the gross shape alone - a faster cadence to chase CEX-CEX's steep day-1 reading is
+fee-dominated and net-negative at 1-2 days for both types.
+
+**Not yet acted on.** This says the current uniform cadence probably under-serves CEX-DEX rather than
+that CEX-CEX is being held too long, which is the opposite of the intuition that prompted the check.
+Implementing a pair-type-specific cadence is a real change to the execution loop, not measured here -
+this is the sweep that would justify it, not the change itself.
 
 ### Values deliberately NOT swept further
 
