@@ -126,14 +126,34 @@ public final class XvfSignalEngine {
     }
 
     /**
-     * Trailing funding per venue and asset, paired into the widest spread, ranked, and capped at
-     * {@link XvfConfig#POSITIONS}.
+     * {@link #rankedCandidates}, capped at {@link XvfConfig#POSITIONS}. What the reporting
+     * application shows as "the book."
+     */
+    public static List<Candidate> topBook(DatabaseConfig database, LocalDate asOf) throws Exception {
+        List<Candidate> all = rankedCandidates(database, asOf);
+        return all.size() > XvfConfig.POSITIONS ? all.subList(0, XvfConfig.POSITIONS) : all;
+    }
+
+    /**
+     * {@link #rankedCandidates}, uncapped. What the execution application walks, so a candidate that
+     * ranks inside the top {@link XvfConfig#POSITIONS} by spread but can never actually be opened -
+     * CAT's step size, ON's ticker collision - costs one wasted slot rather than one permanently empty
+     * one. {@code topBook} cannot do this backfill itself: it has no venue gateway and so no way to
+     * know a candidate is untradeable until the execution application tries it.
+     */
+    public static List<Candidate> fullBook(DatabaseConfig database, LocalDate asOf) throws Exception {
+        return rankedCandidates(database, asOf);
+    }
+
+    /**
+     * Trailing funding per venue and asset, paired into the widest spread, and ranked. Every candidate
+     * that clears the spread and volume floors, in rank order - callers decide how many they can use.
      *
      * <p>Weekly quote volume comes from the venue kline tables so the participation cap is applied to
      * a real figure. Where a venue has no price row the leg is dropped rather than defaulted -
      * REN paid 507% annualised on $289 of weekly volume, and a default would have let it through.
      */
-    public static List<Candidate> topBook(DatabaseConfig database, LocalDate asOf) throws Exception {
+    private static List<Candidate> rankedCandidates(DatabaseConfig database, LocalDate asOf) throws Exception {
         String sql = """
                 WITH trail AS (
                   SELECT venue, venue_symbol, sum(funding_rate) AS rate, count(*) AS payments
@@ -207,7 +227,7 @@ public final class XvfSignalEngine {
             }
         }
         out.sort(Comparator.comparingDouble(Candidate::spreadAnnualPct).reversed());
-        return out.size() > XvfConfig.POSITIONS ? out.subList(0, XvfConfig.POSITIONS) : out;
+        return out;
     }
 
     /**

@@ -43,6 +43,34 @@ class BybitStockPerpetualTest {
     }
 
     @Test
+    void anInnovationZoneListingIsAcceptedAsGenuineCrypto() throws Exception {
+        // Verbatim from instruments-info for EPICUSDT, captured 2026-08-19: a real, already-open,
+        // correctly-hedged position that a first version of this guard refused outright by treating
+        // any non-empty symbolType as a collision. EPICUSDT priced within 0.3% of Binance's EPICUSDT
+        // at the time - nothing like ONUSDT's stock-vs-token gap - confirming this tag means "Bybit's
+        // Innovation Zone", a crypto listing tier, not a different asset class.
+        var instrument = MAPPER.readTree("""
+                {"symbol":"EPICUSDT","baseCoin":"EPIC","quoteCoin":"USDT","symbolType":"innovation"}
+                """);
+
+        assertDoesNotThrow(() -> BybitGateway.requireCryptoPerp("EPICUSDT", instrument));
+    }
+
+    @Test
+    void anEtfListingIsRefused() throws Exception {
+        // Verbatim from instruments-info for CSOPSKHYNIX2LUSDT, captured 2026-08-19: a leveraged
+        // fund product (CSOP is a real Hong Kong ETF issuer) that would collide with any unrelated
+        // crypto base of the same name on another venue.
+        var instrument = MAPPER.readTree("""
+                {"symbol":"CSOPSKHYNIX2LUSDT","baseCoin":"CSOPSKHYNIX2L","quoteCoin":"USDT",
+                 "symbolType":"ETF"}
+                """);
+
+        assertThrows(IllegalStateException.class,
+                () -> BybitGateway.requireCryptoPerp("CSOPSKHYNIX2LUSDT", instrument));
+    }
+
+    @Test
     void aMissingSymbolTypeFieldIsTreatedAsCrypto() throws Exception {
         // Defensive: if Bybit ever omits the field entirely rather than sending "", this must not
         // fail closed for every ordinary symbol - only an explicit non-empty value refuses.

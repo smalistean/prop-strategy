@@ -420,3 +420,56 @@ Six pairs proving the crossing path, and one proving the resting path once, is n
 the strategy. What has been demonstrated is that orders reach venues, fills reach the system, hedges
 fire from them, both legs close, and funding settles as designed - which is the plumbing v1 exists to
 test, and which four separate defects would have prevented a week ago.
+
+---
+
+## 12. A live-only scan of five more venues, and what it isn't safe to act on yet
+
+**Why this got asked.** Twelve hours into the current 20-pair book, realized funding across 17
+candidates was running at roughly half of what each one's entry-time trailing spread projected
+(§ live check, 2026-08-20). That prompted the question of whether a wider venue universe would
+surface better candidates than the current three.
+
+**What's already collected vs. what a real comparison needs.** `perp_funding_all` already carries
+funding rows for bitget (since 2026-05-15), gate (since 2026-07-14) and okx (since 2026-05-11) -
+`scripts/xvf-refresh.sh` has been importing all three daily. But `XVF_V1_SCOPE.md`'s ten-combination
+venue study (`scripts/analysis-venue-sets.sql`) depends on historical *kline* volume to enforce the
+$500k weekly floor, and **no kline table exists for bitget, gate, okx, mexc or kucoin** - only
+`binance_perp_kline`, `bybit_perp_kline`, `hyperliquid_perp_kline` and `dydx_perp_kline` do. Skipping
+the floor was already shown to produce the wrong answer once, on dYdX (82.2% untradeable legs looked
+like the best venue, unfiltered). The real comparison for these five venues needs a kline importer
+built first - not done, not started.
+
+**What was done instead: a live-only snapshot, today's numbers only.** Fetched current funding +
+24h volume directly from bitget, gate, mexc, kucoin (one bulk call each) and okx (bulk ticker for
+volume, per-symbol funding calls only for bases clearing $500k/week), normalized bases the same way
+`normalise_perp_base` does, and compared against binance/bybit/hyperliquid's current rates. Script:
+`scripts/xvf-position-snapshot.py`'s sibling for this was written ad hoc at
+`/private/tmp/.../scratchpad/new_venue_scan.py` (session-scoped, not yet promoted into `scripts/`).
+This is a snapshot, not a backtest - no history behind it, no validation that the volume holds up
+over a week the way the $500k floor is supposed to guarantee.
+
+**The finding that matters more than any spread number.** Several of the highest-spread results are
+not crypto. **SKHYNIX** and **KODEX200** are a real Korean chipmaker and a real KOSPI200 ETF; **ZHONGJI**
+was already caught once this session as a Bybit stock listing (§ ON Semiconductor collision) and
+showed up again here via KuCoin. SKHYNIX carried $7.2B and $4.2B in "weekly volume" on OKX and Gate -
+no genuine funding-arb altcoin trades at that scale, which is itself the tell. HANA, CXMT and UNITREE
+(a real humanoid-robotics company) are suspect for the same reason and unverified either way. This is
+the ON Semiconductor collision (§ ticker collision write-up) at larger scale across more venues, with
+no equivalent of Bybit's `symbolType` field checked yet on any of the five - meaning **none of this
+scan's numbers should be trusted or acted on until each venue's instrument-type field is found and
+filtered on**, the same way `BybitGateway.requireCryptoPerp` does now.
+
+Filtered by hand to names confirmed as genuine crypto, the real incremental candidates were far more
+modest than the headline numbers: ACE, COTI, RVN, PORTAL, HFT, CARV, DOS, RED. Worth a real look later;
+none of it is a reason to move quickly.
+
+**Open questions, unresolved:**
+- Does okx / bitget / gate / mexc / kucoin expose a field like Bybit's `symbolType` to filter
+  non-crypto listings automatically? Not checked on any of them.
+- Is MEXC's futures API actually restricted from placing trades, as recalled but not verified? If so
+  it's disqualified as an execution venue regardless of what its numbers show.
+- Is building a kline/volume importer for any of these five venues worth the engineering cost, given
+  the collision-filtering problem has to be solved first either way?
+- Which specific field(s) on each venue's instruments endpoint distinguish a genuine perpetual from a
+  stock/ETF-tracking product wearing a crypto-looking ticker - unknown for all five.

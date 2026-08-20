@@ -77,7 +77,11 @@ public final class XvfExecutionApplication {
 
         DatabaseConfig database = DatabaseConfig.fromEnvironment();
         XvfSignalEngine.requireFreshFunding(database, java.time.LocalDate.now());
-        List<Target> book = XvfSignalEngine.topBook(database, java.time.LocalDate.now()).stream()
+        // Uncapped: a candidate that ranks in the top POSITIONS by spread but cannot actually be
+        // opened - CAT's step size, ON's ticker collision - must not waste that slot forever. Both
+        // the entry loop and reconcile() walk past a candidate like that to the next one instead of
+        // stopping at exactly POSITIONS candidates considered.
+        List<Target> book = XvfSignalEngine.fullBook(database, java.time.LocalDate.now()).stream()
                 .map(XvfExecutionApplication::toTarget).toList();
         double legNotional = capital * XvfConfig.LEG_LEVERAGE / (XvfConfig.POSITIONS * 2.0);
 
@@ -116,7 +120,19 @@ public final class XvfExecutionApplication {
                 alreadyOpenSymbols.put(entry.getKey(), symbols);
             }
 
+            // Two counters over the same walk: slotsFilled is every rank-ordered candidate that
+            // counts against the POSITIONS cap (already open, or opened below), and stops the walk
+            // once the book is full; openedThisRun is only what THIS run actually sent, for the
+            // summary line. book is uncapped (see fullBook), so a candidate that can never be
+            // opened - CAT's step size, ON's ticker collision - costs one skipped rank rather than
+            // one permanently empty slot; the walk continues to whatever ranks below POSITIONS until
+            // it finds one that works.
+            int slotsFilled = 0;
+            int openedThisRun = 0;
             for (Target t : book) {
+                if (slotsFilled >= XvfConfig.POSITIONS) {
+                    break;
+                }
                 VenueGateway shortGw = gateways.get(t.shortVenue());
                 VenueGateway longGw = gateways.get(t.longVenue());
                 if (shortGw == null || longGw == null) {
@@ -160,6 +176,7 @@ public final class XvfExecutionApplication {
                         || alreadyOpenSymbols.getOrDefault(takerGw.name(), java.util.Set.of()).contains(takerSymbol)) {
                     System.out.printf("  skip %s: already open on %s or %s - resuming, not reopening%n",
                             t.base(), makerGw.name(), takerGw.name());
+                    slotsFilled++;
                     continue;
                 }
 
@@ -215,13 +232,28 @@ public final class XvfExecutionApplication {
                     continue;
                 }
 
-                engine.open(t.base(),
+                boolean resting = engine.open(t.base(),
                         new PairedEntryEngine.Leg(makerGw, makerSymbol, makerSide, makerQty),
                         new PairedEntryEngine.Leg(takerGw, takerSymbol, takerSide, takerQty),
                         makerPrice);
+                if (!resting) {
+                    // The venue rejected the order outright - most commonly insufficient margin on
+                    // one leg's venue, which sizing has no way to see in advance since it only knows
+                    // the target notional, not the account's actual free balance there. Caught
+                    // synchronously inside engine.open() itself (placePostOnly's HTTP response, not a
+                    // later stream event), so it is safe to keep walking the ranked list here rather
+                    // than counting this base as having filled a slot - the same reasoning as every
+                    // other skip above, just discovered one step later.
+                    System.out.printf("  skip %s: venue rejected the maker order - trying the next "
+                            + "candidate rather than leaving the slot empty%n", t.base());
+                    continue;
+                }
+                slotsFilled++;
+                openedThisRun++;
             }
 
-            System.out.printf("%n%d pairs working.%n", book.size());
+            System.out.printf("%n%d pairs opened this run (%d of %d slots filled).%n",
+                    openedThisRun, slotsFilled, XvfConfig.POSITIONS);
             if (live) {
                 // A dry run never opens a stream and never delivers a fill event, so every pair
                 // would sit WORKING forever - waiting for resolution here would just be waiting out
@@ -276,7 +308,16 @@ public final class XvfExecutionApplication {
     private static void reconcile(Map<String, VenueGateway> gateways, List<Target> book,
                                   double legNotional, boolean live) {
         List<XvfReconciler.DesiredLeg> desired = new ArrayList<>();
+        // book is uncapped (see fullBook) and walked in rank order the same way the entry loop walks
+        // it, so "wanted" here means the same POSITIONS candidates the entry loop would fill,
+        // including the backfill past a permanently untradeable one like CAT or ON. Capped here too,
+        // rather than adding every candidate that happens to size - a reconciler that wants more than
+        // POSITIONS pairs would report every candidate below the cap as MISSING for no reason.
+        int wanted = 0;
         for (Target t : book) {
+            if (wanted >= XvfConfig.POSITIONS) {
+                break;
+            }
             VenueGateway shortGw = gateways.get(t.shortVenue());
             VenueGateway longGw = gateways.get(t.longVenue());
             if (shortGw == null || longGw == null) {
@@ -304,6 +345,7 @@ public final class XvfExecutionApplication {
                     sizing.makerQty().negate()));
             desired.add(new XvfReconciler.DesiredLeg(t.base(), t.longVenue(), t.longSymbol(),
                     sizing.takerQty()));
+            wanted++;
         }
 
         System.out.printf("%nreconciling %d booked legs against the accounts%n", desired.size());

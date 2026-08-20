@@ -118,8 +118,14 @@ public final class PairedEntryEngine implements AutoCloseable {
      * @param makerLeg  the THINNER venue — rests
      * @param takerLeg  the more liquid venue — crossed on fill
      */
-    public void open(String base, Leg makerLeg, Leg takerLeg, BigDecimal makerLimit) {
-        work(base, makerLeg, takerLeg, makerLimit, false);
+    /**
+     * @return true if a maker order ended up resting, false if the venue rejected it outright (for
+     *         example insufficient margin) - the caller's signal to walk to the next candidate
+     *         instead of counting this base as having filled a slot. Distinct from abandonment after
+     *         {@code abandonAfter}, which the caller learns about later, from {@link #outstanding()}.
+     */
+    public boolean open(String base, Leg makerLeg, Leg takerLeg, BigDecimal makerLimit) {
+        return work(base, makerLeg, takerLeg, makerLimit, false);
     }
 
     /**
@@ -144,7 +150,7 @@ public final class PairedEntryEngine implements AutoCloseable {
         work(base, makerLeg, takerLeg, makerLimit, true);
     }
 
-    private void work(String base, Leg makerLeg, Leg takerLeg, BigDecimal makerLimit, boolean closing) {
+    private boolean work(String base, Leg makerLeg, Leg takerLeg, BigDecimal makerLimit, boolean closing) {
         // Taker units per maker unit. The two venues may quote different contract sizes for the
         // same asset - 1000PEPE against PEPE - so hedging the maker's NATIVE filled quantity on the
         // taker venue would be out by that multiple. The caller has already sized both legs to equal
@@ -155,9 +161,11 @@ public final class PairedEntryEngine implements AutoCloseable {
                 new ConcurrentHashMap<>(), hedgeRatio, closing);
         allPairs.add(pair);
         long deadline = System.nanoTime() + abandonAfter.toNanos();
-        if (placeMaker(pair, makerLeg.quantity(), makerLimit)) {
+        boolean resting = placeMaker(pair, makerLeg.quantity(), makerLimit);
+        if (resting) {
             scheduleChase(pair, deadline);
         }
+        return resting;
     }
 
     /**

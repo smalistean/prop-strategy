@@ -313,6 +313,39 @@ class PairedEntryEngineTest {
     }
 
     @Test
+    void openReturnsFalseOnRejectionSoTheCallerCanTryTheNextCandidate() throws Exception {
+        // XvfExecutionApplication relies on this return value to walk past a venue rejection (most
+        // often insufficient margin on one leg's venue) to the next-ranked candidate, the same way it
+        // already does for a rules() failure or an unwired venue - rather than silently leaving that
+        // slot of the twenty empty.
+        RecordingGateway maker = new RecordingGateway("maker");
+        RecordingGateway taker = new RecordingGateway("taker");
+        maker.nextOutcome = SubmitOutcome.REJECTED;
+        try (PairedEntryEngine engine = new PairedEntryEngine(Duration.ofMinutes(30))) {
+            boolean resting = engine.open("X",
+                    new PairedEntryEngine.Leg(maker, "XUSDT", VenueGateway.Side.SELL, new BigDecimal("3")),
+                    new PairedEntryEngine.Leg(taker, "XUSDT", VenueGateway.Side.BUY, new BigDecimal("3")),
+                    new BigDecimal("100"));
+
+            assertFalse(resting, "rejected outright - nothing is resting, the slot is still open");
+        }
+    }
+
+    @Test
+    void openReturnsTrueWhenTheMakerOrderActuallyRests() throws Exception {
+        RecordingGateway maker = new RecordingGateway("maker");
+        RecordingGateway taker = new RecordingGateway("taker");
+        try (PairedEntryEngine engine = new PairedEntryEngine(Duration.ofMinutes(30))) {
+            boolean resting = engine.open("X",
+                    new PairedEntryEngine.Leg(maker, "XUSDT", VenueGateway.Side.SELL, new BigDecimal("3")),
+                    new PairedEntryEngine.Leg(taker, "XUSDT", VenueGateway.Side.BUY, new BigDecimal("3")),
+                    new BigDecimal("100"));
+
+            assertTrue(resting, "accepted normally - a maker order is resting, this slot is filled");
+        }
+    }
+
+    @Test
     void hedgesOnlyTheIncrementAcrossThreePartialFills() throws Exception {
         RecordingGateway maker = new RecordingGateway("maker");
         RecordingGateway taker = new RecordingGateway("taker");

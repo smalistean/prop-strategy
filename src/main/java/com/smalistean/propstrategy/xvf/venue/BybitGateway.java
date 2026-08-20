@@ -266,19 +266,28 @@ public final class BybitGateway implements VenueGateway {
     }
 
     /**
-     * Refuses a symbol that is not a genuine crypto perpetual.
+     * Refuses a symbol whose {@code symbolType} names a different asset class than crypto.
      *
-     * <p>Bybit tags every non-crypto listing with a non-empty {@code symbolType} - confirmed live
-     * 2026-08-19 on ONUSDT, {@code "symbolType":"stock"}, which turned out to be ON Semiconductor
-     * Corp (NASDAQ: ON) rather than the Orochi Network crypto token Binance lists under the
-     * identical three-letter ticker. A funding-spread pair built from that match was two
+     * <p>Confirmed live 2026-08-19 on ONUSDT, {@code "symbolType":"stock"}, which turned out to be ON
+     * Semiconductor Corp (NASDAQ: ON) rather than the Orochi Network crypto token Binance lists under
+     * the identical three-letter ticker. A funding-spread pair built from that match was two
      * unrelated, uncorrelated directional bets wearing a hedge's clothes - the sizing math cannot
      * catch it, because both legs price to their own venue's ~notional target regardless of what
-     * asset either one actually is. Every genuine crypto perpetual carries {@code ""}.
+     * asset either one actually is.
+     *
+     * <p>This is an ALLOWLIST, not "any non-empty type refuses" - that was tried first and refused
+     * EPICUSDT, FOLKSUSDT, XNYUSDT and CLOUSDT, four real, already-open, correctly-hedged positions,
+     * because Bybit had tagged them {@code "innovation"} (its Innovation Zone, a real crypto listing
+     * tier, confirmed by prices matching Binance's within 0.3% - nothing like ON's 300x stock-vs-token
+     * gap). An unrecognised type still refuses by default: a collision Bybit tags with some other
+     * label is exactly as dangerous as "stock", and this must fail closed on a label it has never
+     * seen rather than assume it is safe.
      */
+    private static final java.util.Set<String> CRYPTO_SYMBOL_TYPES = java.util.Set.of("", "innovation");
+
     static void requireCryptoPerp(String venueSymbol, JsonNode instrument) {
         String symbolType = instrument.path("symbolType").asText("");
-        if (!symbolType.isEmpty()) {
+        if (!CRYPTO_SYMBOL_TYPES.contains(symbolType)) {
             throw new IllegalStateException("bybit " + venueSymbol + " is a " + symbolType
                     + " listing, not a crypto perpetual - refusing rather than risking a ticker "
                     + "collision with whatever the same base means on another venue");
