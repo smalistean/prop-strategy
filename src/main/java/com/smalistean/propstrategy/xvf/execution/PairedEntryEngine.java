@@ -80,6 +80,7 @@ public final class PairedEntryEngine implements AutoCloseable {
                         AtomicReference<PairState> state, Instant opened,
                         AtomicReference<OrderHandle> makerHandle,
                         Map<String, BigDecimal> orderFilled,
+                        AtomicReference<BigDecimal> hedged,
                         BigDecimal hedgeRatio, boolean closing) {
 
         /** Total maker fill across every order this pair has ever rested, chased or not. */
@@ -158,7 +159,7 @@ public final class PairedEntryEngine implements AutoCloseable {
         BigDecimal hedgeRatio = takerLeg.quantity().divide(makerLeg.quantity(), 12, RoundingMode.HALF_UP);
         Pair pair = new Pair(base, makerLeg, takerLeg,
                 new AtomicReference<>(PairState.WORKING), Instant.now(), new AtomicReference<>(),
-                new ConcurrentHashMap<>(), hedgeRatio, closing);
+                new ConcurrentHashMap<>(), new AtomicReference<>(BigDecimal.ZERO), hedgeRatio, closing);
         allPairs.add(pair);
         long deadline = System.nanoTime() + abandonAfter.toNanos();
         boolean resting = placeMaker(pair, makerLeg.quantity(), makerLimit);
@@ -192,17 +193,83 @@ public final class PairedEntryEngine implements AutoCloseable {
         }
         if (submitted.outcome() == SubmitOutcome.REJECTED) {
             byClientId.remove(clientId);
-            // A rejection on the very first placement means nothing was ever taken - harmless,
-            // skip the position. A rejection on a CHASE re-placement, after some quantity from an
-            // earlier order has already filled and hedged, must not claim ABANDONED: that state
-            // means "no exposure was taken," which would no longer be true.
+            System.out.printf("%s maker rejected: %s%n", pair.base(), submitted.detail());
+            // A rejection is evidence that THIS order did not rest. It is NOT evidence that nothing
+            // filled, and the two are easy to confuse: a venue also rejects a reduce-only order once
+            // the position is already flat, which is exactly what a filled-but-unreported maker looks
+            // like. Measured live 2026-08-20 on CASHCAT - the Hyperliquid maker filled in full at
+            // 19:00:58, no stream event ever arrived, the chase re-placement came back "reduce only
+            // order would increase position", and the pair was recorded ABANDONED while the Bybit leg
+            // sat naked. ABANDONED means "no exposure was taken", it is terminal, and outstanding()
+            // does not report it - so the one position that needed a human was the one nothing
+            // mentioned. Ask the venue what it holds before trusting our own records.
+            if (reconcileMissedFill(pair)) {
+                return false;
+            }
+            // A rejection on a CHASE re-placement, after some quantity from an earlier order has
+            // already filled and hedged, must not claim ABANDONED either, for the same reason.
             if (pair.totalFilled().signum() == 0) {
                 pair.state().set(PairState.ABANDONED);
             }
-            System.out.printf("%s maker rejected: %s%n", pair.base(), submitted.detail());
             return false;
         }
         pair.makerHandle().set(submitted.handle());
+        return true;
+    }
+
+    /**
+     * Asks the maker venue what it actually holds, and hedges anything that filled without the stream
+     * ever saying so. Returns true when such a fill was found.
+     *
+     * <p>The engine's own records come from the order-update stream, so they are exactly as complete
+     * as that stream was. The venue's position is the one account that cannot have missed a fill,
+     * which is why this asks rather than infers - the same reasoning {@code XvfReconciler} is built
+     * on, applied to the one moment there is concrete evidence of a disagreement.
+     *
+     * <p>Position is compared in maker units and in the direction the pair is travelling: an exit
+     * should still hold {@code quantity - filled}, an entry should hold exactly what has filled so
+     * far. Either way a position smaller (exit) or larger (entry) than that means fills landed
+     * unseen, and the difference is what the taker side never hedged.
+     */
+    private boolean reconcileMissedFill(Pair pair) {
+        Leg makerLeg = pair.maker();
+        BigDecimal actual = BigDecimal.ZERO;
+        try {
+            for (VenueGateway.PositionSnapshot p : makerLeg.gateway().positions()) {
+                if (p.venueSymbol().equals(makerLeg.venueSymbol())) {
+                    actual = p.signedQuantity().abs();
+                }
+            }
+        } catch (RuntimeException e) {
+            // Cannot verify, so cannot rule a missed fill out. Say so rather than letting the caller
+            // read "false" as "the venue agrees".
+            System.out.printf("!! %s could not read %s positions to check the rejection against the "
+                    + "venue: %s — if a fill was missed it will not be reported%n",
+                    pair.base(), makerLeg.gateway().name(), e.getMessage());
+            return false;
+        }
+        BigDecimal known = pair.totalFilled();
+        BigDecimal expected = pair.closing() ? makerLeg.quantity().subtract(known) : known;
+        BigDecimal unaccounted = pair.closing() ? expected.subtract(actual) : actual.subtract(expected);
+        if (unaccounted.signum() <= 0) {
+            return false;   // the venue agrees with our records; the rejection meant what it said
+        }
+
+        System.out.printf("!! %s %s holds %s where this engine expected %s — %s filled with no stream "
+                + "event. Hedging it now rather than recording the pair as abandoned.%n",
+                pair.base(), makerLeg.gateway().name(), actual.toPlainString(),
+                expected.toPlainString(), unaccounted.toPlainString());
+        pair.state().compareAndSet(PairState.WORKING, PairState.MAKER_FILLED);
+        BigDecimal quantity;
+        synchronized (pair) {
+            // Recorded under its own key so it adds to the pair's total exactly once, and so a later
+            // stream event for a real order cannot overwrite it.
+            pair.orderFilled().put("xvfpolled-" + System.nanoTime(), unaccounted);
+            quantity = reserveHedge(pair);
+        }
+        if (quantity.signum() > 0) {
+            hedge(pair, quantity);
+        }
         return true;
     }
 
@@ -223,7 +290,13 @@ public final class PairedEntryEngine implements AutoCloseable {
      */
     private void chase(Pair pair, long deadlineNanos) {
         if (isTerminal(pair.state().get())) {
-            return;   // resolved by the stream since the last check; nothing to chase
+            // Resolved since the last check, so nothing to chase - but something may still be
+            // RESTING. Returning bare here was how a written-off pair kept a live order: this is
+            // the last timer that will ever fire for it, so leaving without cancelling leaves the
+            // order with nothing scheduled to clean it up. HEDGED and ABANDONED have nothing
+            // resting by construction and the cancel is a no-op for them.
+            cancelResting(pair);
+            return;
         }
         if (System.nanoTime() >= deadlineNanos) {
             finalizeDeadline(pair);
@@ -233,11 +306,19 @@ public final class PairedEntryEngine implements AutoCloseable {
         OrderHandle current = pair.makerHandle().get();
         if (current != null) {
             pair.maker().gateway().cancel(current);
+            // The cancel can race a fill landing at the venue right now. That fill still reaches
+            // onOrderUpdate() through the OLD client id, which stays registered, so it hedges
+            // exactly as it would without a chase - the EXPOSURE is safe either way. What is not
+            // safe is sizing the replacement from a watermark the racing fill has not reached yet,
+            // because then the replacement covers quantity the venue has already filled and the
+            // position comes out oversized. Measured live 2026-08-20 on SLP: one order for 148,490
+            // filled 26,570 and then 114,940 in the same second, the chase saw only the first, and
+            // it placed a replacement for exactly 148,490 - 26,570 = 121,920, which also filled.
+            // The pair ended hedged but 75% too large, $149 a leg against a target of $85. So ask
+            // the venue what that order actually did before deciding what is left.
+            adoptVenueFill(pair, current);
         }
-        // The cancel can race a fill landing at the venue right now. That fill still reaches
-        // onOrderUpdate() through the OLD client id, which stays registered, so it hedges exactly as
-        // it would without a chase. This re-check only decides whether to place a NEW order for
-        // whatever is left, so it must read state AFTER the cancel, not trust what it was before.
+        // Read state AFTER the cancel and the reconcile, not before: either may have resolved it.
         if (isTerminal(pair.state().get())) {
             return;
         }
@@ -255,8 +336,101 @@ public final class PairedEntryEngine implements AutoCloseable {
         // past an explicit rejection is not chasing a price, it is ignoring a venue's answer.
     }
 
+    /**
+     * Raises a cancelled order's watermark to whatever the venue says it actually filled, and hedges
+     * the difference.
+     *
+     * <p>The watermark is fed by the order-update stream, so between a fill landing and its event
+     * arriving the engine's figure is legitimately behind. That gap is harmless for exposure - the
+     * event still hedges when it turns up - but it is not harmless for sizing a replacement order,
+     * which is why this runs before the remainder is computed rather than being left to the stream.
+     *
+     * <p>Writes under the same client id the stream uses, so a late event for that order sees a
+     * watermark already at or above its own cumulative and correctly adds nothing.
+     */
+    private void adoptVenueFill(Pair pair, OrderHandle handle) {
+        Leg makerLeg = pair.maker();
+        BigDecimal venueFilled;
+        try {
+            Optional<OrderSnapshot> snapshot =
+                    makerLeg.gateway().orderByClientId(handle.venueSymbol(), handle.clientOrderId());
+            if (snapshot.isEmpty()) {
+                return;
+            }
+            venueFilled = snapshot.get().filledQuantity();
+        } catch (RuntimeException e) {
+            // Cannot confirm, so do not guess. Leaving the watermark alone keeps the old behaviour:
+            // the replacement may overlap, which the imbalance check downstream can still catch.
+            System.out.printf("!! %s could not read the cancelled maker back from %s: %s%n",
+                    pair.base(), makerLeg.gateway().name(), e.getMessage());
+            return;
+        }
+        if (venueFilled == null || venueFilled.signum() <= 0) {
+            return;
+        }
+        BigDecimal quantity;
+        synchronized (pair) {
+            BigDecimal known = pair.orderFilled().getOrDefault(handle.clientOrderId(), BigDecimal.ZERO);
+            if (venueFilled.compareTo(known) <= 0) {
+                return;   // the stream was already level with the venue
+            }
+            System.out.printf("!! %s cancelled maker had filled %s on %s, the stream had reported %s "
+                    + "- adopting the venue's figure before re-sizing%n",
+                    pair.base(), venueFilled.toPlainString(), makerLeg.gateway().name(),
+                    known.toPlainString());
+            pair.orderFilled().put(handle.clientOrderId(), venueFilled);
+            quantity = reserveHedge(pair);
+        }
+        pair.state().compareAndSet(PairState.WORKING, PairState.MAKER_FILLED);
+        if (quantity.signum() > 0) {
+            hedge(pair, quantity);
+        }
+    }
+
+    /**
+     * True when this quantity is worth too little for the venue to accept.
+     *
+     * <p>Priced off the touch rather than a stored entry price: the minimum is checked against what
+     * the order would be worth when it is sent. A quote failure is treated as "not below" so a
+     * transient price problem never silently withholds a hedge - the wrong direction to fail in.
+     */
+    private static boolean belowMinNotional(Leg taker, BigDecimal quantity,
+                                            VenueGateway.SymbolRules rules) {
+        if (rules.minNotionalUsd() == null || rules.minNotionalUsd().signum() <= 0) {
+            return false;
+        }
+        try {
+            BigDecimal price = taker.gateway().topOfBook(taker.venueSymbol()).touch(taker.side());
+            return price.signum() > 0
+                    && quantity.multiply(price).compareTo(rules.minNotionalUsd()) < 0;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
     private static boolean isTerminal(PairState s) {
         return s == PairState.ABANDONED || s == PairState.HEDGED || s == PairState.UNHEDGED_ALERT;
+    }
+
+    /**
+     * Cancels whatever maker order is still resting for this pair, and forgets the handle so a
+     * second call does nothing.
+     *
+     * <p>Failures are swallowed on purpose: every reason a cancel fails here - already filled,
+     * already cancelled, unknown to the venue - means nothing is resting, which is the outcome being
+     * asked for. Throwing would abort a shutdown path whose whole job is to leave nothing behind.
+     */
+    private void cancelResting(Pair pair) {
+        OrderHandle current = pair.makerHandle().getAndSet(null);
+        if (current == null) {
+            return;
+        }
+        try {
+            pair.maker().gateway().cancel(current);
+        } catch (RuntimeException e) {
+            System.out.printf("   %s maker cancel returned \"%s\" - already filled or gone%n",
+                    pair.base(), e.getMessage());
+        }
     }
 
     /** Deadline reached: stop resting, and for an exit only, cross whatever is still open. */
@@ -264,12 +438,17 @@ public final class PairedEntryEngine implements AutoCloseable {
         boolean stopped = pair.state().compareAndSet(PairState.WORKING, PairState.ABANDONED)
                 || pair.state().compareAndSet(PairState.MAKER_FILLED, PairState.ABANDONED);
         if (!stopped) {
-            return;   // already resolved by the stream
+            // Already terminal. HEDGED and ABANDONED have nothing resting by construction, but
+            // UNHEDGED_ALERT does: it is set from the hedge path, which never touches the maker
+            // order, and every other route out of here is short-circuited by isTerminal(). Measured
+            // live 2026-08-20 - a BNT maker for 281 kept resting after the pair was written off,
+            // kept filling in ones, and each fill was too small to hedge, so the imbalance grew
+            // with nothing watching it. Cancel it: the pair is not coming back, and an order nobody
+            // is tracking is exactly what the abandon path exists to prevent.
+            cancelResting(pair);
+            return;
         }
-        OrderHandle current = pair.makerHandle().get();
-        if (current != null) {
-            pair.maker().gateway().cancel(current);
-        }
+        cancelResting(pair);
         if (!pair.closing()) {
             System.out.printf("%s abandoned: maker never filled within %s%n", pair.base(), abandonAfter);
             return;
@@ -344,45 +523,71 @@ public final class PairedEntryEngine implements AutoCloseable {
         }
         pair.state().compareAndSet(PairState.WORKING, PairState.MAKER_FILLED);
 
-        BigDecimal increment;
-        // Serialised per pair: two updates racing here would each read the same watermark and both
-        // hedge the same increment.
+        BigDecimal quantity;
+        // Serialised per pair: two updates racing here would each read the same watermarks and both
+        // send the same hedge.
         synchronized (pair) {
             BigDecimal previous = pair.orderFilled().getOrDefault(update.clientOrderId(), BigDecimal.ZERO);
-            increment = update.filledQuantity().subtract(previous);
-            if (increment.signum() <= 0) {
+            if (update.filledQuantity().compareTo(previous) <= 0) {
                 return;  // duplicate or out-of-order event for THIS order; nothing new is exposed
             }
             pair.orderFilled().put(update.clientOrderId(), update.filledQuantity());
+            quantity = reserveHedge(pair);
         }
-        hedge(pair, update.clientOrderId(), increment);
+        if (quantity.signum() <= 0) {
+            return;  // what is newly owed still rounds below one taker step; the next fill sweeps it
+        }
+        hedge(pair, quantity);
     }
 
     /**
-     * Sends the offsetting order for ONE increment of maker fill. Retries rather than giving up:
-     * giving up leaves the increment naked.
+     * How much the taker side still owes, in taker units, rounded down to a whole step and reserved
+     * against {@link Pair#hedged()} so a concurrent update cannot send it twice. Call this holding
+     * the pair's monitor.
      *
-     * @param sourceClientId the order this increment came from, needed only to roll back that
-     *                       order's watermark if the increment rounds to nothing on the taker side
-     * @param makerFilled    the newly filled amount in MAKER units, already differenced from that
-     *                       order's own cumulative. Converted to taker units by {@code hedgeRatio}.
+     * <p><b>Computed from the pair's TOTAL maker fill, never from one increment.</b> Rounding each
+     * increment down on its own discards a fraction of a step every time, and a chased maker delivers
+     * many increments - so the shortfall accumulates instead of cancelling out. Measured live
+     * 2026-08-20 during a full close: TRUTH filled in four increments and left 2 units unhedged on
+     * Binance, WAL in four and left 3, COTI 2, GRIFFAIN 1, BLUAI 1, BMT 1. Every one of those was a
+     * whole step or more - closeable, not dust - and each was a small naked position left behind by
+     * an exit that reported success. Differencing against the running total carries every remainder
+     * into the next hedge, so the taker side can end at most one part-step short rather than one per
+     * fill event.
      */
-    private void hedge(Pair pair, String sourceClientId, BigDecimal makerFilled) {
+    private BigDecimal reserveHedge(Pair pair) {
         Leg taker = pair.taker();
-        // Convert maker units to taker units BEFORE rounding. Hedging makerFilled directly was
-        // correct only when both venues quote the same contract size, which 3.6% of historical
-        // selections do not.
-        BigDecimal quantity = round(makerFilled.multiply(pair.hedgeRatio()),
-                taker.gateway().rules(taker.venueSymbol()).stepSize());
-        if (quantity.signum() <= 0) {
-            // The converted increment rounded below one taker step. Leaving the watermark advanced
-            // would strand it, so hand it back to the SAME order's watermark to be swept up with
-            // that order's next fill.
-            synchronized (pair) {
-                pair.orderFilled().computeIfPresent(sourceClientId, (id, v) -> v.subtract(makerFilled));
-            }
-            return;
+        VenueGateway.SymbolRules rules = taker.gateway().rules(taker.venueSymbol());
+        BigDecimal owed = pair.totalFilled().multiply(pair.hedgeRatio()).subtract(pair.hedged().get());
+        BigDecimal quantity = round(owed, rules.stepSize());
+        // Below the venue's minimum notional the order cannot be sent at all - Binance answers -4164,
+        // "notional must be no smaller than 5". Withholding it here is the same move as withholding a
+        // sub-step quantity: nothing is reserved, so the amount stays owed and the next fill sweeps it
+        // up in a single larger order. Sending it instead burns five retries and then raises
+        // UNHEDGED_ALERT for what is really a $2 rounding tail - measured live 2026-08-20, where a
+        // 108-unit ESPORTS partial worth $1.73 and a 1-unit BNT partial worth $0.30 each produced a
+        // false alert on a pair that went on to hedge correctly moments later.
+        if (quantity.signum() > 0 && belowMinNotional(taker, quantity, rules)) {
+            return BigDecimal.ZERO;
         }
+        if (quantity.signum() > 0) {
+            // Reserved BEFORE the order is sent, matching the fill watermark's own ordering: a failed
+            // hedge under-hedges and raises UNHEDGED_ALERT, which a human sees, while the reverse
+            // risks a silent double hedge, which nobody sees.
+            pair.hedged().set(pair.hedged().get().add(quantity));
+        }
+        return quantity;
+    }
+
+    /**
+     * Sends one offsetting order, for a quantity {@link #reserveHedge} has already converted to taker
+     * units, rounded to a step and reserved. Retries rather than giving up: giving up leaves the
+     * exposure naked.
+     *
+     * @param quantity taker units to send, always a whole number of steps and always greater than zero
+     */
+    private void hedge(Pair pair, BigDecimal quantity) {
+        Leg taker = pair.taker();
         for (int attempt = 1; attempt <= 5; attempt++) {
             String hedgeId = "xvfh-" + pair.base() + "-" + System.nanoTime();
             try {
@@ -421,9 +626,10 @@ public final class PairedEntryEngine implements AutoCloseable {
         // Deliberately loud and deliberately not self-healing. An unhedged leg is the one state that
         // must reach a human; silently retrying forever would hide it.
         pair.state().set(PairState.UNHEDGED_ALERT);
-        System.out.printf("!!!! %s UNHEDGED — maker filled %s on %s, hedge on %s FAILED. "
+        System.out.printf("!!!! %s UNHEDGED — %s %s on %s FAILED against a filled maker on %s. "
                 + "Close manually or the position is directional.%n",
-                pair.base(), makerFilled, pair.maker().gateway().name(), taker.gateway().name());
+                pair.base(), taker.side(), quantity, taker.gateway().name(),
+                pair.maker().gateway().name());
     }
 
     /**
@@ -510,5 +716,12 @@ public final class PairedEntryEngine implements AutoCloseable {
     @Override
     public void close() {
         timers.shutdownNow();
+        // The timers were the only thing that would ever have cancelled a resting order, so once
+        // they are gone anything still resting is unmonitored: it can fill after the process exits,
+        // with no listener to hedge it and no record that it happened. Cancelling here is the last
+        // chance to stop that, and it is a no-op for every pair that ended cleanly.
+        for (Pair pair : allPairs) {
+            cancelResting(pair);
+        }
     }
 }

@@ -32,6 +32,7 @@ class PairedEntryEngineTest {
     private static final class RecordingGateway implements VenueGateway {
         private final String name;
         final List<BigDecimal> marketOrders = new ArrayList<>();
+        final List<BigDecimal> makerOrders = new ArrayList<>();
         final List<BigDecimal> caps = new ArrayList<>();
         final List<Boolean> makerReduceOnly = new ArrayList<>();
         final List<Boolean> takerReduceOnly = new ArrayList<>();
@@ -47,8 +48,14 @@ class PairedEntryEngineTest {
             return name;
         }
 
+        /** What the venue reports holding. Most tests assert on orders sent, not on venue state. */
+        java.util.List<PositionSnapshot> positionsAnswer = java.util.List.of();
+
         @Override public java.util.List<PositionSnapshot> positions() {
-            return java.util.List.of();   // these tests assert on orders sent, not on venue state
+            return positionsAnswer;
+        }
+        @Override public BigDecimal availableCapital() {
+            return new BigDecimal("100000");
         }
         @Override public void setLeverage(String venueSymbol, int leverage) {
         }
@@ -60,6 +67,7 @@ class PairedEntryEngineTest {
                                                     String clientOrderId, boolean reduceOnly) {
             makerReduceOnly.add(reduceOnly);
             makerClientIds.add(clientOrderId);
+            makerOrders.add(q);
             return new SubmitResult(nextOutcome, new OrderHandle(name, s, "V1", clientOrderId), "test");
         }
         @Override public SubmitResult placeCappedIoc(String s, Side side, BigDecimal q,
@@ -70,8 +78,16 @@ class PairedEntryEngineTest {
             takerReduceOnly.add(reduceOnly);
             return new SubmitResult(nextOutcome, new OrderHandle(name, s, "V2", clientOrderId), "test");
         }
+        /** Per-order answers. The real API is keyed by client id, so a shared stub would let one
+         *  order's fill be adopted again under the next order's id - which is not a thing a venue
+         *  can do, and would hide a double-count rather than expose one. */
+        final java.util.Map<String, OrderSnapshot> lookupByClientId = new java.util.HashMap<>();
+
         @Override public java.util.Optional<OrderSnapshot> orderByClientId(String s, String c) {
             lookups++;
+            if (lookupByClientId.containsKey(c)) {
+                return java.util.Optional.of(lookupByClientId.get(c));
+            }
             return java.util.Optional.ofNullable(lookupAnswer);
         }
         @Override public TopOfBook topOfBook(String venueSymbol) {
@@ -495,6 +511,182 @@ class PairedEntryEngineTest {
             engine.onOrderUpdate(cumulative(id, "3", VenueGateway.OrderState.FILLED));
             assertEquals(0, taker.marketOrders.get(0).compareTo(new BigDecimal("3")),
                     "matched units must be unaffected by the conversion");
+        }
+    }
+
+    /**
+     * The residue regression, measured live 2026-08-20 on a full close: rounding each fill increment
+     * down to a step on its own throws away a fraction every time, and a chased maker delivers many
+     * increments. TRUTH filled in four and left 2 units unhedged on Binance, WAL in four and left 3.
+     * Every remainder must carry into the next hedge instead.
+     */
+    @Test
+    void roundingRemaindersCarryForwardRatherThanAccumulatingAsResidue() throws Exception {
+        RecordingGateway maker = new RecordingGateway("maker");
+        RecordingGateway taker = new RecordingGateway("taker");
+        taker.step = BigDecimal.ONE;    // a whole-unit step, as COTI/BMT/TRUTH/WAL all have on Binance
+        try (PairedEntryEngine engine = new PairedEntryEngine(Duration.ofMinutes(30))) {
+            engine.open("X",
+                    new PairedEntryEngine.Leg(maker, "XUSDT", VenueGateway.Side.SELL, new BigDecimal("6")),
+                    new PairedEntryEngine.Leg(taker, "XUSDT", VenueGateway.Side.BUY, new BigDecimal("6")),
+                    new BigDecimal("100"));
+            java.lang.reflect.Field field = PairedEntryEngine.class.getDeclaredField("byClientId");
+            field.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            var map = (java.util.Map<String, ?>) field.get(engine);
+            String id = map.keySet().iterator().next();
+
+            // Four increments of 1.5. Rounded individually each becomes 1, hedging 4 against a maker
+            // fill of 6 and leaving 2 units naked.
+            engine.onOrderUpdate(cumulative(id, "1.5", VenueGateway.OrderState.PARTIALLY_FILLED));
+            engine.onOrderUpdate(cumulative(id, "3.0", VenueGateway.OrderState.PARTIALLY_FILLED));
+            engine.onOrderUpdate(cumulative(id, "4.5", VenueGateway.OrderState.PARTIALLY_FILLED));
+            engine.onOrderUpdate(cumulative(id, "6.0", VenueGateway.OrderState.FILLED));
+
+            BigDecimal hedged = taker.marketOrders.stream()
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            assertEquals(0, hedged.compareTo(new BigDecimal("6")),
+                    () -> "a maker fill of 6 must hedge 6 in total, not " + hedged
+                            + " (sent: " + taker.marketOrders + ")");
+        }
+    }
+
+    /**
+     * The CASHCAT regression, measured live 2026-08-20. The Hyperliquid maker leg filled in full, no
+     * stream event arrived, and the chase re-placement was rejected with "reduce only order would
+     * increase position" - the venue's way of saying the position is already flat. The engine read
+     * that rejection as "nothing ever filled", recorded ABANDONED, and since outstanding() reports
+     * only MAKER_FILLED and UNHEDGED_ALERT, the one pair holding a naked leg was the one nothing
+     * mentioned.
+     */
+    @Test
+    void aRejectionAfterAnUnreportedFillHedgesInsteadOfSilentlyAbandoning() throws Exception {
+        RecordingGateway maker = new RecordingGateway("maker");
+        RecordingGateway taker = new RecordingGateway("taker");
+        // The venue holds nothing: this exit's maker leg has already filled in full, unreported.
+        maker.positionsAnswer = java.util.List.of();
+        maker.nextOutcome = SubmitOutcome.REJECTED;
+        try (PairedEntryEngine engine = new PairedEntryEngine(Duration.ofMinutes(30))) {
+            engine.close("X",
+                    new PairedEntryEngine.Leg(maker, "XUSDT", VenueGateway.Side.BUY, new BigDecimal("3")),
+                    new PairedEntryEngine.Leg(taker, "XUSDT", VenueGateway.Side.SELL, new BigDecimal("3")),
+                    new BigDecimal("100"));
+
+            assertQuantities(List.of("3"), taker.marketOrders);
+        }
+    }
+
+    /**
+     * The -4164 regression, measured live 2026-08-20. A small maker partial produces a hedge worth
+     * less than the venue will accept - Binance refuses anything under $5 notional - and sending it
+     * burns five retries and then raises UNHEDGED_ALERT on a pair that hedges correctly moments
+     * later. A 108-unit ESPORTS partial worth $1.73 and a 1-unit BNT partial worth $0.30 both did
+     * exactly that. The amount must be withheld and swept up by the next fill instead.
+     */
+    @Test
+    void aHedgeWorthLessThanTheVenueMinimumWaitsForTheNextFill() throws Exception {
+        RecordingGateway maker = new RecordingGateway("maker");
+        RecordingGateway taker = new RecordingGateway("taker");
+        try (PairedEntryEngine engine = new PairedEntryEngine(Duration.ofMinutes(30))) {
+            String id = openOne(engine, maker, taker);   // both legs sized 3, touch is 99/101
+
+            // 0.04 at a bid of 99 is $3.96 - under the $5 minimum RecordingGateway reports.
+            engine.onOrderUpdate(cumulative(id, "0.04", VenueGateway.OrderState.PARTIALLY_FILLED));
+            assertTrue(taker.marketOrders.isEmpty(),
+                    () -> "a $3.96 hedge must not be sent, but got " + taker.marketOrders);
+
+            // The next fill carries it: 0.10 total is $9.90, so the whole amount goes at once.
+            engine.onOrderUpdate(cumulative(id, "0.10", VenueGateway.OrderState.PARTIALLY_FILLED));
+            assertQuantities(List.of("0.100"), taker.marketOrders);
+        }
+    }
+
+    /**
+     * The SLP over-sizing regression, measured live 2026-08-20. One maker order for 148,490 filled
+     * 26,570 and then 114,940 in the same second. The chase cancelled it having seen only the first
+     * chunk, sized the replacement from that stale watermark - exactly 148,490 - 26,570 = 121,920 -
+     * and that filled too. The pair came out hedged but 75% oversized, $149 a leg against $85. The
+     * cancelled order's true fill has to be read back from the venue before the remainder is sized.
+     */
+    @Test
+    void aChaseSizesTheReplacementFromTheVenuesFillNotAStaleWatermark() throws Exception {
+        RecordingGateway maker = new RecordingGateway("maker");
+        RecordingGateway taker = new RecordingGateway("taker");
+        // Chase almost immediately so the test does not wait on the real 30s cadence.
+        try (PairedEntryEngine engine =
+                     new PairedEntryEngine(Duration.ofMinutes(30), Duration.ofMillis(150))) {
+            String id = openOne(engine, maker, taker);        // both legs sized 3
+
+            // The stream reports only the first chunk...
+            engine.onOrderUpdate(cumulative(id, "1", VenueGateway.OrderState.PARTIALLY_FILLED));
+            // ...while the venue has actually filled 2 on THAT order. Keyed by client id: the
+            // replacement order is a different order and has filled nothing.
+            maker.lookupByClientId.put(id, new OrderSnapshot(
+                    new OrderHandle("maker", "XUSDT", "V1", id),
+                    VenueGateway.OrderState.CANCELLED, new BigDecimal("2"), new BigDecimal("100")));
+
+            Thread.sleep(500);   // several chases fire; only the first one has anything to adopt
+
+            // The first replacement is what the bug got wrong. Sized from the venue's 2 it asks for
+            // 1; sized from the stale watermark of 1 it would ask for 2, and the extra unit is the
+            // over-size. Later replacements repeat the same 1 because nothing further fills, which
+            // is ordinary chasing and not what this test is pinning.
+            assertTrue(maker.makerOrders.size() >= 2, "a chase must have re-placed the remainder");
+            assertEquals(0, maker.makerOrders.get(1).compareTo(BigDecimal.ONE),
+                    () -> "replacement must be sized from the venue's fill of 2, leaving 1 - got "
+                            + maker.makerOrders.get(1) + " (whole sequence " + maker.makerOrders + ")");
+            BigDecimal hedged = taker.marketOrders.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+            assertEquals(0, hedged.compareTo(new BigDecimal("2")),
+                    () -> "the venue's 2 filled must be hedged exactly once, got " + taker.marketOrders);
+        }
+    }
+
+    /**
+     * The BNT regression, measured live 2026-08-20. UNHEDGED_ALERT is terminal and is set from the
+     * hedge path, which never touches the maker order - and every route that would have cancelled it
+     * is short-circuited by isTerminal(). A written-off BNT maker for 281 kept resting, kept filling
+     * in ones, and each fill was too small to hedge, so the imbalance grew with nothing watching.
+     */
+    @Test
+    void aPairWrittenOffAsUnhedgedStillHasItsRestingMakerCancelled() throws Exception {
+        RecordingGateway maker = new RecordingGateway("maker");
+        RecordingGateway taker = new RecordingGateway("taker");
+        // An hour between chases, so no ordinary chase can cancel the order and mask the bug: the
+        // only thing left that could clean up is shutdown.
+        try (PairedEntryEngine engine =
+                     new PairedEntryEngine(Duration.ofMinutes(30), Duration.ofHours(1))) {
+            String id = openOne(engine, maker, taker);
+
+            // Every hedge attempt is refused, which drives the pair to UNHEDGED_ALERT - a terminal
+            // state set from the hedge path, which never touches the maker order.
+            taker.nextOutcome = SubmitOutcome.REJECTED;
+            engine.onOrderUpdate(cumulative(id, "3", VenueGateway.OrderState.FILLED));
+            assertEquals(0, maker.cancels, "no chase should have run at an hour cadence");
+        }
+        // close() has now run. It shuts the timers down, so after this point nothing is scheduled
+        // that could ever cancel the order - if it is still resting here it outlives the process,
+        // fills with no listener, and leaves a naked leg nobody knows about.
+        assertTrue(maker.cancels > 0,
+                "a pair written off as UNHEDGED must not leave its maker order resting at shutdown");
+    }
+
+    /** The same check must not fire when the venue agrees nothing filled, or every rejection hedges. */
+    @Test
+    void aRejectionWithTheVenueStillHoldingTheLegDoesNotHedge() throws Exception {
+        RecordingGateway maker = new RecordingGateway("maker");
+        RecordingGateway taker = new RecordingGateway("taker");
+        // The full short is still there, so the rejection meant exactly what it said.
+        maker.positionsAnswer = java.util.List.of(new VenueGateway.PositionSnapshot(
+                "maker", "XUSDT", new BigDecimal("-3"), new BigDecimal("100")));
+        maker.nextOutcome = SubmitOutcome.REJECTED;
+        try (PairedEntryEngine engine = new PairedEntryEngine(Duration.ofMinutes(30))) {
+            engine.close("X",
+                    new PairedEntryEngine.Leg(maker, "XUSDT", VenueGateway.Side.BUY, new BigDecimal("3")),
+                    new PairedEntryEngine.Leg(taker, "XUSDT", VenueGateway.Side.SELL, new BigDecimal("3")),
+                    new BigDecimal("100"));
+
+            assertTrue(taker.marketOrders.isEmpty(),
+                    () -> "nothing filled, so nothing should hedge, but sent " + taker.marketOrders);
         }
     }
 }
