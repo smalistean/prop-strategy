@@ -22,8 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Imports daily candles from Bybit and dYdX so basis drift can be charged on the cross-venue
- * funding spread.
+ * Imports daily candles from Bybit, dYdX and Aster so basis drift can be charged on the cross-venue
+ * funding spread, and so the $500k weekly liquidity floor can be enforced on each venue's funding.
  *
  * <p>Probed before writing:
  * <ul>
@@ -32,6 +32,11 @@ import java.util.List;
  *       {@code [startMs, open, high, low, close, volume, turnover]}, and are returned NEWEST FIRST.</li>
  *   <li><b>dYdX</b> {@code /v4/candles} returns 1,000 candles, which at daily resolution already
  *       covers its entire history from 2023-10 — one page per market, no pagination needed.</li>
+ *   <li><b>Aster</b> {@code /fapi/v1/klines} is Binance-shaped: positional arrays
+ *       {@code [openMs, open, high, low, close, volume, closeMs, ...]}, paginates backwards via
+ *       {@code endTime} the same as Bybit. Only symbols surviving the same crypto-only filter as
+ *       {@code VenueFundingImportApplication}'s aster adapter are ever requested here - listing a
+ *       stock's candles would be as wrong as importing its funding.</li>
  * </ul>
  *
  * <p>dYdX also publishes {@code orderbookMidPriceClose}. It is stored because on a thin market the
@@ -77,6 +82,30 @@ public final class VenueCandleImportApplication {
                     .fieldNames().forEachRemaining(symbols::add);
             run(client, database, "dydx", symbols, floor);
         }
+        if (only.contains("aster")) {
+            List<String> symbols = new ArrayList<>();
+            for (JsonNode s : get(client, "https://fapi.asterdex.com/fapi/v1/exchangeInfo")
+                    .path("symbols")) {
+                if (!"TRADING".equals(s.path("status").asText())) {
+                    continue;
+                }
+                String quote = s.path("quoteAsset").asText();
+                if (!"USDT".equals(quote) && !"USDC".equals(quote)) {
+                    continue;
+                }
+                boolean stock = false;
+                for (JsonNode sub : s.path("underlyingSubType")) {
+                    if ("STOCK".equals(sub.asText())) {
+                        stock = true;
+                        break;
+                    }
+                }
+                if (!stock) {
+                    symbols.add(s.path("symbol").asText());
+                }
+            }
+            run(client, database, "aster", symbols, floor);
+        }
     }
 
     private static void run(HttpClient client, DatabaseConfig database, String venue,
@@ -114,8 +143,11 @@ public final class VenueCandleImportApplication {
                 database.url(), database.user(), database.password())) {
             connection.setAutoCommit(false);
             for (int page = 0; page < 20; page++) {
-                List<Candle> candles = "bybit".equals(venue)
-                        ? bybit(client, symbol, cursor) : dydx(client, symbol);
+                List<Candle> candles = switch (venue) {
+                    case "bybit" -> bybit(client, symbol, cursor);
+                    case "aster" -> aster(client, symbol, cursor);
+                    default -> dydx(client, symbol);
+                };
                 if (candles.isEmpty()) {
                     break;
                 }
@@ -148,6 +180,7 @@ public final class VenueCandleImportApplication {
                     break;
                 }
                 cursor = oldest.toEpochMilli() - 1;
+                cursor = oldest.toEpochMilli() - 1;
             }
             return written;
         } catch (SQLException e) {
@@ -167,6 +200,30 @@ public final class VenueCandleImportApplication {
             }
             try {
                 Instant open = Instant.ofEpochMilli(Long.parseLong(row.get(0).asText()));
+                if (open.isBefore(PLAUSIBLE_FROM)) {
+                    continue;
+                }
+                out.add(new Candle(open, dec(row.get(1)), dec(row.get(2)), dec(row.get(3)),
+                        dec(row.get(4)), null, dec(row.get(5))));
+            } catch (NumberFormatException e) {
+                // One malformed candle must not cost a symbol its history.
+            }
+        }
+        return out;
+    }
+
+    /** Binance-shaped positional arrays, newest last: [openMs, open, high, low, close, volume,
+     * closeMs, quoteVolume, trades, takerBuyBase, takerBuyQuote, ignore]. */
+    private static List<Candle> aster(HttpClient client, String symbol, Long endCursor) {
+        JsonNode rows = get(client, "https://fapi.asterdex.com/fapi/v1/klines?symbol=" + symbol
+                + "&interval=1d&limit=1000" + (endCursor == null ? "" : "&endTime=" + endCursor));
+        List<Candle> out = new ArrayList<>();
+        for (JsonNode row : rows) {
+            if (row.size() < 6) {
+                continue;
+            }
+            try {
+                Instant open = Instant.ofEpochMilli(row.get(0).asLong());
                 if (open.isBefore(PLAUSIBLE_FROM)) {
                     continue;
                 }

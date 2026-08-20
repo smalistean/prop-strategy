@@ -22,11 +22,13 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * Imports perpetual funding history from Bybit, OKX, Gate, Bitget and dYdX.
+ * Imports perpetual funding history from Binance, Bybit, OKX, Gate, Bitget, dYdX and Aster.
  *
- * <p>One class with per-venue adapters rather than five near-identical importers: the differences
- * are a URL, a JSON path and a timestamp unit, and five copies would drift apart the moment one
- * needed a fix.
+ * <p>One class with per-venue adapters rather than near-identical importers: the differences are a
+ * URL, a JSON path and a timestamp unit, and separate copies would drift apart the moment one needed
+ * a fix. Not wired into {@code scripts/xvf-refresh.sh}'s daily cron - the venue list there is a
+ * literal argument, not this class's default, so adding Aster here does not change what runs
+ * unattended. Research-only until decided otherwise.
  *
  * <h2>What each venue actually serves — probed, not assumed</h2>
  * <table>
@@ -152,7 +154,45 @@ public final class VenueFundingImportApplication {
                 // "FARTCOIN,RAYDIUM,9BB6NF...PUMP-USD". Splitting on "-" alone returns 61 characters
                 // of address instead of FARTCOIN, which would store a base that can never join to the
                 // same asset on another venue. The segment before the first comma is the asset.
-                s -> s.split(",")[0].split("-")[0], 100));
+                s -> s.split(",")[0].split("-")[0], 100),
+
+            // Aster: a Binance-API-shaped perpetual DEX (RESEARCH_OPTIONS.md item 1 follow-up,
+            // XVF_LIVE_FINDINGS.md §12). Its instruments list carries genuine crypto AND tokenized
+            // stocks (AAPL, TSLA, SKHYNIX, ...) under plain crypto-looking tickers - the same
+            // collision risk as the ON Semiconductor incident, but with an explicit field to filter
+            // on this time: underlyingSubType contains "STOCK" for every non-crypto listing found.
+            // Filtered here, at listSymbols, so a stock can never enter funding history at all -
+            // stricter than XvfExecutionApplication's requireCryptoPerp, which only refuses at
+            // sizing time and would need this same check duplicated if this filter lived downstream.
+            new Venue("aster", "aster_perp_funding_rate",
+                c -> {
+                    List<String> out = new ArrayList<>();
+                    for (JsonNode s : get(c, "https://fapi.asterdex.com/fapi/v1/exchangeInfo")
+                            .path("symbols")) {
+                        if (!"TRADING".equals(s.path("status").asText())) {
+                            continue;
+                        }
+                        String quote = s.path("quoteAsset").asText();
+                        if (!"USDT".equals(quote) && !"USDC".equals(quote)) {
+                            continue;
+                        }
+                        boolean stock = false;
+                        for (JsonNode sub : s.path("underlyingSubType")) {
+                            if ("STOCK".equals(sub.asText())) {
+                                stock = true;
+                                break;
+                            }
+                        }
+                        if (!stock) {
+                            out.add(s.path("symbol").asText());
+                        }
+                    }
+                    return out;
+                },
+                (s, cursor) -> "https://fapi.asterdex.com/fapi/v1/fundingRate?symbol=" + s
+                        + "&limit=1000" + (cursor == null ? "" : "&endTime=" + cursor),
+                j -> payments(j, "fundingTime", "fundingRate", 1),
+                s -> strip(s, "USDT", "USDC"), 1000));
     }
 
     public static void main(String[] args) throws Exception {
