@@ -165,13 +165,14 @@ public final class XvfSignalEngine {
      * eligible yesterday.
      *
      * <p>Measured 2024-01 to 2026-08 by comparing what a candidate's trailing signal read against what
-     * it went on to actually realise over the following hold: a candidate on its FIRST eligible day
-     * reads a well-calibrated number - 99% of realised for CEX-CEX, 90% for CEX-DEX - but a candidate
-     * that was ALSO eligible the day before reads roughly double what it goes on to pay (46% of
-     * realised for CEX-CEX, 51% for CEX-DEX, flat across every later streak length tested). The
-     * trailing window is a sum, so a gap that has been open for days keeps accumulating in it even as
-     * the forward-looking reality - what is left to capture - has already started shrinking. Confirmed
-     * live 2026-08-20: a book reading a 20-30% blended signal at entry realised 9.6% annualised.
+     * it went on to actually realise over the following hold, with the forward window starting the
+     * day after the signal (an earlier version shared day 1 between the two windows, letting a large
+     * print count on both sides - see XvfConfig.STALE_SIGNAL_DISCOUNT's javadoc): a candidate on its
+     * FIRST eligible day reads 43% of realised for CEX-CEX, 66% for CEX-DEX; a candidate ALSO eligible
+     * the day before reads roughly 29-31%/43-56% of realised, flat across every later streak length
+     * tested. The gap between fresh and stale is real but smaller than first measured; the larger,
+     * separate finding is that even a fresh signal over-reads its own forward realisation by more than
+     * 2x, which this discount does not address at all.
      *
      * <p>Applied as a flat discount rather than a smooth decay because the ratio does not decay further
      * past the first extra day - streak 2, streak 3-5 and streak 6+ all measured within a few points of

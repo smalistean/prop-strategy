@@ -53,14 +53,21 @@ public final class XvfConfig {
     public static final int LOOKBACK_DAYS = 7;
 
     /**
-     * Trailing window for realised funding on CEX-CEX pairs, in days, matching their 3-day hold.
-     * A shared 7-day window used to be applied here too; candidates it selected went on to realise
-     * 50.4% annualised over the following 3 days against 61.3% for a 3-day-lookback selection
-     * (2024-01 to 2026-08, n=2546 vs 2573 candidate-days). CEX-CEX gaps get arbed shut within days,
-     * so the extra 4 days of history in the 7-day window were diluting the signal with a gap that
-     * had already started closing.
+     * Trailing window for realised funding on CEX-CEX pairs, in days. Kept equal to
+     * {@link #LOOKBACK_DAYS} deliberately - this constant exists so a pair-type-specific window can
+     * be set here independently once one is actually supported by evidence, not because 7 is known
+     * to be right for CEX-CEX. It briefly was 3, on a backtest that read 61.3% realised for a
+     * 3-day-lookback selection against 50.4% for 7 (2024-01 to 2026-08, n=2573 vs 2546). That
+     * backtest had two independently confirmed bugs: it classified pair type from every venue with
+     * data for a base (`array_agg(venue)`) rather than the two venues actually selected, and its
+     * "forward" realised window shared its first day with the trailing signal window, so a large
+     * print could both qualify a candidate and be recounted as what it went on to earn. Corrected
+     * for both, the result reverses: 19.5% for a 7-day-lookback selection against 18.5% for 3-day
+     * (same window, n=8740 vs 9974) - no evidence supports 3 over 7 for CEX-CEX. See
+     * scripts/analysis-lookback-cadence.sql's header for the corrected query and
+     * XVF_CALCULATIONS_INDEPENDENT_REVIEW.md for how this was found.
      */
-    public static final int LOOKBACK_DAYS_CEX_CEX = 3;
+    public static final int LOOKBACK_DAYS_CEX_CEX = LOOKBACK_DAYS;
 
     /**
      * Minimum annualised spread to open. Swept: 12.0% net at a 0% threshold, 19.0% at 20%, 25.4% at
@@ -72,15 +79,24 @@ public final class XvfConfig {
      * Multiplier applied to a candidate's signal when it was already eligible the day before, in
      * {@code XvfSignalEngine.rankedCandidates}.
      *
-     * <p>Measured 2024-01 to 2026-08: a candidate on its first eligible day realises close to what it
-     * reads (99% for CEX-CEX, 90% for CEX-DEX), but a candidate that was also eligible the day before
-     * realises roughly half (46% for CEX-CEX, 51% for CEX-DEX) - and that ratio does not decay further
-     * with more days eligible, it is flat from the second day on. The trailing window is a sum, so a
-     * gap that has been open for days keeps accumulating in it after the forward-looking opportunity
-     * has already started closing. Confirmed live 2026-08-20: a book that read a 20-30% blended signal
-     * at entry realised 9.6% annualised.
+     * <p>The direction is real: a candidate on its first eligible day is better calibrated to what
+     * it goes on to realise than one that was also eligible the day before. The first measurement of
+     * this (2024-01 to 2026-08) read 99%/90% (CEX-CEX/CEX-DEX) calibration for a first day against
+     * 46%/51% once stale, and shipped as a flat 0.5 discount. That measurement had a same-day
+     * leakage bug - the "forward" realised window shared its first day with the trailing signal
+     * window, so a large print on the ranking day could count on both sides of the ratio. Corrected
+     * (forward window starts the day after signal, no shared day), the true numbers are 43%/66% for
+     * a first eligible day and roughly 29-31%/43-56% once stale - a real but smaller gap, closer to
+     * a 0.65-0.7 ratio than 0.5. Set to 0.65 pending a fuller recalibration.
+     *
+     * <p>The bigger thing this correction surfaced: even a FIRST-day-eligible signal now reads as
+     * over-reading its own forward realisation by more than 2x (43%/66% calibration, not the 99%/90%
+     * originally reported) - a broader over-read that has nothing to do with staleness and is not
+     * corrected for anywhere yet. That is a larger open question than this discount's exact value.
+     * See scripts/analysis-freshness-discount.sql's header for the corrected query and
+     * XVF_CALCULATIONS_INDEPENDENT_REVIEW.md for how this was found.
      */
-    public static final double STALE_SIGNAL_DISCOUNT = 0.5;
+    public static final double STALE_SIGNAL_DISCOUNT = 0.65;
 
     /**
      * Book size. Top 20 beat top 10 on Sharpe (5.12 vs 4.83) because ranks 11-20 realise as much
