@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -41,6 +42,81 @@ public final class XvfSignalEngine {
     /** A tradeable pair: short the venue paying more, long the one paying less. */
     public record Candidate(String base, Leg shortLeg, Leg longLeg, double spreadAnnualPct,
                             double thinLegWeeklyVolume) { }
+
+    /** Venue combination used to choose the applicable trailing-funding window. */
+    public enum PairType { CEX_CEX, CEX_DEX, DEX_DEX }
+
+    /**
+     * One unique cross-venue pairing before any spread, volume, or freshness gate is applied.
+     *
+     * <p>This diagnostic model deliberately sits beside {@link Candidate}, rather than replacing it:
+     * production still trades the widest pair per base with the exact legacy selection semantics.
+     */
+    public record PairAlternative(
+            String base,
+            Leg shortLeg,
+            Leg longLeg,
+            PairType pairType,
+            double rawSpreadAnnualPct,
+            double thinLegWeeklyVolume) {
+
+        public PairAlternative {
+            Objects.requireNonNull(base, "base");
+            Objects.requireNonNull(shortLeg, "shortLeg");
+            Objects.requireNonNull(longLeg, "longLeg");
+            Objects.requireNonNull(pairType, "pairType");
+            if (shortLeg.venue().equals(longLeg.venue())) {
+                throw new IllegalArgumentException("A pair alternative must cross venues");
+            }
+        }
+    }
+
+    /**
+     * The raw and adjusted inputs, gates, and legacy-book membership for one pair alternative.
+     *
+     * <p>{@code eligibleYesterday} intentionally retains the current base-level definition: it is
+     * true when yesterday's widest pair for this base cleared the raw spread and volume gates. It is
+     * not pair-identity freshness. Changing that definition would change the production book.
+     */
+    public record EvaluatedPair(
+            int grossRank,
+            PairAlternative alternative,
+            boolean eligibleYesterday,
+            double staleDiscountFactor,
+            double adjustedSpreadAnnualPct,
+            boolean widestForBase,
+            boolean rawSpreadPass,
+            boolean volumePass,
+            boolean adjustedSpreadPass,
+            Integer baselineBookRank) {
+
+        public EvaluatedPair {
+            if (grossRank <= 0) {
+                throw new IllegalArgumentException("grossRank must be positive");
+            }
+            Objects.requireNonNull(alternative, "alternative");
+            if (baselineBookRank != null && baselineBookRank <= 0) {
+                throw new IllegalArgumentException("baselineBookRank must be positive when present");
+            }
+        }
+    }
+
+    /**
+     * A report-only evaluation containing every complete-input cross-venue alternative and the
+     * unchanged production full book projected from the same inputs.
+     */
+    public record SignalEvaluation(
+            LocalDate asOf,
+            List<EvaluatedPair> alternatives,
+            List<Candidate> baselineFullBook) {
+
+        public SignalEvaluation {
+            Objects.requireNonNull(asOf, "asOf");
+            alternatives = List.copyOf(Objects.requireNonNull(alternatives, "alternatives"));
+            baselineFullBook = List.copyOf(
+                    Objects.requireNonNull(baselineFullBook, "baselineFullBook"));
+        }
+    }
 
     /** Hyperliquid is the DEX leg; a pair touching it is CEX-DEX, otherwise CEX-CEX. */
     private static final Set<String> DEX_VENUES = Set.of("hyperliquid");
@@ -161,6 +237,23 @@ public final class XvfSignalEngine {
     }
 
     /**
+     * Evaluates every cross-venue alternative while retaining the exact production book projection.
+     *
+     * <p>The same live-volume snapshot is used for today and yesterday, matching the pre-existing
+     * freshness calculation. Callers that persist diagnostics should use this one result rather than
+     * calling {@link #fullBook} separately and taking a second live-volume snapshot.
+     */
+    public static SignalEvaluation evaluate(DatabaseConfig database, LocalDate asOf) throws Exception {
+        Objects.requireNonNull(database, "database");
+        Objects.requireNonNull(asOf, "asOf");
+        Map<String, Double> volume24h = LiveVolume.fetch();
+        return evaluateLoadedLegs(
+                asOf,
+                loadCompleteLegs(database, asOf, volume24h),
+                loadCompleteLegs(database, asOf.minusDays(1), volume24h));
+    }
+
+    /**
      * {@link #rankedCandidatesRaw}, with the signal discounted for every candidate that was already
      * eligible yesterday.
      *
@@ -179,33 +272,17 @@ public final class XvfSignalEngine {
      * each other, so a single step from "first day" to "not first day" captures the effect.
      */
     private static List<Candidate> rankedCandidates(DatabaseConfig database, LocalDate asOf) throws Exception {
-        // Liquidity comes from the venues, not from the kline backfill. See LiveVolume for why.
-        Map<String, Double> volume24h = LiveVolume.fetch();
-        List<Candidate> today = rankedCandidatesRaw(database, asOf, volume24h);
-        Set<String> eligibleYesterday = new HashSet<>();
-        for (Candidate c : rankedCandidatesRaw(database, asOf.minusDays(1), volume24h)) {
-            eligibleYesterday.add(c.base());
-        }
-
-        List<Candidate> out = new ArrayList<>();
-        for (Candidate c : today) {
-            boolean fresh = !eligibleYesterday.contains(c.base());
-            double adjusted = fresh ? c.spreadAnnualPct() : c.spreadAnnualPct() * XvfConfig.STALE_SIGNAL_DISCOUNT;
-            if (adjusted > XvfConfig.MIN_SPREAD_ANNUAL_PCT) {
-                out.add(new Candidate(c.base(), c.shortLeg(), c.longLeg(), adjusted, c.thinLegWeeklyVolume()));
-            }
-        }
-        out.sort(Comparator.comparingDouble(Candidate::spreadAnnualPct).reversed());
-        return out;
+        // Preserve the mutable-list shape returned before SignalEvaluation became available.
+        return new ArrayList<>(evaluate(database, asOf).baselineFullBook());
     }
 
     /**
      * Trailing funding per venue and asset, paired into the widest spread, and ranked. Every candidate
      * that clears the spread and volume floors, in rank order - callers decide how many they can use.
      *
-     * <p>Weekly quote volume comes from the venue kline tables so the participation cap is applied to
-     * a real figure. Where a venue has no price row the leg is dropped rather than defaulted -
-     * REN paid 507% annualised on $289 of weekly volume, and a default would have let it through.
+     * <p>Weekly quote volume comes from each venue's live ticker through {@link LiveVolume}. A missing
+     * ticker becomes zero volume and therefore fails the liquidity gate - REN paid 507% annualised on
+     * $289 of weekly volume, and an optimistic default would have let it through.
      *
      * <p>Each leg is summed over BOTH lookback windows: which one is the right one is not known until
      * pairing decides whether the pair is CEX-CEX or CEX-DEX. The CEX-CEX completeness check is
@@ -217,8 +294,8 @@ public final class XvfSignalEngine {
      * rather than fetched here so that second call does not hit every venue's live ticker again for
      * data that has not changed between the two calls.
      */
-    private static List<Candidate> rankedCandidatesRaw(DatabaseConfig database, LocalDate asOf,
-                                                        Map<String, Double> volume24h) throws Exception {
+    private static List<Leg> loadCompleteLegs(DatabaseConfig database, LocalDate asOf,
+                                              Map<String, Double> volume24h) throws Exception {
         String sql = """
                 WITH trail_cex_dex AS (
                   SELECT venue, venue_symbol, sum(funding_rate) AS rate, count(*) AS payments
@@ -278,6 +355,88 @@ public final class XvfSignalEngine {
             }
         }
 
+        return legs;
+    }
+
+    /** Pure seam used by the shadow diagnostic and its characterization tests. */
+    static SignalEvaluation evaluateLoadedLegs(LocalDate asOf, List<Leg> todayLegs,
+                                                List<Leg> yesterdayLegs) {
+        Objects.requireNonNull(asOf, "asOf");
+        RawDay today = rankedCandidatesRaw(todayLegs);
+        RawDay yesterday = rankedCandidatesRaw(yesterdayLegs);
+
+        Set<String> eligibleYesterday = new HashSet<>();
+        for (Candidate candidate : yesterday.baselineEligible()) {
+            eligibleYesterday.add(candidate.base());
+        }
+
+        // This is the old rankedCandidates loop verbatim in its choice, arithmetic, gates, and sort.
+        List<Candidate> baseline = new ArrayList<>();
+        for (Candidate candidate : today.baselineEligible()) {
+            boolean fresh = !eligibleYesterday.contains(candidate.base());
+            double adjusted = fresh
+                    ? candidate.spreadAnnualPct()
+                    : candidate.spreadAnnualPct() * XvfConfig.STALE_SIGNAL_DISCOUNT;
+            if (adjusted > XvfConfig.MIN_SPREAD_ANNUAL_PCT) {
+                baseline.add(new Candidate(
+                        candidate.base(), candidate.shortLeg(), candidate.longLeg(), adjusted,
+                        candidate.thinLegWeeklyVolume()));
+            }
+        }
+        baseline.sort(Comparator.comparingDouble(Candidate::spreadAnnualPct).reversed());
+
+        Map<PairKey, Integer> baselineRanks = new HashMap<>();
+        for (int index = 0; index < baseline.size(); index++) {
+            baselineRanks.put(PairKey.of(baseline.get(index)), index + 1);
+        }
+
+        List<EvaluatedPairDraft> drafts = new ArrayList<>();
+        for (RawAlternative raw : today.alternatives()) {
+            PairAlternative alternative = raw.alternative();
+            boolean wasEligibleYesterday = eligibleYesterday.contains(alternative.base());
+            double discount = wasEligibleYesterday ? XvfConfig.STALE_SIGNAL_DISCOUNT : 1.0;
+            double adjusted = wasEligibleYesterday
+                    ? alternative.rawSpreadAnnualPct() * XvfConfig.STALE_SIGNAL_DISCOUNT
+                    : alternative.rawSpreadAnnualPct();
+            drafts.add(new EvaluatedPairDraft(
+                    alternative,
+                    wasEligibleYesterday,
+                    discount,
+                    adjusted,
+                    raw.widestForBase(),
+                    alternative.rawSpreadAnnualPct() > XvfConfig.MIN_SPREAD_ANNUAL_PCT,
+                    alternative.thinLegWeeklyVolume() >= XvfConfig.MIN_WEEKLY_QUOTE_VOLUME,
+                    adjusted > XvfConfig.MIN_SPREAD_ANNUAL_PCT,
+                    baselineRanks.get(PairKey.of(alternative))));
+        }
+        drafts.sort(Comparator
+                .comparingDouble((EvaluatedPairDraft draft) ->
+                        draft.alternative().rawSpreadAnnualPct()).reversed()
+                .thenComparing(draft -> draft.alternative().base())
+                .thenComparing(draft -> draft.alternative().shortLeg().venue())
+                .thenComparing(draft -> draft.alternative().shortLeg().venueSymbol())
+                .thenComparing(draft -> draft.alternative().longLeg().venue())
+                .thenComparing(draft -> draft.alternative().longLeg().venueSymbol()));
+
+        List<EvaluatedPair> evaluated = new ArrayList<>(drafts.size());
+        for (int index = 0; index < drafts.size(); index++) {
+            EvaluatedPairDraft draft = drafts.get(index);
+            evaluated.add(new EvaluatedPair(
+                    index + 1,
+                    draft.alternative(),
+                    draft.eligibleYesterday(),
+                    draft.staleDiscountFactor(),
+                    draft.adjustedSpreadAnnualPct(),
+                    draft.widestForBase(),
+                    draft.rawSpreadPass(),
+                    draft.volumePass(),
+                    draft.adjustedSpreadPass(),
+                    draft.baselineBookRank()));
+        }
+        return new SignalEvaluation(asOf, evaluated, baseline);
+    }
+
+    private static RawDay rankedCandidatesRaw(List<Leg> legs) {
         Map<String, List<Leg>> byBase = new HashMap<>();
         for (Leg leg : legs) {
             byBase.computeIfAbsent(XvfConfig.normaliseBase(leg.venue(), leg.venueSymbol()),
@@ -285,6 +444,7 @@ public final class XvfSignalEngine {
         }
 
         List<Candidate> out = new ArrayList<>();
+        List<RawAlternative> alternatives = new ArrayList<>();
         for (var entry : byBase.entrySet()) {
             List<Leg> venueLegs = entry.getValue();
             if (venueLegs.size() < 2) {
@@ -294,13 +454,97 @@ public final class XvfSignalEngine {
             if (best == null) {
                 continue;   // every leg sits on one venue
             }
+            for (PairAlternative alternative : allCrossVenuePairs(entry.getKey(), venueLegs)) {
+                alternatives.add(new RawAlternative(
+                        alternative, PairKey.of(alternative).equals(PairKey.of(best))));
+            }
             if (best.spreadAnnualPct() > XvfConfig.MIN_SPREAD_ANNUAL_PCT
                     && best.thinLegWeeklyVolume() >= XvfConfig.MIN_WEEKLY_QUOTE_VOLUME) {
                 out.add(best);
             }
         }
         out.sort(Comparator.comparingDouble(Candidate::spreadAnnualPct).reversed());
-        return out;
+        return new RawDay(List.copyOf(out), List.copyOf(alternatives));
+    }
+
+    private static List<PairAlternative> allCrossVenuePairs(String base, List<Leg> legs) {
+        List<PairAlternative> alternatives = new ArrayList<>();
+        for (int leftIndex = 0; leftIndex < legs.size(); leftIndex++) {
+            Leg left = legs.get(leftIndex);
+            for (int rightIndex = leftIndex + 1; rightIndex < legs.size(); rightIndex++) {
+                Leg right = legs.get(rightIndex);
+                if (left.venue().equals(right.venue())) {
+                    continue;
+                }
+                PairType pairType = pairType(left, right);
+                boolean cexDex = pairType != PairType.CEX_CEX;
+                double leftAnnual = left.annualPct(cexDex);
+                double rightAnnual = right.annualPct(cexDex);
+                Leg shortLeg = leftAnnual >= rightAnnual ? left : right;
+                Leg longLeg = leftAnnual >= rightAnnual ? right : left;
+                double spread = leftAnnual >= rightAnnual
+                        ? leftAnnual - rightAnnual
+                        : rightAnnual - leftAnnual;
+                alternatives.add(new PairAlternative(
+                        base,
+                        shortLeg,
+                        longLeg,
+                        pairType,
+                        spread,
+                        Math.min(shortLeg.weeklyQuoteVolume(), longLeg.weeklyQuoteVolume())));
+            }
+        }
+        return alternatives;
+    }
+
+    private static PairType pairType(Leg left, Leg right) {
+        boolean leftDex = DEX_VENUES.contains(left.venue());
+        boolean rightDex = DEX_VENUES.contains(right.venue());
+        if (leftDex && rightDex) {
+            return PairType.DEX_DEX;
+        }
+        return leftDex || rightDex ? PairType.CEX_DEX : PairType.CEX_CEX;
+    }
+
+    private record RawDay(List<Candidate> baselineEligible, List<RawAlternative> alternatives) { }
+
+    private record RawAlternative(PairAlternative alternative, boolean widestForBase) { }
+
+    private record EvaluatedPairDraft(
+            PairAlternative alternative,
+            boolean eligibleYesterday,
+            double staleDiscountFactor,
+            double adjustedSpreadAnnualPct,
+            boolean widestForBase,
+            boolean rawSpreadPass,
+            boolean volumePass,
+            boolean adjustedSpreadPass,
+            Integer baselineBookRank) { }
+
+    private record PairKey(
+            String base,
+            String shortVenue,
+            String shortVenueSymbol,
+            String longVenue,
+            String longVenueSymbol) {
+
+        private static PairKey of(Candidate candidate) {
+            return new PairKey(
+                    candidate.base(),
+                    candidate.shortLeg().venue(),
+                    candidate.shortLeg().venueSymbol(),
+                    candidate.longLeg().venue(),
+                    candidate.longLeg().venueSymbol());
+        }
+
+        private static PairKey of(PairAlternative alternative) {
+            return new PairKey(
+                    alternative.base(),
+                    alternative.shortLeg().venue(),
+                    alternative.shortLeg().venueSymbol(),
+                    alternative.longLeg().venue(),
+                    alternative.longLeg().venueSymbol());
+        }
     }
 
     /**

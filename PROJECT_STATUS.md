@@ -1,5 +1,27 @@
 # Project Status
 
+Last updated: 2026-08-21
+
+## XVF immutable shadow decision ledger (2026-08-21)
+
+- Added Flyway V21 with append-only `xvf_signal_run` and `xvf_signal_candidate` tables. Runs preserve
+  the exact UTC cutoff plus production date/zone, configuration/code identity, separate settled and
+  pending-funding watermarks, venue capital state, capture quality, every evaluated cross-venue
+  alternative, baseline/shadow ranks, maker/taker route, and typed expected-net components.
+- Snapshot membership is sealed by a declared candidate count checked by a deferred PostgreSQL
+  constraint trigger at commit. Candidate batches are atomic, later appends are rejected, and
+  update/delete/truncate operations are blocked. `COMPLETE`, `PARTIAL`, and `FAILED` are final
+  insert-time states; failed attempts cannot acquire candidates.
+- Added immutable Java records and an insert-only direct-JDBC repository. Prices, rates, costs, and
+  capital use exact `BigDecimal` bounds matching PostgreSQL; timestamps must be microsecond-exact
+  `Instant` values; venue payloads use strict validated JSON without duplicate keys or trailing
+  tokens. Reads reconstruct the parent and children under one repeatable-read snapshot.
+- Added eight model tests and six disposable-PostgreSQL integration tests. `mvn verify` applies all 21
+  real migrations and verifies full-field round trips, transaction rollback, status semantics,
+  duplicate-cutoff support, membership sealing, and mutation rejection.
+- The ledger is intentionally not connected to execution. The next XVF milestone is the separate,
+  report-only shadow collector; live book selection and order placement remain unchanged.
+
 ## Course-derived level strategies (2026-08-07)
 
 - Audited all user-requested course assets: 34 PDFs / 655 rendered pages and 298 PNGs. JPG/video assets were outside scope.
@@ -8,8 +30,6 @@
 - Frozen v1 BTCUSDT 15m training results: bounce -0.76% (3 trades); false breakout -48.64% (2,637); corrected breakout 0.00% (0 trades). An earlier permissive breakout-compression defect produced -98.52% / 5,271 trades and is retained only as a rejected diagnostic result.
 - Conclusion: one/two-bar price-pattern proxies are insufficient. Next iteration should add strict compression/reclaim semantics, opposing-level room, higher-timeframe context, and rejection-reason diagnostics before any parameter search.
 - Verification: 69 tests pass on JDK 25.
-
-Last updated: 2026-08-10
 
 ### 15-symbol historical cutoff extended to 2022-10-01 (2026-08-11)
 
