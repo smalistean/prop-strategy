@@ -21,11 +21,11 @@ import com.smalistean.propstrategy.feature.HigherTimeframeBiasAssembler;
 import com.smalistean.propstrategy.strategy.Strategy;
 import com.smalistean.propstrategy.strategy.StrategyRegistry;
 import com.smalistean.propstrategy.strategy.VolumeProfileAwareStrategy;
-import com.smalistean.propstrategy.strategy.ApolloBasePocRetestStrategy;
-import com.smalistean.propstrategy.strategy.ApolloVariableBasePocStrategy;
-import com.smalistean.propstrategy.strategy.ApolloV4BasePocContinuationStrategy;
-import com.smalistean.propstrategy.strategy.ApolloV5BasePocContinuationStrategy;
-import com.smalistean.propstrategy.strategy.ApolloV5LiquidityLimitStrategy;
+import com.smalistean.propstrategy.strategy.apollo.ApolloBasePocRetestStrategy;
+import com.smalistean.propstrategy.strategy.apollo.ApolloVariableBasePocStrategy;
+import com.smalistean.propstrategy.strategy.apollo.ApolloV4BasePocContinuationStrategy;
+import com.smalistean.propstrategy.strategy.apollo.ApolloV5BasePocContinuationStrategy;
+import com.smalistean.propstrategy.strategy.apollo.ApolloV5LiquidityLimitStrategy;
 
 import java.nio.file.Path;
 import java.math.BigDecimal;
@@ -119,7 +119,7 @@ public final class BacktestApplication {
             List<Kline> levelBars = klineRepository.findRangeWithWarmup(marketSymbol, levelInterval,
                     loaded.dataset().startInclusive(), loaded.dataset().endExclusive(),
                     Integer.getInteger("gerchikLevelWarmupBars", 2000));
-            generatedSnapshots = new com.smalistean.propstrategy.feature.GerchikLevelMapAssembler()
+            generatedSnapshots = new com.smalistean.propstrategy.feature.gerchik.GerchikLevelMapAssembler()
                     .attach(technical, levelBars,
                             Integer.getInteger("gerchikPivotStrength", 3),
                             new BigDecimal(System.getProperty("gerchikToleranceAtr", "0.05")));

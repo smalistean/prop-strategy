@@ -1,5 +1,16 @@
 package com.smalistean.propstrategy.strategy;
 
+import com.smalistean.propstrategy.strategy.apollo.ApolloBasePocRetestStrategyFactory;
+import com.smalistean.propstrategy.strategy.apollo.ApolloOrderedLiquiditySequenceStrategyFactory;
+import com.smalistean.propstrategy.strategy.apollo.ApolloV4BasePocContinuationStrategyFactory;
+import com.smalistean.propstrategy.strategy.apollo.ApolloV5BasePocContinuationStrategyFactory;
+import com.smalistean.propstrategy.strategy.apollo.ApolloV5LiquidityLimitStrategyFactory;
+import com.smalistean.propstrategy.strategy.apollo.ApolloVariableBasePocStrategyFactory;
+import com.smalistean.propstrategy.strategy.gerchik.GerchikBounceStrategyFactory;
+import com.smalistean.propstrategy.strategy.gerchik.GerchikBreakoutStrategyFactory;
+import com.smalistean.propstrategy.strategy.gerchik.GerchikFalseBreakoutStrategyFactory;
+import com.smalistean.propstrategy.strategy.gerchik.GerchikLevelStrategyFactory;
+
 import java.util.Collection;
 import java.util.Map;
 import java.util.function.Function;
