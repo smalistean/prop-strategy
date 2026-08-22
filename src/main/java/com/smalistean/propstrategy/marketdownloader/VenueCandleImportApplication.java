@@ -24,6 +24,9 @@ import java.util.List;
 /**
  * Imports daily candles from Bybit, dYdX and Aster so basis drift can be charged on the cross-venue
  * funding spread, and so the $500k weekly liquidity floor can be enforced on each venue's funding.
+ * {@code -DbybitInterval=60} switches Bybit alone to hourly candles (stored as {@code interval='1h'},
+ * the same value Binance's and Hyperliquid's own hourly klines use) - added to measure cross-venue
+ * price basis at sub-daily resolution, which Bybit's daily-only history could not answer at all.
  *
  * <p>Probed before writing:
  * <ul>
@@ -62,6 +65,12 @@ public final class VenueCandleImportApplication {
     public static void main(String[] args) throws Exception {
         Instant floor = Instant.parse(System.getProperty("candleFrom", "2020-01-01T00:00:00Z"));
         List<String> only = List.of(System.getProperty("venues", "bybit,dydx").split(","));
+        // Bybit-only override: the daily default matches what basis-drift and the liquidity floor
+        // need, but neither of those need finer granularity. "60" (minutes, Bybit's own unit) requests
+        // 1h candles instead - stored under interval='1h', same column values every other venue's 1h
+        // klines already use, so it joins to binance_perp_kline/hyperliquid_perp_kline on (base,
+        // open_time) without any special-casing downstream.
+        String bybitInterval = System.getProperty("bybitInterval", "D");
 
         DatabaseConfig database = DatabaseConfig.fromEnvironment();
         DatabaseMigrator.migrate(database);
@@ -74,13 +83,13 @@ public final class VenueCandleImportApplication {
                     .path("result").path("list")) {
                 symbols.add(row.get("symbol").asText());
             }
-            run(client, database, "bybit", symbols, floor);
+            run(client, database, "bybit", symbols, floor, bybitInterval);
         }
         if (only.contains("dydx")) {
             List<String> symbols = new ArrayList<>();
             get(client, "https://indexer.dydx.trade/v4/perpetualMarkets").path("markets")
                     .fieldNames().forEachRemaining(symbols::add);
-            run(client, database, "dydx", symbols, floor);
+            run(client, database, "dydx", symbols, floor, "D");
         }
         if (only.contains("aster")) {
             List<String> symbols = new ArrayList<>();
@@ -104,26 +113,42 @@ public final class VenueCandleImportApplication {
                     symbols.add(s.path("symbol").asText());
                 }
             }
-            run(client, database, "aster", symbols, floor);
+            run(client, database, "aster", symbols, floor, "1d");
         }
     }
 
+    /** Maps a venue's own interval unit to the column value every venue's kline table shares. */
+    private static String storedInterval(String venue, String requestInterval) {
+        if (!"bybit".equals(venue)) {
+            return "1d";
+        }
+        return switch (requestInterval) {
+            case "D" -> "1d";
+            case "60" -> "1h";
+            case "15" -> "15m";
+            case "5" -> "5m";
+            case "1" -> "1m";
+            default -> throw new IllegalArgumentException("unmapped bybitInterval: " + requestInterval);
+        };
+    }
+
     private static void run(HttpClient client, DatabaseConfig database, String venue,
-                            List<String> symbols, Instant floor) {
+                            List<String> symbols, Instant floor, String requestInterval) {
         String table = venue + "_perp_kline";
+        String stored = storedInterval(venue, requestInterval);
         String upsert = "INSERT INTO " + table + " (venue_symbol, base, interval, open_time,"
                 + " open_price, high_price, low_price, close_price, mid_price, base_volume)"
-                + " VALUES (?,?,'1d',?,?,?,?,?,?,?)"
+                + " VALUES (?,?,'" + stored + "',?,?,?,?,?,?,?)"
                 + " ON CONFLICT (venue_symbol, interval, open_time) DO UPDATE SET"
                 + " close_price = EXCLUDED.close_price, mid_price = EXCLUDED.mid_price,"
                 + " base_volume = EXCLUDED.base_volume, updated_at = now()";
         long began = System.nanoTime();
         int rows = 0;
         int failed = 0;
-        System.out.printf("%n=== %s: %d perpetuals ===%n", venue, symbols.size());
+        System.out.printf("%n=== %s: %d perpetuals (%s) ===%n", venue, symbols.size(), stored);
         for (String symbol : symbols) {
             try {
-                rows += importSymbol(client, database, venue, symbol, upsert, floor);
+                rows += importSymbol(client, database, venue, symbol, upsert, floor, requestInterval);
             } catch (RuntimeException e) {
                 // Symbol and cause, not just a count. Six dYdX markets failed silently on the first
                 // run and identifying them meant diffing the venue's market list against the table.
@@ -136,15 +161,19 @@ public final class VenueCandleImportApplication {
     }
 
     private static int importSymbol(HttpClient client, DatabaseConfig database, String venue,
-                                    String symbol, String upsert, Instant floor) {
+                                    String symbol, String upsert, Instant floor, String requestInterval) {
         int written = 0;
         Long cursor = null;
         try (Connection connection = DriverManager.getConnection(
                 database.url(), database.user(), database.password())) {
             connection.setAutoCommit(false);
-            for (int page = 0; page < 20; page++) {
+            // 20 pages at 1,000 daily candles each already exceeds any venue's history. At Bybit's
+            // finer intervals the same page holds far less calendar time - 1,000 hourly candles is
+            // only ~41 days - so this needs enough pages to reach `floor`, not just enough for daily.
+            int maxPages = "D".equals(requestInterval) ? 20 : 60;
+            for (int page = 0; page < maxPages; page++) {
                 List<Candle> candles = switch (venue) {
-                    case "bybit" -> bybit(client, symbol, cursor);
+                    case "bybit" -> bybit(client, symbol, cursor, requestInterval);
                     case "aster" -> aster(client, symbol, cursor);
                     default -> dydx(client, symbol);
                 };
@@ -189,9 +218,11 @@ public final class VenueCandleImportApplication {
     }
 
     /** Bybit rows are positional arrays, newest first: [startMs, open, high, low, close, volume, turnover]. */
-    private static List<Candle> bybit(HttpClient client, String symbol, Long endCursor) {
+    private static List<Candle> bybit(HttpClient client, String symbol, Long endCursor,
+                                      String requestInterval) {
         JsonNode list = get(client, "https://api.bybit.com/v5/market/kline?category=linear&symbol="
-                + symbol + "&interval=D&limit=1000" + (endCursor == null ? "" : "&end=" + endCursor))
+                + symbol + "&interval=" + requestInterval + "&limit=1000"
+                + (endCursor == null ? "" : "&end=" + endCursor))
                 .path("result").path("list");
         List<Candle> out = new ArrayList<>();
         for (JsonNode row : list) {

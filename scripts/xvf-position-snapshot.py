@@ -85,10 +85,18 @@ def binance_legs():
 
     # Each leg's own entry, verified against Binance's OWN fill history for that one symbol - not
     # borrowed from Bybit's timeline. See the module docstring for why that borrowing was wrong.
+    #
+    # (3, 7) days, not the wider (3, 12, 48, 90) default: /fapi/v1/userTrades enforces a hard
+    # 7-day maximum between startTime and now, documented and confirmed live 2026-08-22 - a 7-day
+    # query for COTIUSDT returned all 13 fills and reconciled cleanly, a 90-day query for the same
+    # symbol returned zero. Widening past 7 here does not search further back, it just asks for a
+    # range the API refuses outright.
+    BINANCE_LOOKBACK_ATTEMPTS = (3, 7)
     entry_ms = {}
     for sym, p in positions.items():
         qty = float(p["positionAmt"])
-        entry_ms[sym] = true_entry_ms(sym, qty, lambda start, s=sym: binance_fills(s, start, signed_get))
+        entry_ms[sym] = true_entry_ms(sym, qty, lambda start, s=sym: binance_fills(s, start, signed_get),
+                                       lookback_attempts=BINANCE_LOOKBACK_ATTEMPTS)
     earliest = min(entry_ms.values(), default=int(time.time() * 1000))
 
     # Commission with a BNB fee discount enabled is charged IN BNB, not USDT - the income row's
@@ -193,31 +201,42 @@ def replay_entry_ms(fills, current_qty_signed):
     return None
 
 
-def true_entry_ms(label, current_qty_signed, fetch_fills):
+def true_entry_ms(label, current_qty_signed, fetch_fills, lookback_attempts=(3, 12, 48, 90)):
     """When a CURRENTLY held position on ONE venue last opened from flat, found by replaying that
     leg's own fill history forward and locating the most recent zero-crossing - never inferred
     from another venue's timeline or a field like Bybit's createdTime (see the module docstring).
 
     fetch_fills(start_ms) -> [(ms, signed_qty_delta), ...] for this one symbol since start_ms.
-    Starts the search 3 days back and widens if the window does not reach far enough to explain
-    the live size; XVF's own hold is 3-7 days, so most positions resolve on the first pass.
+    Tries each value in lookback_attempts in order; XVF's own hold is 3-7 days, so most positions
+    resolve on the first pass. A narrow window can also fail for a reason widening does not fix:
+    if it starts partway through an old, already-closed position's own closing trades - present
+    without their matching opening trade - the replay sees a phantom non-zero "start" and never
+    reconciles, even though the CURRENT position opened cleanly later in that same window. Measured
+    live on COTI, 2026-08-22: a 3-day window that began between an old position's close and its
+    reopen failed for exactly this reason, and widening past what the venue's API can actually
+    still serve (see bybit_legs) cannot recover from it either - only a window that starts before
+    the old position's own opening trade can.
     """
-    lookback_days = 3
     fills = []
-    while lookback_days <= 90:
+    for lookback_days in lookback_attempts:
         start = int(time.time() * 1000) - lookback_days * 86400_000
         fills = fetch_fills(start)
         entry_ms = replay_entry_ms(fills, current_qty_signed)
         if entry_ms is not None:
             return entry_ms
-        # Either still flat at the end of the window (impossible if a position is really open, so
-        # the true start is further back) or the replayed total does not match the live size (some
-        # of the position's own fills fell outside this window). Either way, look further back.
-        lookback_days *= 4
 
-    print(f"!! {label}: could not reconcile a zero-crossing within 90 days; using the oldest "
-          f"fill seen as a best-effort entry time")
-    return fills[0][0] if fills else int(time.time() * 1000) - 90 * 86400_000
+    # Deliberately NOT "the oldest fill seen": when every attempt's fetch comes back thin or empty
+    # (as Bybit's execution history does once a window reaches back far enough - see bybit_legs),
+    # that fill is not the position's true start, it is just whatever fragment survived a query the
+    # venue mostly refused to answer. Measured live: this returned 2026-05-24 for a COTI position
+    # that had actually reopened on 2026-08-20, three months off. The window's own start is a stated,
+    # conservative boundary instead - funding and fees are then counted only from that point forward,
+    # openly partial rather than precisely wrong.
+    widest_days = lookback_attempts[-1]
+    print(f"!! {label}: no zero-crossing reconciles within the widest window tried ({widest_days} "
+          f"days) - this position is likely older than that. Funding and fees below are counted "
+          f"only from the window start, not necessarily the true full lifetime.")
+    return int(time.time() * 1000) - widest_days * 86400_000
 
 
 def bybit_fills(symbol, start_ms, signed_get):
@@ -253,10 +272,20 @@ def hl_fills(coin, start_ms, info):
 
 
 def bybit_legs(positions, signed_get):
+    # (3, 7) days, not the wider (3, 12, 48, 90) other venues use: Bybit's /v5/execution/list goes
+    # from returning complete results to returning nothing, and does so well before 12 days -
+    # measured live 2026-08-22 on this exact account, a 7-day query returned every fill for a
+    # position, a 9-day query for the SAME symbol returned only one of them, and 13 days returned
+    # zero. Widening past 7 does not recover more history here, it loses what a narrower query
+    # already had, so this stays inside the range actually verified to work rather than reaching
+    # for a bound that looks safer on paper.
+    BYBIT_LOOKBACK_ATTEMPTS = (3, 7)
+
     entry_ms = {}
     for sym, p in positions.items():
         qty = float(p["size"]) if p["side"] == "Buy" else -float(p["size"])
-        entry_ms[sym] = true_entry_ms(sym, qty, lambda start, s=sym: bybit_fills(s, start, signed_get))
+        entry_ms[sym] = true_entry_ms(sym, qty, lambda start, s=sym: bybit_fills(s, start, signed_get),
+                                       lookback_attempts=BYBIT_LOOKBACK_ATTEMPTS)
         # createdTime is not trusted as the anchor (see the module docstring) but is still worth a
         # sanity check against the replayed entry - a wide disagreement is exactly what exposed the
         # ACE and SLP cases in the first place.
@@ -264,28 +293,36 @@ def bybit_legs(positions, signed_get):
         if abs(drift_hours) > 0.5:
             print(f"!! {sym}: createdTime disagrees with the replayed entry by "
                   f"{drift_hours:+.1f}h - using the replayed one")
-    earliest = min(entry_ms.values(), default=int(time.time() * 1000))
 
-    fee_paid = {s: 0.0 for s in positions}
-    funding_received = {s: 0.0 for s in positions}
-    cursor = ""
-    for _ in range(20):
-        qs = f"category=linear&startTime={earliest}&limit=200"
-        if cursor:
-            qs += f"&cursor={cursor}"
-        ex = signed_get("/v5/execution/list", qs)
-        for r in ex["result"]["list"]:
-            sym = r["symbol"]
-            if sym not in positions or int(r["execTime"]) < entry_ms[sym]:
-                continue   # older than this specific position's own entry
-            fee = float(r["execFee"])   # positive = paid, for both Trade and Funding rows - verified
-            if r["execType"] == "Trade":
-                fee_paid[sym] += fee
-            elif r["execType"] == "Funding":
-                funding_received[sym] -= fee
-        cursor = ex["result"].get("nextPageCursor")
-        if not cursor:
-            break
+    # Fetched per symbol, from that symbol's OWN entry - not one shared batch anchored to the
+    # single oldest entry_ms across the whole book. That shared design meant one symbol's entry
+    # being old (correctly or, as above, from a failed reconciliation) dragged the batch query's
+    # startTime back far enough that Bybit's execution history returned nothing for it - and because
+    # the query was shared, that emptiness silently zeroed funding and fees for EVERY symbol in the
+    # book, not just the one with the old entry. Measured live 2026-08-22: all 19 Bybit legs read
+    # 0.000/0.000 in the same run, not only COTI's.
+    fee_paid = {}
+    funding_received = {}
+    for sym in positions:
+        fee_paid[sym] = 0.0
+        funding_received[sym] = 0.0
+        cursor = ""
+        for _ in range(20):
+            qs = f"category=linear&symbol={sym}&startTime={entry_ms[sym]}&limit=200"
+            if cursor:
+                qs += f"&cursor={cursor}"
+            ex = signed_get("/v5/execution/list", qs)
+            for r in ex["result"]["list"]:
+                if int(r["execTime"]) < entry_ms[sym]:
+                    continue   # older than this specific position's own entry
+                fee = float(r["execFee"])   # positive = paid, for both Trade and Funding - verified
+                if r["execType"] == "Trade":
+                    fee_paid[sym] += fee
+                elif r["execType"] == "Funding":
+                    funding_received[sym] -= fee
+            cursor = ex["result"].get("nextPageCursor")
+            if not cursor:
+                break
 
     out = []
     for sym, p in positions.items():
