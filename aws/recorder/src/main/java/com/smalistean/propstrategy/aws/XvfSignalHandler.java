@@ -55,6 +55,18 @@ import java.util.Map;
  * 5 hours or more, where the typical Binance payment is 129ppm. A stale observation is not a weak
  * signal, it is noise, so anything older is treated as missing and the completeness filter drops it.
  *
+ * <h2>Freshness discount</h2>
+ * A base that already cleared the entry threshold on the PREVIOUS day's ranking is discounted by
+ * {@code STALE_SIGNAL_DISCOUNT} before being re-checked against the threshold, mirroring {@code
+ * XvfSignalEngine.rankedCandidates}. There is no calendar day here - this handler runs hourly - so
+ * "previous day" means the same ranking computed 24 hours earlier, not a date boundary.
+ *
+ * <p>Today's and yesterday's windows overlap on all but their newest and oldest day, so they are
+ * scanned as a single {@code (LookbackDays+1)}-day union, not as two separate {@code LookbackDays}-day
+ * scans - the first version of this shipped as two separate scans ({@code LookbackDays x 24 x 3 x 2}
+ * queries) and timed out at Lambda's 900s ceiling on every invocation at {@code LookbackDays=6}. The
+ * union costs {@code (LookbackDays+1) x 24 x 3} queries, close to the original single-window count.
+ *
  * <p><b>Duplicated constants.</b> The values below mirror {@code XvfConfig} in the main tree, which
  * this module deliberately does not depend on. That is a drift risk of exactly the kind
  * {@code XvfSignalEngine}'s javadoc warns about, and the mitigation is to diff this book against
@@ -69,6 +81,10 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
     private static final int POSITIONS = 20;
     private static final double COMPLETENESS_RATIO = 0.9;
     private static final double MIN_WEEKLY_QUOTE_VOLUME = 500_000;
+    /** Mirrors {@code XvfConfig.STALE_SIGNAL_DISCOUNT}. See that constant's javadoc for the backing
+     *  calibration - a base already eligible one day earlier reads roughly 2x its forward
+     *  realisation, and this is what corrects for it. */
+    private static final double STALE_SIGNAL_DISCOUNT = 0.65;
     /** v1 venues. dYdX is excluded on measurement - see XVF_V1_SCOPE.md. */
     private static final List<String> VENUES = List.of("binance", "bybit", "hyperliquid");
 
@@ -90,23 +106,67 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
         long retentionDays = Long.parseLong(System.getenv().getOrDefault("RETENTION_DAYS", "365"));
 
         Instant now = Instant.now().truncatedTo(ChronoUnit.HOURS);
-        Instant from = now.minus(lookbackDays, ChronoUnit.DAYS);
-        int windowHours = lookbackDays * 24;
+        Instant yesterday = now.minus(1, ChronoUnit.DAYS);
 
         Map<String, Integer> intervalHours = fundingIntervals();
         Map<String, Double> volume24h = liveVolume();
         log(context, "intervals for %,d symbols, volume for %,d".formatted(
                 intervalHours.size(), volume24h.size()));
 
-        // Sum one observation per stamp across the window.
-        Map<String, double[]> summed = new HashMap<>();   // venue|symbol -> [rateSum, payments]
+        // Scanned ONCE as the union of both windows, not once per window: today's [now-lookback, now)
+        // and yesterday's [now-lookback-1, now-1) overlap on all but their newest and oldest day, so
+        // querying them separately re-fetches lookbackDays-1 days of hours twice for no reason. Every
+        // production run since this handler last shipped timed out at Lambda's 900s ceiling doing
+        // exactly that at LOOKBACK_DAYS=6 (2 x 144 = 288 hours x 3 venues = 864 queries); scanning the
+        // union is (lookbackDays+1) x 24 x 3 = 504, close to the original single-window count.
+        Instant unionFrom = yesterday.minus(lookbackDays, ChronoUnit.DAYS);
+        Map<Instant, Map<String, double[]>> perHour = new HashMap<>();
         int scanned = 0;
-        for (Instant hour = from; hour.isBefore(now); hour = hour.plus(1, ChronoUnit.HOURS)) {
+        for (Instant hour = unionFrom; hour.isBefore(now); hour = hour.plus(1, ChronoUnit.HOURS)) {
+            Map<String, double[]> bucket = new HashMap<>();
             for (String venue : VENUES) {
-                scanned += accumulate(fundingTable, venue, hour, summed);
+                scanned += accumulate(fundingTable, venue, hour, bucket);
+            }
+            perHour.put(hour, bucket);
+        }
+        log(context, "scanned %,d observations over %d hours (today+yesterday union)"
+                .formatted(scanned, (lookbackDays + 1) * 24));
+
+        List<Leg> todayLegs = legsFrom(perHour, now, lookbackDays, intervalHours, volume24h,
+                context, "today");
+        List<Leg> yesterdayLegs = legsFrom(perHour, yesterday, lookbackDays, intervalHours,
+                volume24h, context, "yesterday");
+
+        List<Candidate> book = rank(todayLegs, yesterdayLegs, lookbackDays);
+        String runId = now.toString();
+        write(signalTable, runId, now, book, lookbackDays, todayLegs.size(),
+                now.plus(retentionDays, ChronoUnit.DAYS).getEpochSecond());
+
+        String summary = "SIGNAL %s: %d candidates, %d legs, %d hours".formatted(
+                runId, book.size(), todayLegs.size(), lookbackDays * 24);
+        log(context, summary);
+        return summary;
+    }
+
+    /** Legs passing completeness for the {@code lookbackDays} window ending at {@code asOf}, summed
+     *  from the already-scanned per-hour buckets rather than re-querying DynamoDB. */
+    private static List<Leg> legsFrom(Map<Instant, Map<String, double[]>> perHour, Instant asOf,
+                                      int lookbackDays, Map<String, Integer> intervalHours,
+                                      Map<String, Double> volume24h, Context context, String label) {
+        Instant from = asOf.minus(lookbackDays, ChronoUnit.DAYS);
+        int windowHours = lookbackDays * 24;
+
+        Map<String, double[]> summed = new HashMap<>();   // venue|symbol -> [rateSum, payments]
+        for (Instant hour = from; hour.isBefore(asOf); hour = hour.plus(1, ChronoUnit.HOURS)) {
+            Map<String, double[]> bucket = perHour.get(hour);
+            if (bucket == null) {
+                continue;
+            }
+            for (var entry : bucket.entrySet()) {
+                summed.merge(entry.getKey(), entry.getValue(),
+                        (a, b) -> new double[] {a[0] + b[0], a[1] + b[1]});
             }
         }
-        log(context, "scanned %,d observations over %d hours".formatted(scanned, windowHours));
 
         List<Leg> legs = new ArrayList<>();
         for (var entry : summed.entrySet()) {
@@ -124,17 +184,8 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
             legs.add(new Leg(key[0], key[1], agg[0], (int) agg[1],
                     volume24h.getOrDefault(entry.getKey(), 0.0) * 7));
         }
-        log(context, "%,d legs pass completeness".formatted(legs.size()));
-
-        List<Candidate> book = rank(legs, lookbackDays);
-        String runId = now.toString();
-        write(signalTable, runId, now, book, lookbackDays, legs.size(),
-                now.plus(retentionDays, ChronoUnit.DAYS).getEpochSecond());
-
-        String summary = "SIGNAL %s: %d candidates, %d legs, %d hours".formatted(
-                runId, book.size(), legs.size(), windowHours);
-        log(context, summary);
-        return summary;
+        log(context, "%s: %,d legs pass completeness".formatted(label, legs.size()));
+        return legs;
     }
 
     /** Adds one venue-hour of observations, counting only the sample that settles its stamp. */
@@ -175,8 +226,8 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
         return seen;
     }
 
-    /** Widest cross-venue spread per base, filtered and ranked. */
-    private static List<Candidate> rank(List<Leg> legs, int lookbackDays) {
+    /** Widest cross-venue spread per base - no threshold applied yet, every base that has a pair. */
+    private static List<Candidate> widestPerBase(List<Leg> legs, int lookbackDays) {
         Map<String, List<Leg>> byBase = new HashMap<>();
         for (Leg leg : legs) {
             byBase.computeIfAbsent(normaliseBase(leg.venue(), leg.symbol()),
@@ -205,8 +256,41 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
             }
             double spread = bestSpread * (365.0 / lookbackDays) * 100;
             double thin = Math.min(best.weeklyVolume(), bestCheap.weeklyVolume());
-            if (spread > MIN_SPREAD_ANNUAL_PCT && thin >= MIN_WEEKLY_QUOTE_VOLUME) {
-                out.add(new Candidate(entry.getKey(), best, bestCheap, spread, thin));
+            out.add(new Candidate(entry.getKey(), best, bestCheap, spread, thin));
+        }
+        return out;
+    }
+
+    /** {@link #widestPerBase}, filtered by the entry thresholds - eligibility, not yet
+     *  freshness-adjusted. Also what "was this base eligible on the prior ranking" checks against. */
+    private static List<Candidate> eligible(List<Leg> legs, int lookbackDays) {
+        List<Candidate> out = new ArrayList<>();
+        for (Candidate c : widestPerBase(legs, lookbackDays)) {
+            if (c.spreadPct() > MIN_SPREAD_ANNUAL_PCT && c.thinVol() >= MIN_WEEKLY_QUOTE_VOLUME) {
+                out.add(c);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * {@link #eligible} on {@code todayLegs}, with every candidate that was ALSO eligible on
+     * {@code yesterdayLegs} discounted by {@link #STALE_SIGNAL_DISCOUNT} before being re-checked
+     * against the threshold - a discounted spread that no longer clears it is dropped, not just
+     * ranked lower. Mirrors {@code XvfSignalEngine.rankedCandidates}.
+     */
+    private static List<Candidate> rank(List<Leg> todayLegs, List<Leg> yesterdayLegs, int lookbackDays) {
+        List<Candidate> today = eligible(todayLegs, lookbackDays);
+        java.util.Set<String> eligibleYesterday = new java.util.HashSet<>();
+        for (Candidate c : eligible(yesterdayLegs, lookbackDays)) {
+            eligibleYesterday.add(c.base());
+        }
+        List<Candidate> out = new ArrayList<>();
+        for (Candidate c : today) {
+            boolean fresh = !eligibleYesterday.contains(c.base());
+            double adjusted = fresh ? c.spreadPct() : c.spreadPct() * STALE_SIGNAL_DISCOUNT;
+            if (adjusted > MIN_SPREAD_ANNUAL_PCT) {
+                out.add(new Candidate(c.base(), c.shortLeg(), c.longLeg(), adjusted, c.thinVol()));
             }
         }
         out.sort(Comparator.comparingDouble(Candidate::spreadPct).reversed());
