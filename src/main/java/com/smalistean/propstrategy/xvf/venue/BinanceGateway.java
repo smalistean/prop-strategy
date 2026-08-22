@@ -198,7 +198,11 @@ public final class BinanceGateway implements VenueGateway {
         return out;
     }
 
-    /** USDT wallet balance on the futures account. BNB held for the fee discount is not collateral. */
+    /**
+     * Free USDT on the futures account - what a NEW order can actually use, not the account's total
+     * balance. {@code balance} includes margin already committed to open positions; {@code
+     * availableBalance} is what is left. BNB held for the fee discount is not collateral either way.
+     */
     @Override
     public BigDecimal availableCapital() {
         if (dryRun) {
@@ -208,7 +212,7 @@ public final class BinanceGateway implements VenueGateway {
             JsonNode body = MAPPER.readTree(signedGet("/fapi/v2/balance", new HashMap<>()));
             for (JsonNode b : body) {
                 if ("USDT".equals(b.path("asset").asText())) {
-                    return new BigDecimal(b.path("balance").asText("0"));
+                    return new BigDecimal(b.path("availableBalance").asText("0"));
                 }
             }
             return BigDecimal.ZERO;

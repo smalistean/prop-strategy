@@ -473,3 +473,38 @@ none of it is a reason to move quickly.
   the collision-filtering problem has to be solved first either way?
 - Which specific field(s) on each venue's instruments endpoint distinguish a genuine perpetual from a
   stock/ETF-tracking product wearing a crypto-looking ticker - unknown for all five.
+
+---
+
+## 13. Hyperliquid can force-close a profitable leg, and four bugs that compounded it (2026-08-22)
+
+**The risk.** Hyperliquid's auto-deleveraging (ADL) backstop can force-close a position that is
+*winning*, with no warning and no order from this system, to cover a liquidation elsewhere on the
+book that the order book itself couldn't absorb. It is not this account being at risk - margin can be
+perfectly healthy - and it is not a bug in `PairedEntryEngine`. Measured live: a 675-unit CASHCAT
+short, entered 2026-08-20 20:00:53Z, was closed by Hyperliquid at 2026-08-22T05:11:35Z with
+`dir: "Auto-Deleveraging"` and `liquidation.method: "backstop"`, realizing +$31.05 - a genuine profit,
+forced closed anyway, because CASHCAT crashed roughly 66% intraday (24h range 0.051-0.152) and
+liquidated someone else who was on the losing side of that move. This left the paired Bybit leg
+naked with nothing watching it; nothing in this system currently detects an ADL event, only a manual
+or scheduled position snapshot happening to notice a leg count changed. No mitigation exists yet -
+this is a real, unaddressed risk for any venue combination that includes Hyperliquid, not something
+this session's fixes below touch.
+
+**What compounded it.** The naked leg above should have been a single, contained incident. Instead it
+recurred twice more the same day, and each recurrence traced to its own separate bug, found and fixed
+live:
+
+| Bug | Effect | Fix |
+|---|---|---|
+| `V21` migration edited after being applied locally | Every importer calling `DatabaseMigrator.migrate()` failed silently for over a day; `perp_funding_all` went stale, ranked candidates collapsed from ~20 to 6 | `flyway repair`; new rule - never edit an applied migration, write a new one instead |
+| Entry loop counted "already open" only by walking today's ranked book | A retained pair whose signal decays below threshold becomes invisible to slot-counting even with fresh data - 11 of 19 held bases were missing from one day's book - so "add one" tried to open far more than one | Seed `slotsFilled` from live positions across all venues up front, not from the walk |
+| `BybitGateway.positions()` had no `limit` param | Bybit's default 20-row page silently dropped the 21st position (measured: BNT) from every caller - the entry loop's already-open check, `closeAllMaker`, `reconcile` | Paginate fully via `cursor`/`nextPageCursor` |
+| `hedge()` never cancelled the resting maker on `UNHEDGED_ALERT` | A maker whose hedge just failed kept resting and kept filling - CASHCAT grew to 992 units naked before anything stopped it, well past its ~830-900 unit target | Cancel the resting maker in the same call that sets `UNHEDGED_ALERT`, not at the next chase/deadline check |
+
+**What's still open.** Bybit's margin was down to $5.16 available (99.71% initial-margin
+utilization) by the second CASHCAT recurrence - both ONG's maker order and CASHCAT's hedge failed for
+this reason, not a code defect. The entry loop still sizes against target notional and a participation
+cap; it never checks a venue's actual free margin before attempting an order, so it can walk into an
+exhausted venue and only find out via a rejected order after the other leg has already filled. Proposed
+but not built: check `availableCapital()` per venue before attempting a candidate that needs it.

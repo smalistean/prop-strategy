@@ -148,26 +148,39 @@ public final class BybitGateway implements VenueGateway {
         if (dryRun) {
             return java.util.List.of();
         }
-        JsonNode response = signedGet("/v5/position/list",
-                "category=" + CATEGORY + "&settleCoin=USDT");
-        int code = response.path("retCode").asInt(-1);
-        if (code != 0) {
-            throw new IllegalStateException("bybit position/list retCode " + code + ": "
-                    + response.path("retMsg").asText());
-        }
+        // Unpaginated, this silently returns only Bybit's default 20-row page - measured live on
+        // 2026-08-22 with 21 open positions, where the 21st (BNT) was missing from every caller that
+        // trusted this list: the entry loop's already-open check, closeAllMaker, reconcile. Bybit does
+        // not error or flag truncation; it just stops at 20 unless a cursor is followed to the end.
         java.util.List<PositionSnapshot> out = new java.util.ArrayList<>();
-        for (JsonNode p : response.path("result").path("list")) {
-            BigDecimal size = new BigDecimal(p.path("size").asText("0"));
-            if (size.signum() == 0) {
-                continue;
+        String cursor = null;
+        do {
+            String query = "category=" + CATEGORY + "&settleCoin=USDT&limit=200"
+                    + (cursor == null ? "" : "&cursor=" + java.net.URLEncoder.encode(cursor,
+                            java.nio.charset.StandardCharsets.UTF_8));
+            JsonNode response = signedGet("/v5/position/list", query);
+            int code = response.path("retCode").asInt(-1);
+            if (code != 0) {
+                throw new IllegalStateException("bybit position/list retCode " + code + ": "
+                        + response.path("retMsg").asText());
             }
-            // Bybit reports size unsigned with the direction in `side`; the interface wants it signed.
-            BigDecimal signed = "Sell".equals(p.path("side").asText()) ? size.negate() : size;
-            out.add(new PositionSnapshot("bybit", p.path("symbol").asText(), signed,
-                    new BigDecimal(p.path("avgPrice").asText("0").isEmpty()
-                            ? "0" : p.path("avgPrice").asText("0")),
-                    VenueGateway.optionalPrice(p.path("liqPrice").asText(""))));
-        }
+            JsonNode result = response.path("result");
+            for (JsonNode p : result.path("list")) {
+                BigDecimal size = new BigDecimal(p.path("size").asText("0"));
+                if (size.signum() == 0) {
+                    continue;
+                }
+                // Bybit reports size unsigned with the direction in `side`; the interface wants it
+                // signed.
+                BigDecimal signed = "Sell".equals(p.path("side").asText()) ? size.negate() : size;
+                out.add(new PositionSnapshot("bybit", p.path("symbol").asText(), signed,
+                        new BigDecimal(p.path("avgPrice").asText("0").isEmpty()
+                                ? "0" : p.path("avgPrice").asText("0")),
+                        VenueGateway.optionalPrice(p.path("liqPrice").asText(""))));
+            }
+            String next = result.path("nextPageCursor").asText("");
+            cursor = next.isEmpty() ? null : next;
+        } while (cursor != null);
         return out;
     }
 
@@ -363,7 +376,13 @@ public final class BybitGateway implements VenueGateway {
         }
     }
 
-    /** USDT wallet balance on the unified trading account. */
+    /**
+     * Free collateral on the unified trading account - what a NEW order can actually use, not the
+     * account's total balance. Originally read {@code coin.walletBalance}, which includes margin
+     * already committed to open positions; measured live 2026-08-22, that stayed near $1,787 while
+     * the account's real headroom for a new order ({@code totalAvailableBalance}, account-level, not
+     * per-coin) had fallen to $5.16 - a new order would have been sized as if $1,787 were free.
+     */
     @Override
     public BigDecimal availableCapital() {
         if (dryRun) {
@@ -376,10 +395,9 @@ public final class BybitGateway implements VenueGateway {
                     + response.path("retMsg").asText());
         }
         for (JsonNode account : response.path("result").path("list")) {
-            for (JsonNode coin : account.path("coin")) {
-                if ("USDT".equals(coin.path("coin").asText())) {
-                    return new BigDecimal(coin.path("walletBalance").asText("0"));
-                }
+            String text = account.path("totalAvailableBalance").asText("");
+            if (!text.isEmpty()) {
+                return new BigDecimal(text);
             }
         }
         return BigDecimal.ZERO;

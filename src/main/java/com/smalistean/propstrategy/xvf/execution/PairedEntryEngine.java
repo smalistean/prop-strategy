@@ -630,6 +630,14 @@ public final class PairedEntryEngine implements AutoCloseable {
                 + "Close manually or the position is directional.%n",
                 pair.base(), taker.side(), quantity, taker.gateway().name(),
                 pair.maker().gateway().name());
+        // Cancelled here, not left for the next deadline check: the maker leg is still resting and
+        // the market can keep filling it for as long as abandonAfter allows (up to 30 minutes) if
+        // nothing stops it, each fill adding to an exposure already proven unhedgeable. Measured live
+        // on CASHCAT, 2026-08-22: the maker grew past its original target while five hedge attempts
+        // failed on the taker's side, because nothing cancelled it until the unrelated deadline path
+        // eventually did. A repeated hedge failure is the same signal an abandon deadline is - stop
+        // resting now rather than waiting for a timer to notice the same thing later.
+        cancelResting(pair);
     }
 
     /**

@@ -642,30 +642,34 @@ class PairedEntryEngineTest {
     }
 
     /**
-     * The BNT regression, measured live 2026-08-20. UNHEDGED_ALERT is terminal and is set from the
-     * hedge path, which never touches the maker order - and every route that would have cancelled it
-     * is short-circuited by isTerminal(). A written-off BNT maker for 281 kept resting, kept filling
-     * in ones, and each fill was too small to hedge, so the imbalance grew with nothing watching.
+     * The BNT regression, measured live 2026-08-20, and its CASHCAT recurrence on 2026-08-22. The
+     * original fix only cancelled the maker eventually, at shutdown or the next abandon-deadline
+     * check; measured live on CASHCAT, the maker kept resting and kept filling - growing well past
+     * its original target - for as long as that check took to run. UNHEDGED_ALERT is set from the
+     * hedge path itself now cancels the maker immediately, in the same call, rather than leaving it
+     * for something else to notice later.
      */
     @Test
     void aPairWrittenOffAsUnhedgedStillHasItsRestingMakerCancelled() throws Exception {
         RecordingGateway maker = new RecordingGateway("maker");
         RecordingGateway taker = new RecordingGateway("taker");
-        // An hour between chases, so no ordinary chase can cancel the order and mask the bug: the
-        // only thing left that could clean up is shutdown.
+        // An hour between chases, so no ordinary chase can be what cancels the order - only the hedge
+        // path itself, or shutdown, are left as possible explanations.
         try (PairedEntryEngine engine =
                      new PairedEntryEngine(Duration.ofMinutes(30), Duration.ofHours(1))) {
             String id = openOne(engine, maker, taker);
 
             // Every hedge attempt is refused, which drives the pair to UNHEDGED_ALERT - a terminal
-            // state set from the hedge path, which never touches the maker order.
+            // state set from the hedge path, which now cancels the maker order in the same call
+            // rather than leaving it resting for something else to find later.
             taker.nextOutcome = SubmitOutcome.REJECTED;
             engine.onOrderUpdate(cumulative(id, "3", VenueGateway.OrderState.FILLED));
-            assertEquals(0, maker.cancels, "no chase should have run at an hour cadence");
+            assertEquals(1, maker.cancels,
+                    "the hedge-failure path itself must cancel the maker immediately, not wait for a "
+                            + "chase or shutdown to notice");
         }
-        // close() has now run. It shuts the timers down, so after this point nothing is scheduled
-        // that could ever cancel the order - if it is still resting here it outlives the process,
-        // fills with no listener, and leaves a naked leg nobody knows about.
+        // close() has now run. Confirms the immediate cancel was not undone or double-sent in a way
+        // that leaves the order resting again by the time the engine shuts down.
         assertTrue(maker.cancels > 0,
                 "a pair written off as UNHEDGED must not leave its maker order resting at shutdown");
     }

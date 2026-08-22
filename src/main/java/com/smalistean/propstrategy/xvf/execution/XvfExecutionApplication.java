@@ -56,14 +56,24 @@ public final class XvfExecutionApplication {
 
     public static void main(String[] args) throws Exception {
         boolean live = !Boolean.parseBoolean(System.getProperty("xvfDryRun", "true"));
-        double capital = Double.parseDouble(System.getProperty("xvfCapital", "10000"));
 
-        System.out.printf("XVF execution — %s — capital %,.0f USDT%n",
-                live ? "*** LIVE ***" : "dry run", capital);
+        // Read before the header prints: closeall/closeallmaker/closepair close whatever the accounts
+        // actually hold, not anything sized from capital, so a "capital" figure next to them is not
+        // erroneous data - it is a number this run never looks at, printed as if it mattered.
+        String earlyMode = System.getProperty("xvfMode", "enter");
+        boolean closeOnlyMode = java.util.Set.of("closeall", "closeallmaker", "closepair").contains(earlyMode);
+
+        double capital = Double.parseDouble(System.getProperty("xvfCapital", "10000"));
+        if (closeOnlyMode) {
+            System.out.printf("XVF execution — %s — %s%n", live ? "*** LIVE ***" : "dry run", earlyMode);
+        } else {
+            System.out.printf("XVF execution — %s — capital %,.0f USDT%n",
+                    live ? "*** LIVE ***" : "dry run", capital);
+        }
         if (!live) {
             System.out.println("  no orders will be sent. pass -DxvfDryRun=false to trade.");
         }
-        if (capital < XvfConfig.MIN_CAPITAL_USD) {
+        if (!closeOnlyMode && capital < XvfConfig.MIN_CAPITAL_USD) {
             System.out.printf("  WARNING: below the %.0f minimum; step rounding will exceed 1%% on "
                     + "more than a tenth of candidates%n", XvfConfig.MIN_CAPITAL_USD);
         }
@@ -79,13 +89,27 @@ public final class XvfExecutionApplication {
         // must not depend on perp_funding_all being fresh. An operator reaching for closeall is either
         // starting over deliberately or reacting to something wrong - either way it must still work if
         // requireFreshFunding would otherwise refuse to produce a book.
-        String earlyMode = System.getProperty("xvfMode", "enter");
         if ("closeall".equals(earlyMode)) {
             closeAll(gateways, live);
             return;
         }
         if ("closeallmaker".equals(earlyMode)) {
             closeAllMaker(gateways, live);
+            return;
+        }
+        if ("closepair".equals(earlyMode)) {
+            String basesProperty = System.getProperty("xvfCloseBases", "");
+            java.util.Set<String> bases = new java.util.LinkedHashSet<>();
+            for (String base : basesProperty.split(",")) {
+                if (!base.isBlank()) {
+                    bases.add(base.strip().toUpperCase(java.util.Locale.ROOT));
+                }
+            }
+            if (bases.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "xvfMode=closepair needs -DxvfCloseBases=BASE[,BASE...]");
+            }
+            closeBases(gateways, live, bases);
             return;
         }
 
@@ -124,24 +148,42 @@ public final class XvfExecutionApplication {
             // may have crashed, been interrupted, or simply be a different invocation entirely. The
             // venues are the only durable record of what already opened.
             Map<String, java.util.Set<String>> alreadyOpenSymbols = new LinkedHashMap<>();
+            // Distinct bases held anywhere, independent of whether that base still ranks in today's
+            // book. A retained pair is kept even after its signal decays below the entry threshold, so
+            // it can easily be absent from `book` entirely - measured live on 2026-08-22, 11 of 19 held
+            // bases had fallen out of that day's candidates. Counting occupied slots by walking the
+            // ranked list would make all 11 invisible and try to open 11 unwanted new pairs to reach
+            // POSITIONS; counting from live positions up front cannot miss a base this way.
+            java.util.Set<String> heldBases = new java.util.HashSet<>();
             for (var entry : gateways.entrySet()) {
                 java.util.Set<String> symbols = new java.util.HashSet<>();
                 for (VenueGateway.PositionSnapshot p : entry.getValue().positions()) {
                     if (p.signedQuantity().signum() != 0) {
                         symbols.add(p.venueSymbol());
+                        heldBases.add(XvfConfig.normaliseBase(entry.getKey(), p.venueSymbol()));
                     }
                 }
                 alreadyOpenSymbols.put(entry.getKey(), symbols);
             }
 
-            // Two counters over the same walk: slotsFilled is every rank-ordered candidate that
-            // counts against the POSITIONS cap (already open, or opened below), and stops the walk
-            // once the book is full; openedThisRun is only what THIS run actually sent, for the
-            // summary line. book is uncapped (see fullBook), so a candidate that can never be
-            // opened - CAT's step size, ON's ticker collision - costs one skipped rank rather than
-            // one permanently empty slot; the walk continues to whatever ranks below POSITIONS until
-            // it finds one that works.
-            int slotsFilled = 0;
+            // Fetched once, then decremented locally as this run opens pairs - a single run can open
+            // several, and each one commits real margin on both its venues before the next candidate
+            // is considered. Measured live 2026-08-22: two candidates in the same run both needed
+            // Bybit, and nothing checked whether Bybit's margin could actually support a second one
+            // after the first had already used most of what was free - the second's maker filled
+            // anyway and its hedge failed for insufficient margin, leaving a naked leg.
+            Map<String, BigDecimal> freeCapital = new LinkedHashMap<>();
+            for (VenueGateway gateway : gateways.values()) {
+                freeCapital.put(gateway.name(), gateway.availableCapital());
+            }
+
+            // Two counters over the same walk: slotsFilled starts at the true occupied-slot count and
+            // counts every rank-ordered candidate this run itself fills, stopping once the book is
+            // full; openedThisRun is only what THIS run actually sent, for the summary line. book is
+            // uncapped (see fullBook), so a candidate that can never be opened - CAT's step size, ON's
+            // ticker collision - costs one skipped rank rather than one permanently empty slot; the
+            // walk continues to whatever ranks below POSITIONS until it finds one that works.
+            int slotsFilled = heldBases.size();
             int openedThisRun = 0;
             for (Target t : book) {
                 if (slotsFilled >= XvfConfig.POSITIONS) {
@@ -188,10 +230,34 @@ public final class XvfExecutionApplication {
                 // resize it in a way nothing downstream accounts for.
                 if (alreadyOpenSymbols.getOrDefault(makerGw.name(), java.util.Set.of()).contains(makerSymbol)
                         || alreadyOpenSymbols.getOrDefault(takerGw.name(), java.util.Set.of()).contains(takerSymbol)) {
+                    // No slotsFilled++ here: this base is already counted in the seed above. Counting
+                    // it again would double-count every held base that still happens to rank today,
+                    // making the walk stop early and under-fill the book instead of over-filling it.
                     System.out.printf("  skip %s: already open on %s or %s - resuming, not reopening%n",
                             t.base(), makerGw.name(), takerGw.name());
-                    slotsFilled++;
                     continue;
+                }
+
+                // Checked before pricing, not discovered from a rejected order after the maker leg
+                // already filled. A required margin figure is not available up front - the actual
+                // requirement depends on price and leverage, both resolved below - so this compares
+                // against the full target notional, which is conservative (LEG_LEVERAGE=1.0 makes the
+                // two figures equal anyway) rather than optimistic.
+                //
+                // Live only: every gateway's availableCapital() returns ZERO in dry run (same reason
+                // positions() returns empty there), so this would refuse every single candidate and
+                // make a dry run useless for previewing pricing and sizing rather than just silent
+                // about what is already open.
+                BigDecimal required = BigDecimal.valueOf(capped);
+                if (live) {
+                    BigDecimal makerFree = freeCapital.getOrDefault(makerGw.name(), BigDecimal.ZERO);
+                    BigDecimal takerFree = freeCapital.getOrDefault(takerGw.name(), BigDecimal.ZERO);
+                    if (makerFree.compareTo(required) < 0 || takerFree.compareTo(required) < 0) {
+                        System.out.printf("  skip %s: %s free on %s, %s free on %s - not enough for a "
+                                + "%.0f USD leg%n", t.base(), makerFree, makerGw.name(), takerFree,
+                                takerGw.name(), capped);
+                        continue;
+                    }
                 }
 
                 // Each leg is priced and sized on its OWN venue. Using one price for both was wrong
@@ -251,17 +317,23 @@ public final class XvfExecutionApplication {
                         new PairedEntryEngine.Leg(takerGw, takerSymbol, takerSide, takerQty),
                         makerPrice);
                 if (!resting) {
-                    // The venue rejected the order outright - most commonly insufficient margin on
-                    // one leg's venue, which sizing has no way to see in advance since it only knows
-                    // the target notional, not the account's actual free balance there. Caught
-                    // synchronously inside engine.open() itself (placePostOnly's HTTP response, not a
-                    // later stream event), so it is safe to keep walking the ranked list here rather
-                    // than counting this base as having filled a slot - the same reasoning as every
-                    // other skip above, just discovered one step later.
+                    // The venue rejected the order outright. The free-capital check above catches the
+                    // common case in advance now, but it compares against target notional, not the
+                    // exact margin the venue itself computes - a venue-side rejection is still possible
+                    // at the margin. Caught synchronously inside engine.open() itself (placePostOnly's
+                    // HTTP response, not a later stream event), so it is safe to keep walking the
+                    // ranked list here rather than counting this base as having filled a slot - the
+                    // same reasoning as every other skip above, just discovered one step later.
                     System.out.printf("  skip %s: venue rejected the maker order - trying the next "
                             + "candidate rather than leaving the slot empty%n", t.base());
                     continue;
                 }
+                // Committed against the local tally immediately, not re-fetched from the venue: the
+                // margin this order just reserved will not show up in a fresh availableCapital() call
+                // until the venue's own accounting catches up, and the next candidate in this same
+                // walk must not be sized as if it were still free.
+                freeCapital.merge(makerGw.name(), required.negate(), BigDecimal::add);
+                freeCapital.merge(takerGw.name(), required.negate(), BigDecimal::add);
                 slotsFilled++;
                 openedThisRun++;
             }
@@ -398,6 +470,112 @@ public final class XvfExecutionApplication {
                     System.out.printf("  skip %s: no price on %s%n", e.getKey(), makerGw.name());
                     continue;
                 }
+
+                engine.close(e.getKey(),
+                        new PairedEntryEngine.Leg(makerGw, makerPos.venueSymbol(), makerSide,
+                                makerPos.signedQuantity().abs()),
+                        new PairedEntryEngine.Leg(takerGw, takerPos.venueSymbol(), takerSide,
+                                takerPos.signedQuantity().abs()),
+                        makerPrice);
+                started++;
+            }
+
+            System.out.printf("%n%d pair(s) closing.%n", started);
+            if (live) {
+                System.out.println("  waiting for every pair to resolve before closing the venue "
+                        + "streams - a maker fill that arrives after that point has nothing "
+                        + "listening for it.");
+                waitForResolution(engine, abandonAfter);
+            }
+            engine.outstanding().forEach((base, state) ->
+                    System.out.printf("  !! %s %s — needs manual attention%n", base, state));
+            for (AutoCloseable stream : streams) {
+                stream.close();
+            }
+        }
+    }
+
+    /**
+     * Closes specific bases only, resting the maker leg on Bybit whenever Bybit is one of the two legs
+     * - a deliberate override of the usual thinner-venue heuristic in {@link #closeAllMaker}, for a
+     * case where the ordinary rest venue just proved unreliable (Hyperliquid ADL on CASHCAT, 2026-08-22)
+     * and the operator wants a specific venue chosen rather than measured. Falls back to the thinner
+     * venue when Bybit is not involved.
+     *
+     * <p>Unbalanced legs - a naked position left over from a partial hedge or an exchange-forced close
+     * on one side - are not a special case: each leg closes at its own held quantity, so a naked base
+     * ends up flat on both venues exactly the same as a balanced one.
+     */
+    private static void closeBases(Map<String, VenueGateway> gateways, boolean live,
+                                   java.util.Set<String> bases) throws Exception {
+        System.out.printf("%nclosing %s with a resting maker order on bybit where present "
+                + "(xvfMode=closepair)%n", String.join(", ", bases));
+
+        Map<String, List<VenueGateway.PositionSnapshot>> byBase = new LinkedHashMap<>();
+        Map<String, VenueGateway> ownerOf = new LinkedHashMap<>();
+        for (Map.Entry<String, VenueGateway> entry : gateways.entrySet()) {
+            for (VenueGateway.PositionSnapshot p : entry.getValue().positions()) {
+                if (p.signedQuantity().signum() == 0) {
+                    continue;
+                }
+                String base = XvfConfig.normaliseBase(entry.getKey(), p.venueSymbol());
+                if (!bases.contains(base)) {
+                    continue;
+                }
+                byBase.computeIfAbsent(base, k -> new ArrayList<>()).add(p);
+                ownerOf.put(entry.getKey() + "|" + p.venueSymbol(), entry.getValue());
+            }
+        }
+        for (String base : bases) {
+            if (!byBase.containsKey(base)) {
+                System.out.printf("  !! %s: nothing open on any venue - nothing to close%n", base);
+            }
+        }
+        if (byBase.isEmpty()) {
+            System.out.println("  nothing open on the requested bases; nothing to do.");
+            return;
+        }
+
+        Duration abandonAfter = Duration.ofMinutes(30);
+        Duration chaseEvery = Duration.ofSeconds(Integer.getInteger("xvfChaseSeconds", 30));
+        try (PairedEntryEngine engine = new PairedEntryEngine(abandonAfter, chaseEvery)) {
+            List<AutoCloseable> streams = new ArrayList<>();
+            for (VenueGateway gateway : gateways.values()) {
+                streams.add(gateway.streamOrderUpdates(engine::onOrderUpdate));
+            }
+
+            int started = 0;
+            for (var e : byBase.entrySet()) {
+                List<VenueGateway.PositionSnapshot> legs = e.getValue();
+                if (legs.size() != 2) {
+                    System.out.printf("  !! %s has %d leg(s), not two venues - skipped, close it by "
+                            + "hand%n", e.getKey(), legs.size());
+                    continue;
+                }
+                VenueGateway.PositionSnapshot pA = legs.get(0);
+                VenueGateway.PositionSnapshot pB = legs.get(1);
+                boolean aIsBybit = "bybit".equals(pA.venue());
+                boolean bIsBybit = "bybit".equals(pB.venue());
+                boolean aRests = (aIsBybit || bIsBybit) ? aIsBybit : isThinner(pA.venue(), pB.venue());
+                VenueGateway.PositionSnapshot makerPos = aRests ? pA : pB;
+                VenueGateway.PositionSnapshot takerPos = aRests ? pB : pA;
+                VenueGateway makerGw = ownerOf.get(makerPos.venue() + "|" + makerPos.venueSymbol());
+                VenueGateway takerGw = ownerOf.get(takerPos.venue() + "|" + takerPos.venueSymbol());
+
+                // Reducing a long means selling; reducing a short means buying - the opposite of the
+                // sign the position is already held at.
+                Side makerSide = makerPos.signedQuantity().signum() > 0 ? Side.SELL : Side.BUY;
+                Side takerSide = takerPos.signedQuantity().signum() > 0 ? Side.SELL : Side.BUY;
+                BigDecimal makerPrice = referencePrice(makerGw, makerPos.venueSymbol(), makerSide);
+                if (makerPrice.signum() <= 0) {
+                    System.out.printf("  skip %s: no price on %s%n", e.getKey(), makerGw.name());
+                    continue;
+                }
+
+                System.out.printf("%-10s maker %-12s %-4s %-16s %s | taker %-12s %-4s %-16s %s%n",
+                        e.getKey(), makerGw.name(), makerSide, makerPos.venueSymbol(),
+                        makerPos.signedQuantity().abs(), takerGw.name(), takerSide,
+                        takerPos.venueSymbol(), takerPos.signedQuantity().abs());
 
                 engine.close(e.getKey(),
                         new PairedEntryEngine.Leg(makerGw, makerPos.venueSymbol(), makerSide,

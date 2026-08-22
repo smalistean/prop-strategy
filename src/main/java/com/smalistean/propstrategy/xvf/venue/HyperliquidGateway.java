@@ -549,13 +549,17 @@ public final class HyperliquidGateway implements VenueGateway {
     // ---------- REST info ----------
 
     /**
-     * Perp collateral plus spot USDC, as one figure.
+     * Free perp margin plus spot USDC, as one figure - what a NEW order can actually use, not the
+     * account's total equity.
      *
-     * <p>Hyperliquid is a unified account, but its {@code info} API reports the two sides separately:
-     * {@code clearinghouseState.marginSummary.accountValue} covers perps and reads {@code 0.0} while
-     * the balance sits under {@code spotClearinghouseState}. Reading only the perp figure reports a
-     * funded account as empty - measured 2026-08-20, perp {@code 0.0} against 1,542 USDC in spot.
-     * Both are spendable, so both are counted.
+     * <p>Hyperliquid is a unified account, but its {@code info} API reports the two sides separately.
+     * The perp side previously read {@code marginSummary.accountValue}, which is TOTAL perp equity
+     * including margin already committed to open positions, not what is free; {@code withdrawable} is
+     * what is actually uncommitted. Reading {@code accountValue} instead reports an account near its
+     * margin limit as having its full equity free for a new order. Spot USDC reads separately and
+     * would read {@code 0.0} on the perp side alone while sitting funded under
+     * {@code spotClearinghouseState} - measured 2026-08-20, perp {@code 0.0} against 1,542 USDC in
+     * spot - so both are counted, matching the unified account's own model.
      */
     @Override
     public BigDecimal availableCapital() {
@@ -563,8 +567,7 @@ public final class HyperliquidGateway implements VenueGateway {
             return BigDecimal.ZERO;
         }
         JsonNode perp = infoPost(Map.of("type", "clearinghouseState", "user", accountAddress));
-        BigDecimal total = new BigDecimal(
-                perp.path("marginSummary").path("accountValue").asText("0"));
+        BigDecimal total = new BigDecimal(perp.path("withdrawable").asText("0"));
         JsonNode spot = infoPost(Map.of("type", "spotClearinghouseState", "user", accountAddress));
         for (JsonNode balance : spot.path("balances")) {
             if ("USDC".equals(balance.path("coin").asText())) {

@@ -209,7 +209,10 @@ public interface VenueGateway {
     List<PositionSnapshot> positions();
 
     /**
-     * Collateral this venue can put behind XVF legs, in USD.
+     * FREE collateral this venue can put behind a NEW XVF leg, in USD - not the venue's total balance
+     * or equity, which includes margin already committed to existing positions. Measured live
+     * 2026-08-22: total balance stayed near $1,787 on an account whose real new-order headroom had
+     * fallen to $5.16, and every implementation originally read the total figure instead of this one.
      *
      * <p>Capital is siloed per venue - there is no cross-margin between Binance, Bybit and
      * Hyperliquid - so a book that fits the TOTAL can still fail on the one venue that happens to
