@@ -693,4 +693,36 @@ class PairedEntryEngineTest {
                     () -> "nothing filled, so nothing should hedge, but sent " + taker.marketOrders);
         }
     }
+
+    /**
+     * The KAITO regression, measured live 2026-08-22. A single post-only rejection with nothing filled
+     * used to mark a CLOSING pair {@code ABANDONED} exactly like an entry would - correct for an entry
+     * (no exposure was taken, safe to forget), wrong for an exit, whose position is still fully open.
+     * {@code ABANDONED} is terminal and filtered out of {@link PairedEntryEngine#outstanding()}, and
+     * with nothing scheduling another chase, the pair simply vanished from the run with the position
+     * untouched - not reported, not retried, not crossed at the deadline the way {@code close()}'s own
+     * javadoc promises. A closing pair must stay unresolved past this exact rejection so the chase
+     * loop - and eventually {@code finalizeDeadline}'s cross - still has something to act on.
+     */
+    @Test
+    void aRejectedCloseWithNothingFilledKeepsChasingRatherThanBeingAbandoned() throws Exception {
+        RecordingGateway maker = new RecordingGateway("maker");
+        RecordingGateway taker = new RecordingGateway("taker");
+        // The full short is still there, so the rejection meant exactly what it said - same setup as
+        // aRejectionWithTheVenueStillHoldingTheLegDoesNotHedge, checking the OTHER half of that fix.
+        maker.positionsAnswer = java.util.List.of(new VenueGateway.PositionSnapshot(
+                "maker", "XUSDT", new BigDecimal("-3"), new BigDecimal("100")));
+        maker.nextOutcome = SubmitOutcome.REJECTED;
+        try (PairedEntryEngine engine = new PairedEntryEngine(Duration.ofMinutes(30))) {
+            engine.close("X",
+                    new PairedEntryEngine.Leg(maker, "XUSDT", VenueGateway.Side.BUY, new BigDecimal("3")),
+                    new PairedEntryEngine.Leg(taker, "XUSDT", VenueGateway.Side.SELL, new BigDecimal("3")),
+                    new BigDecimal("100"));
+
+            assertFalse(engine.allResolved(),
+                    "an exit that rejected with nothing filled must still be open and chasing, not "
+                            + "written off as if it were a missed entry");
+            assertEquals(1, engine.unresolvedCount());
+        }
+    }
 }

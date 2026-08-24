@@ -163,10 +163,27 @@ public final class PairedEntryEngine implements AutoCloseable {
         allPairs.add(pair);
         long deadline = System.nanoTime() + abandonAfter.toNanos();
         boolean resting = placeMaker(pair, makerLeg.quantity(), makerLimit);
-        if (resting) {
+        if (shouldKeepChasing(pair, resting)) {
             scheduleChase(pair, deadline);
         }
         return resting;
+    }
+
+    /**
+     * Whether this pair still needs a chase timer after an attempted placement.
+     *
+     * <p>An entry that never rested is done - {@link #placeMaker} already marked it
+     * {@link PairState#ABANDONED} and there is nothing left to chase. A CLOSING pair is different by
+     * this class's own contract (see {@link #close}'s javadoc): giving up is not available, so a
+     * rejected placement - initial or mid-chase - must still get another chase timer, right up to the
+     * point {@link #finalizeDeadline} takes over and crosses. Confirmed missing live 2026-08-22 on
+     * KAITO: a single post-only rejection (price ticked between the reference quote and the placement,
+     * ordinary and transient) left the pair silently WORKING forever with no timer ever scheduled
+     * again - not reported by {@link #outstanding()} either, since that filters out exactly the
+     * terminal state this same rejection would have produced for an entry.
+     */
+    private boolean shouldKeepChasing(Pair pair, boolean placedOk) {
+        return placedOk || (pair.closing() && !isTerminal(pair.state().get()));
     }
 
     /**
@@ -208,7 +225,13 @@ public final class PairedEntryEngine implements AutoCloseable {
             }
             // A rejection on a CHASE re-placement, after some quantity from an earlier order has
             // already filled and hedged, must not claim ABANDONED either, for the same reason.
-            if (pair.totalFilled().signum() == 0) {
+            //
+            // Nor may a CLOSING pair ever claim ABANDONED here, regardless of how much has filled -
+            // see close()'s own javadoc: giving up is not available for an exit, only cancel-then-cross
+            // at the deadline. shouldKeepChasing() is what keeps a closing pair's chase timer alive
+            // past this rejection so that deadline is actually reached instead of the pair rotting in
+            // WORKING with nothing left scheduled to look at it again.
+            if (!pair.closing() && pair.totalFilled().signum() == 0) {
                 pair.state().set(PairState.ABANDONED);
             }
             return false;
@@ -329,11 +352,15 @@ public final class PairedEntryEngine implements AutoCloseable {
         }
         BigDecimal freshPrice = pair.maker().gateway()
                 .topOfBook(pair.maker().venueSymbol()).touch(pair.maker().side());
-        if (placeMaker(pair, remaining, freshPrice)) {
+        boolean placedOk = placeMaker(pair, remaining, freshPrice);
+        // For an ENTRY, a rejection here is final: the rejection is already logged above, and
+        // re-placing forever past an explicit answer is not chasing a price, it is ignoring the venue.
+        // For a CLOSING pair, shouldKeepChasing() overrides that and keeps a timer alive regardless -
+        // giving up is not available for an exit, only cancel-then-cross once finalizeDeadline takes
+        // over. See shouldKeepChasing()'s javadoc for the live incident this distinction came from.
+        if (shouldKeepChasing(pair, placedOk)) {
             scheduleChase(pair, deadlineNanos);
         }
-        // If placeMaker returned false, the rejection is already logged above; re-placing forever
-        // past an explicit rejection is not chasing a price, it is ignoring a venue's answer.
     }
 
     /**
