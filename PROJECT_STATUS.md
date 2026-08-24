@@ -6,7 +6,8 @@ Last updated: 2026-08-24
 
 - Added Flyway V22 with `scheduled_decision_at`, `capture_started_at`, `capture_ended_at` and
   `scheduled_attempt_id` to `xvf_signal_run`. Existing rows are backfilled from `cutoff_utc` and
-  `generated_at` with `scheduled_attempt_id = 'LEGACY'`.
+  `generated_at` with a per-run `LEGACY-<signal_run_id>` attempt id. The migration temporarily
+  suspends and then restores V21's append-only row trigger for that transaction-owned backfill.
 - Added `XvfCaptureTiming` record and threaded it through `XvfShadowSnapshotService`,
   `XvfShadowDecisionPlanner` and `PostgresXvfSignalRepository`. The scheduled decision time is now
   recorded before any market fetch and used as the funding/watermark cutoff, instead of being

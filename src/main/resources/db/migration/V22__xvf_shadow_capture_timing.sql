@@ -10,12 +10,20 @@ ALTER TABLE xvf_signal_run
     ADD COLUMN capture_ended_at    TIMESTAMPTZ(6),
     ADD COLUMN scheduled_attempt_id VARCHAR(80);
 
--- Existing rows were written before timing was captured; backfill with sensible placeholders.
+-- Existing rows were written before timing was captured. V21 made the ledger append-only, so
+-- temporarily suspend only the row mutation trigger for this migration-owned backfill. PostgreSQL
+-- executes this migration transactionally: a later failure also rolls back the trigger state.
+ALTER TABLE xvf_signal_run
+    DISABLE TRIGGER xvf_signal_run_reject_update_delete_trg;
+
 UPDATE xvf_signal_run
    SET scheduled_decision_at = cutoff_utc,
        capture_started_at = cutoff_utc,
        capture_ended_at = generated_at,
-       scheduled_attempt_id = 'LEGACY';
+       scheduled_attempt_id = 'LEGACY-' || signal_run_id::text;
+
+ALTER TABLE xvf_signal_run
+    ENABLE TRIGGER xvf_signal_run_reject_update_delete_trg;
 
 ALTER TABLE xvf_signal_run
     ALTER COLUMN scheduled_decision_at SET NOT NULL,
