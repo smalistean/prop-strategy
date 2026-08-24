@@ -8,6 +8,7 @@ import com.smalistean.propstrategy.xvf.signal.XvfSignalEngine.EvaluatedPair;
 import com.smalistean.propstrategy.xvf.signal.XvfSignalEngine.SignalEvaluation;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -26,6 +27,12 @@ import java.util.concurrent.Future;
 
 /** Orchestrates one isolated shadow capture and persists exactly one final audit run. */
 public final class XvfShadowSnapshotService {
+
+    /**
+     * Shared upper bound for concurrent symbol-level HTTP requests. Individual venues apply their
+     * own stricter limits inside their source implementation.
+     */
+    static final int SHARED_SYMBOL_CONCURRENCY = 20;
 
     private final SignalSource signalSource;
     private final XvfFundingSnapshotSource fundingSource;
@@ -67,24 +74,44 @@ public final class XvfShadowSnapshotService {
     public XvfSignalRun capture(LocalDate asOf) {
         java.util.Objects.requireNonNull(asOf, "asOf");
         UUID runId = UUID.randomUUID();
+        Instant captureStartedAt = now();
+        Instant scheduledDecisionAt = captureStartedAt;
+        Instant cutoffUtc = captureStartedAt;
         XvfSignalRun run;
         try {
             SignalEvaluation signal = signalSource.evaluate(asOf);
             Map<String, Set<String>> requested = requestedSymbols(signal);
             Map<String, VenueSnapshot> markets = fetchMarkets(requested);
-            Instant cutoff = now();
-            if (!asOf.equals(cutoff.atZone(configuration.productionZone()).toLocalDate())) {
+            cutoffUtc = now();
+            if (!asOf.equals(scheduledDecisionAt.atZone(configuration.productionZone()).toLocalDate())
+                    || !asOf.equals(cutoffUtc.atZone(configuration.productionZone()).toLocalDate())) {
                 throw new IllegalStateException("The capture date crossed or differs from the live "
                         + "production date; historical public-market snapshots are not supported");
             }
-            XvfFundingSnapshot funding = fundingSource.read(cutoff,
+            XvfFundingSnapshot funding = fundingSource.read(cutoffUtc,
                     new XvfFundingSnapshotSource.FreshnessPolicy(
                             configuration.maximumPendingFundingAge(),
                             configuration.maximumSettledFundingAge()));
-            run = planner.plan(runId, cutoff, now(), signal, funding, markets, configuration);
+            Instant captureEndedAt = now();
+            Duration captureDuration = Duration.between(captureStartedAt, captureEndedAt);
+            if (captureDuration.compareTo(configuration.maximumCaptureDuration()) > 0) {
+                markets = withCaptureDurationIssue(markets,
+                        "CAPTURE_DURATION_EXCEEDED",
+                        "Capture window " + captureDuration + " exceeds configured maximum "
+                                + configuration.maximumCaptureDuration());
+            }
+            XvfCaptureTiming timing = new XvfCaptureTiming(
+                    scheduledDecisionAt, cutoffUtc,
+                    captureStartedAt, captureEndedAt,
+                    configuration.scheduledAttemptId());
+            run = planner.plan(runId, timing, now(), signal, funding, markets, configuration);
         } catch (Exception failure) {
-            Instant cutoff = now();
-            run = planner.failed(runId, cutoff, now(), configuration,
+            Instant captureEndedAt = now();
+            XvfCaptureTiming timing = new XvfCaptureTiming(
+                    scheduledDecisionAt, cutoffUtc,
+                    captureStartedAt, captureEndedAt,
+                    configuration.scheduledAttemptId());
+            run = planner.failed(runId, timing, now(), configuration,
                     "SHADOW_CAPTURE_FAILED", failureDetail(failure));
         }
         runSink.insert(run);
@@ -93,14 +120,15 @@ public final class XvfShadowSnapshotService {
 
     private Map<String, VenueSnapshot> fetchMarkets(Map<String, Set<String>> requested) {
         Map<String, Future<VenueSnapshot>> futures = new LinkedHashMap<>();
-        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+        try (ExecutorService executor = Executors.newFixedThreadPool(SHARED_SYMBOL_CONCURRENCY)) {
             for (XvfVenueSnapshotSource source : venueSources) {
                 Set<String> symbols = requested.getOrDefault(source.venue(), Set.of());
                 if (symbols.isEmpty()) {
                     futures.put(source.venue(), executor.submit(() ->
                             new VenueSnapshot(source.venue(), Map.of(), List.of())));
                 } else {
-                    futures.put(source.venue(), executor.submit(() -> safeFetch(source, symbols)));
+                    futures.put(source.venue(), executor.submit(() ->
+                            safeFetch(source, symbols, executor)));
                 }
             }
             Map<String, VenueSnapshot> out = new LinkedHashMap<>();
@@ -118,9 +146,10 @@ public final class XvfShadowSnapshotService {
         }
     }
 
-    private static VenueSnapshot safeFetch(XvfVenueSnapshotSource source, Set<String> symbols) {
+    private static VenueSnapshot safeFetch(XvfVenueSnapshotSource source, Set<String> symbols,
+                                           ExecutorService executor) {
         try {
-            return source.fetch(symbols);
+            return source.fetch(symbols, executor);
         } catch (RuntimeException failure) {
             SnapshotIssue issue = new SnapshotIssue(
                     IssueSeverity.ERROR,
@@ -148,6 +177,26 @@ public final class XvfShadowSnapshotService {
         }
         Map<String, Set<String>> out = new LinkedHashMap<>();
         mutable.forEach((venue, symbols) -> out.put(venue, Set.copyOf(symbols)));
+        return Map.copyOf(out);
+    }
+
+    private static Map<String, VenueSnapshot> withCaptureDurationIssue(
+            Map<String, VenueSnapshot> markets,
+            String code,
+            String detail) {
+        Map<String, VenueSnapshot> out = new LinkedHashMap<>(markets);
+        SnapshotIssue issue = new SnapshotIssue(
+                IssueSeverity.WARNING, "CAPTURE", Optional.empty(), code, detail);
+        for (String venue : XvfConfig.VENUES) {
+            VenueSnapshot existing = out.get(venue);
+            if (existing == null) {
+                out.put(venue, new VenueSnapshot(venue, Map.of(), List.of(issue)));
+            } else {
+                List<SnapshotIssue> issues = new ArrayList<>(existing.issues());
+                issues.add(issue);
+                out.put(venue, new VenueSnapshot(venue, existing.instruments(), issues));
+            }
+        }
         return Map.copyOf(out);
     }
 

@@ -38,13 +38,14 @@ class XvfSignalRunTest {
         XvfSignalRun complete = XvfSignalRunFixtures.complete(UUID.randomUUID(), List.of(candidate));
 
         assertThrows(IllegalArgumentException.class, () -> new XvfSignalRun(
-                UUID.randomUUID(), complete.snapshotSchemaVersion(), complete.cutoffUtc(),
+                UUID.randomUUID(), complete.snapshotSchemaVersion(), complete.scheduledDecisionAt(),
+                complete.cutoffUtc(), complete.captureStartedAt(), complete.captureEndedAt(),
                 complete.productionDate(), complete.productionZone(), complete.generatedAt(),
-                complete.codeRevision(), complete.strategyVersion(), complete.configurationHash(),
-                complete.configurationSnapshot(), complete.settledFundingWatermarks(),
-                complete.pendingFundingWatermarks(), complete.venueStateSnapshot(), null,
-                JsonDocument.array("[{\"code\":\"FAILED\"}]"), CaptureStatus.FAILED,
-                "FAILED", "failure", List.of(candidate)));
+                complete.scheduledAttemptId(), complete.codeRevision(), complete.strategyVersion(),
+                complete.configurationHash(), complete.configurationSnapshot(),
+                complete.settledFundingWatermarks(), complete.pendingFundingWatermarks(),
+                complete.venueStateSnapshot(), null, JsonDocument.array("[{\"code\":\"FAILED\"}]"),
+                CaptureStatus.FAILED, "FAILED", "failure", List.of(candidate)));
     }
 
     @Test
@@ -66,12 +67,14 @@ class XvfSignalRunTest {
         XvfSignalRun valid = XvfSignalRunFixtures.complete(UUID.randomUUID(), List.of());
         Instant overPrecise = valid.cutoffUtc().plusNanos(1);
         assertThrows(IllegalArgumentException.class, () -> new XvfSignalRun(
-                UUID.randomUUID(), valid.snapshotSchemaVersion(), overPrecise,
+                UUID.randomUUID(), valid.snapshotSchemaVersion(), valid.scheduledDecisionAt(),
+                overPrecise, valid.captureStartedAt(), valid.captureEndedAt(),
                 valid.productionDate(), valid.productionZone(), valid.generatedAt(),
-                valid.codeRevision(), valid.strategyVersion(), valid.configurationHash(),
-                valid.configurationSnapshot(), valid.settledFundingWatermarks(),
-                valid.pendingFundingWatermarks(), valid.venueStateSnapshot(), valid.capitalUsd(),
-                valid.dataIssues(), valid.captureStatus(), null, null, List.of()));
+                valid.scheduledAttemptId(), valid.codeRevision(), valid.strategyVersion(),
+                valid.configurationHash(), valid.configurationSnapshot(),
+                valid.settledFundingWatermarks(), valid.pendingFundingWatermarks(),
+                valid.venueStateSnapshot(), valid.capitalUsd(), valid.dataIssues(),
+                valid.captureStatus(), null, null, List.of()));
     }
 
     @Test
@@ -79,12 +82,14 @@ class XvfSignalRunTest {
         XvfSignalRun valid = XvfSignalRunFixtures.complete(UUID.randomUUID(), List.of());
 
         assertThrows(IllegalArgumentException.class, () -> new XvfSignalRun(
-                UUID.randomUUID(), valid.snapshotSchemaVersion(), valid.cutoffUtc(),
+                UUID.randomUUID(), valid.snapshotSchemaVersion(), valid.scheduledDecisionAt(),
+                valid.cutoffUtc(), valid.captureStartedAt(), valid.captureEndedAt(),
                 valid.productionDate().plusDays(1), valid.productionZone(), valid.generatedAt(),
-                valid.codeRevision(), valid.strategyVersion(), valid.configurationHash(),
-                valid.configurationSnapshot(), valid.settledFundingWatermarks(),
-                valid.pendingFundingWatermarks(), valid.venueStateSnapshot(), valid.capitalUsd(),
-                valid.dataIssues(), valid.captureStatus(), null, null, List.of()));
+                valid.scheduledAttemptId(), valid.codeRevision(), valid.strategyVersion(),
+                valid.configurationHash(), valid.configurationSnapshot(),
+                valid.settledFundingWatermarks(), valid.pendingFundingWatermarks(),
+                valid.venueStateSnapshot(), valid.capitalUsd(), valid.dataIssues(),
+                valid.captureStatus(), null, null, List.of()));
     }
 
     @Test

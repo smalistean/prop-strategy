@@ -1,6 +1,28 @@
 # Project Status
 
-Last updated: 2026-08-21
+Last updated: 2026-08-24
+
+## XVF Shadow Checkpoint A2 — capture timing and bounded concurrency (2026-08-24)
+
+- Added Flyway V22 with `scheduled_decision_at`, `capture_started_at`, `capture_ended_at` and
+  `scheduled_attempt_id` to `xvf_signal_run`. Existing rows are backfilled from `cutoff_utc` and
+  `generated_at` with `scheduled_attempt_id = 'LEGACY'`.
+- Added `XvfCaptureTiming` record and threaded it through `XvfShadowSnapshotService`,
+  `XvfShadowDecisionPlanner` and `PostgresXvfSignalRepository`. The scheduled decision time is now
+  recorded before any market fetch and used as the funding/watermark cutoff, instead of being
+  assigned after market responses return.
+- Added `scheduledAttemptId` and `maximumCaptureDuration` to `XvfShadowConfiguration`. When no
+  idempotency key is supplied it is derived from the production date, code revision and strategy
+  version so scheduler retries are identifiable.
+- Added bounded concurrent symbol fetching: `XvfVenueSnapshotSource` gained a
+  `fetch(Set<String>, Executor)` overload; Binance, Bybit and Hyperliquid sources now fetch
+  per-symbol market data concurrently using a shared 20-thread pool, with Hyperliquid limited to
+  10 concurrent requests by a Semaphore.
+- Added an INFO-level `CAPTURE_WINDOW_MILLIS` data issue and a WARNING-level
+  `CAPTURE_DURATION_EXCEEDED` issue when the wall-clock capture window exceeds the configured
+  maximum (default 60 seconds).
+- Updated unit and integration tests; all 189 Maven tests pass. The next step is Checkpoint A3:
+  append-only 72-hour outcome persistence (`xvf_signal_candidate_outcome`).
 
 ## XVF immutable shadow decision ledger (2026-08-21)
 

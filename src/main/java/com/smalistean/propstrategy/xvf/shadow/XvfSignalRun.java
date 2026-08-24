@@ -23,10 +23,14 @@ import java.util.regex.Pattern;
 public record XvfSignalRun(
         UUID signalRunId,
         short snapshotSchemaVersion,
+        Instant scheduledDecisionAt,
         Instant cutoffUtc,
+        Instant captureStartedAt,
+        Instant captureEndedAt,
         LocalDate productionDate,
         ZoneId productionZone,
         Instant generatedAt,
+        String scheduledAttemptId,
         String codeRevision,
         String strategyVersion,
         String configurationHash,
@@ -48,8 +52,20 @@ public record XvfSignalRun(
         if (snapshotSchemaVersion <= 0) {
             throw new IllegalArgumentException("snapshotSchemaVersion must be positive");
         }
+        Objects.requireNonNull(scheduledDecisionAt, "scheduledDecisionAt");
+        requireMicrosecondPrecision(scheduledDecisionAt, "scheduledDecisionAt");
         Objects.requireNonNull(cutoffUtc, "cutoffUtc");
         requireMicrosecondPrecision(cutoffUtc, "cutoffUtc");
+        if (cutoffUtc.isBefore(scheduledDecisionAt)) {
+            throw new IllegalArgumentException("cutoffUtc cannot precede scheduledDecisionAt");
+        }
+        Objects.requireNonNull(captureStartedAt, "captureStartedAt");
+        requireMicrosecondPrecision(captureStartedAt, "captureStartedAt");
+        Objects.requireNonNull(captureEndedAt, "captureEndedAt");
+        requireMicrosecondPrecision(captureEndedAt, "captureEndedAt");
+        if (captureEndedAt.isBefore(captureStartedAt)) {
+            throw new IllegalArgumentException("captureEndedAt cannot precede captureStartedAt");
+        }
         Objects.requireNonNull(productionDate, "productionDate");
         Objects.requireNonNull(productionZone, "productionZone");
         if (!productionDate.equals(cutoffUtc.atZone(productionZone).toLocalDate())) {
@@ -61,6 +77,10 @@ public record XvfSignalRun(
         if (generatedAt.isBefore(cutoffUtc)) {
             throw new IllegalArgumentException("generatedAt cannot precede cutoffUtc");
         }
+        if (generatedAt.isBefore(captureEndedAt)) {
+            throw new IllegalArgumentException("generatedAt cannot precede captureEndedAt");
+        }
+        requireText(scheduledAttemptId, "scheduledAttemptId");
         requireText(codeRevision, "codeRevision");
         requireText(strategyVersion, "strategyVersion");
         if (configurationHash == null || !SHA_256.matcher(configurationHash).matches()) {

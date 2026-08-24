@@ -6,14 +6,17 @@ import org.junit.jupiter.api.Test;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class XvfShadowSnapshotServiceTest {
@@ -49,6 +52,65 @@ class XvfShadowSnapshotServiceTest {
         assertFalse(binance.called);
         assertEquals(Set.of("1000PEPEUSDT"), bybit.requested);
         assertEquals(Set.of("PEPE"), hyperliquid.requested);
+    }
+
+    @Test
+    void recordsScheduledDecisionAndCaptureWindowTiming() {
+        List<XvfSignalRun> persisted = new ArrayList<>();
+        XvfShadowSnapshotService service = new XvfShadowSnapshotService(
+                ignored -> XvfShadowDecisionPlannerTest.signal(),
+                (cutoff, policy) -> XvfShadowDecisionPlannerTest.funding(
+                        XvfFundingSnapshot.Freshness.FRESH),
+                List.of(source("bybit", XvfShadowDecisionPlannerTest.markets().get("bybit")),
+                        source("hyperliquid", XvfShadowDecisionPlannerTest.markets().get("hyperliquid")),
+                        source("binance", XvfShadowDecisionPlannerTest.markets().get("binance"))),
+                new XvfShadowDecisionPlanner(),
+                persisted::add,
+                XvfShadowDecisionPlannerTest.configuration(),
+                Clock.fixed(CUTOFF, ZoneOffset.UTC));
+
+        XvfSignalRun run = service.capture(LocalDate.of(2026, 8, 21));
+
+        assertEquals(CUTOFF, run.scheduledDecisionAt());
+        assertEquals(CUTOFF, run.cutoffUtc());
+        assertNotNull(run.captureStartedAt());
+        assertNotNull(run.captureEndedAt());
+        assertEquals(CUTOFF, run.captureStartedAt());
+        assertEquals(CUTOFF, run.captureEndedAt());
+        assertEquals("test-attempt-1", run.scheduledAttemptId());
+        assertEquals(run.captureStatus(), XvfSignalRun.CaptureStatus.COMPLETE);
+    }
+
+    @Test
+    void acceptsMarketFactsCollectedAfterCaptureStartedAndBeforeCutoff() {
+        Instant captureStarted = CUTOFF.minusSeconds(2);
+        Instant captureEnded = CUTOFF.plusMillis(500);
+        SequenceClock clock = new SequenceClock(ZoneOffset.UTC,
+                captureStarted, CUTOFF, captureEnded, CUTOFF.plusSeconds(1));
+        XvfShadowSnapshotService service = new XvfShadowSnapshotService(
+                ignored -> XvfShadowDecisionPlannerTest.signal(),
+                (cutoff, policy) -> {
+                    assertEquals(CUTOFF, cutoff);
+                    return XvfShadowDecisionPlannerTest.funding(
+                            XvfFundingSnapshot.Freshness.FRESH);
+                },
+                List.of(source("bybit", XvfShadowDecisionPlannerTest.markets().get("bybit")),
+                        source("hyperliquid",
+                                XvfShadowDecisionPlannerTest.markets().get("hyperliquid")),
+                        source("binance", XvfShadowDecisionPlannerTest.markets().get("binance"))),
+                new XvfShadowDecisionPlanner(),
+                ignored -> { },
+                XvfShadowDecisionPlannerTest.configuration(),
+                clock);
+
+        XvfSignalRun run = service.capture(LocalDate.of(2026, 8, 21));
+
+        assertEquals(XvfSignalRun.CaptureStatus.COMPLETE, run.captureStatus());
+        assertEquals(XvfSignalRun.ScoreStatus.SCORABLE,
+                run.candidates().getFirst().scoreStatus());
+        assertEquals(captureStarted, run.captureStartedAt());
+        assertEquals(CUTOFF, run.cutoffUtc());
+        assertEquals(captureEnded, run.captureEndedAt());
     }
 
     @Test
@@ -110,6 +172,36 @@ class XvfShadowSnapshotServiceTest {
             called = true;
             requested = Set.copyOf(venueSymbols);
             return snapshot;
+        }
+    }
+
+    private static final class SequenceClock extends Clock {
+        private final ZoneId zone;
+        private final List<Instant> instants;
+        private int index;
+
+        private SequenceClock(ZoneId zone, Instant... instants) {
+            this.zone = zone;
+            this.instants = List.copyOf(Arrays.asList(instants));
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return zone;
+        }
+
+        @Override
+        public Clock withZone(ZoneId requestedZone) {
+            return new SequenceClock(requestedZone,
+                    instants.subList(index, instants.size()).toArray(Instant[]::new));
+        }
+
+        @Override
+        public synchronized Instant instant() {
+            if (index >= instants.size()) {
+                throw new AssertionError("Clock was read more times than expected");
+            }
+            return instants.get(index++);
         }
     }
 }

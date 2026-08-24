@@ -17,12 +17,18 @@ import com.smalistean.propstrategy.xvf.shadow.XvfVenueSnapshotSource.VenueSnapsh
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.Semaphore;
 
 /** Hyperliquid public {@code /info} snapshot source. No agent wallet or private key is involved. */
 public final class HyperliquidXvfVenueSnapshotSource implements XvfVenueSnapshotSource {
@@ -30,6 +36,8 @@ public final class HyperliquidXvfVenueSnapshotSource implements XvfVenueSnapshot
     private static final URI PRODUCTION = URI.create("https://api.hyperliquid.xyz");
     private static final String VENUE = "hyperliquid";
     private static final BigDecimal MINIMUM_NOTIONAL_USD = new BigDecimal("10");
+    /** Stricter limit than the shared pool because Hyperliquid public endpoints are rate-limited. */
+    private static final int MAX_CONCURRENT_SYMBOL_REQUESTS = 10;
 
     private final XvfPublicJsonTransport transport;
     private final URI baseUri;
@@ -50,14 +58,43 @@ public final class HyperliquidXvfVenueSnapshotSource implements XvfVenueSnapshot
 
     @Override
     public VenueSnapshot fetch(Set<String> venueSymbols) {
+        return fetch(venueSymbols, Runnable::run);
+    }
+
+    @Override
+    public VenueSnapshot fetch(Set<String> venueSymbols, Executor executor) {
         Set<String> symbols = XvfSnapshotParsing.symbols(venueSymbols);
         Map<String, MetaData> metadata = metadata(transport.post(
                 XvfSnapshotParsing.uri(baseUri, "/info"), "{\"type\":\"metaAndAssetCtxs\"}"));
+
+        Semaphore semaphore = new Semaphore(MAX_CONCURRENT_SYMBOL_REQUESTS);
+        List<String> sortedSymbols = symbols.stream().sorted().toList();
+        List<Future<SymbolResult>> futures = new ArrayList<>(sortedSymbols.size());
+        for (String symbol : sortedSymbols) {
+            futures.add(submit(executor, () -> fetchSymbol(symbol, metadata, semaphore)));
+        }
+
         Map<String, InstrumentSnapshot> snapshots = new LinkedHashMap<>();
         List<SnapshotIssue> issues = new ArrayList<>();
+        for (int index = 0; index < sortedSymbols.size(); index++) {
+            SymbolResult result = await(futures.get(index), sortedSymbols.get(index));
+            snapshots.put(sortedSymbols.get(index), result.snapshot());
+            issues.addAll(result.issues());
+        }
+        return new VenueSnapshot(VENUE, snapshots, issues);
+    }
 
-        for (String symbol : symbols.stream().sorted().toList()) {
+    private SymbolResult fetchSymbol(String symbol, Map<String, MetaData> metadata,
+                                     Semaphore semaphore) {
+        try {
+            semaphore.acquire();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted waiting for Hyperliquid rate limit", e);
+        }
+        try {
             XvfInstrumentSnapshotBuilder builder = builder(symbol);
+            List<SnapshotIssue> issues = new ArrayList<>();
             MetaData data = metadata.get(symbol);
             if (data == null) {
                 builder.missing.addAll(List.of("reference", "activity", "rules"));
@@ -72,9 +109,10 @@ public final class HyperliquidXvfVenueSnapshotSource implements XvfVenueSnapshot
                 }
             }
             fetchBook(symbol, builder, issues);
-            snapshots.put(symbol, builder.build());
+            return new SymbolResult(builder.build(), issues);
+        } finally {
+            semaphore.release();
         }
-        return new VenueSnapshot(VENUE, snapshots, issues);
     }
 
     private void fetchBook(String symbol, XvfInstrumentSnapshotBuilder builder,
@@ -163,6 +201,25 @@ public final class HyperliquidXvfVenueSnapshotSource implements XvfVenueSnapshot
         return value.intValue();
     }
 
+    private static Future<SymbolResult> submit(Executor executor,
+                                               java.util.concurrent.Callable<SymbolResult> task) {
+        FutureTask<SymbolResult> future = new FutureTask<>(task);
+        executor.execute(future);
+        return future;
+    }
+
+    private static SymbolResult await(Future<SymbolResult> future, String symbol) {
+        try {
+            return future.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted fetching " + VENUE + " " + symbol, e);
+        } catch (ExecutionException e) {
+            throw new IllegalStateException("Unexpected failure fetching " + VENUE + " " + symbol,
+                    e.getCause());
+        }
+    }
+
     private static XvfInstrumentSnapshotBuilder builder(String symbol) {
         return new XvfInstrumentSnapshotBuilder(VENUE, symbol,
                 XvfSnapshotParsing.canonicalBase(VENUE, symbol),
@@ -199,6 +256,14 @@ public final class HyperliquidXvfVenueSnapshotSource implements XvfVenueSnapshot
             java.util.Objects.requireNonNull(reference, "reference");
             java.util.Objects.requireNonNull(activity, "activity");
             java.util.Objects.requireNonNull(rules, "rules");
+        }
+    }
+
+    private record SymbolResult(InstrumentSnapshot snapshot, List<SnapshotIssue> issues) {
+        SymbolResult {
+            java.util.Objects.requireNonNull(snapshot, "snapshot");
+            issues = Collections.unmodifiableList(new ArrayList<>(
+                    java.util.Objects.requireNonNull(issues, "issues")));
         }
     }
 }

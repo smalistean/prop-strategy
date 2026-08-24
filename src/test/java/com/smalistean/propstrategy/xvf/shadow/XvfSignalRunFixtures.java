@@ -122,13 +122,19 @@ final class XvfSignalRunFixtures {
             String failureCode,
             String failureDetail,
             List<Candidate> candidates) {
+        Instant started = cutoff.minusSeconds(2);
+        Instant ended = cutoff.plusSeconds(1);
         return new XvfSignalRun(
                 runId,
                 (short) 1,
                 cutoff,
+                cutoff,
+                started,
+                ended,
                 LocalDate.of(2026, 8, 21),
                 ZoneId.of("Europe/Chisinau"),
                 cutoff.plusSeconds(3),
+                "2026-08-21-codex-xvf-v1",
                 "codex-shadow-ledger-v1",
                 "xvf-v1",
                 CONFIGURATION_HASH,

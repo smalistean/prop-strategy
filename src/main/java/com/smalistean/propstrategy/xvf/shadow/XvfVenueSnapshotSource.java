@@ -24,6 +24,14 @@ public interface XvfVenueSnapshotSource {
     /** Fetches one coherent best-effort public snapshot for the requested venue symbols. */
     VenueSnapshot fetch(Set<String> venueSymbols);
 
+    /**
+     * Fetches one coherent best-effort public snapshot using the supplied executor for per-symbol
+     * requests. The default implementation ignores the executor and calls {@link #fetch(Set)}.
+     */
+    default VenueSnapshot fetch(Set<String> venueSymbols, java.util.concurrent.Executor executor) {
+        return fetch(venueSymbols);
+    }
+
     record VenueSnapshot(
             String venue,
             Map<String, InstrumentSnapshot> instruments,

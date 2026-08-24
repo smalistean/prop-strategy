@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -24,6 +25,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 
 /** Bybit V5 linear-perpetual public market snapshot source. */
 public final class BybitXvfVenueSnapshotSource implements XvfVenueSnapshotSource {
@@ -51,41 +56,62 @@ public final class BybitXvfVenueSnapshotSource implements XvfVenueSnapshotSource
 
     @Override
     public VenueSnapshot fetch(Set<String> venueSymbols) {
+        return fetch(venueSymbols, Runnable::run);
+    }
+
+    @Override
+    public VenueSnapshot fetch(Set<String> venueSymbols, Executor executor) {
         Set<String> symbols = XvfSnapshotParsing.symbols(venueSymbols);
         Map<String, TickerData> tickers = tickers(transport.get(XvfSnapshotParsing.uri(
                 baseUri, "/v5/market/tickers?category=linear")));
         Map<String, InstrumentData> instruments = instruments();
+
+        List<String> sortedSymbols = symbols.stream().sorted().toList();
+        List<Future<SymbolResult>> futures = new ArrayList<>(sortedSymbols.size());
+        for (String symbol : sortedSymbols) {
+            futures.add(submit(executor, () -> fetchSymbol(symbol, tickers, instruments)));
+        }
+
         Map<String, InstrumentSnapshot> snapshots = new LinkedHashMap<>();
         List<SnapshotIssue> issues = new ArrayList<>();
-
-        for (String symbol : symbols.stream().sorted().toList()) {
-            XvfInstrumentSnapshotBuilder builder = builder(symbol);
-            TickerData ticker = tickers.get(symbol);
-            if (ticker == null) {
-                builder.missing.addAll(List.of("reference", "activity", "topOfBook"));
-            } else {
-                builder.reference = Optional.of(ticker.reference());
-                builder.activity = Optional.of(ticker.activity());
-                builder.topOfBook = ticker.topOfBook();
-                if (builder.topOfBook.isEmpty()) {
-                    builder.missing.add("topOfBook");
-                }
-                addReferenceMissingFields(builder);
-            }
-
-            InstrumentData instrument = instruments.get(symbol);
-            if (instrument == null) {
-                builder.missing.add("rules");
-            } else {
-                builder.rules = Optional.of(instrument.rules());
-                instrument.refusalReason().ifPresent(reason -> issues.add(new SnapshotIssue(
-                        IssueSeverity.ERROR, VENUE, Optional.of(symbol),
-                        "NON_CRYPTO_OR_UNTRADEABLE_INSTRUMENT", reason)));
-            }
-            fetchDepth(symbol, builder, issues);
-            snapshots.put(symbol, builder.build());
+        for (int index = 0; index < sortedSymbols.size(); index++) {
+            SymbolResult result = await(futures.get(index), sortedSymbols.get(index));
+            snapshots.put(sortedSymbols.get(index), result.snapshot());
+            issues.addAll(result.issues());
         }
         return new VenueSnapshot(VENUE, snapshots, issues);
+    }
+
+    private SymbolResult fetchSymbol(
+            String symbol,
+            Map<String, TickerData> tickers,
+            Map<String, InstrumentData> instruments) {
+        XvfInstrumentSnapshotBuilder builder = builder(symbol);
+        List<SnapshotIssue> issues = new ArrayList<>();
+        TickerData ticker = tickers.get(symbol);
+        if (ticker == null) {
+            builder.missing.addAll(List.of("reference", "activity", "topOfBook"));
+        } else {
+            builder.reference = Optional.of(ticker.reference());
+            builder.activity = Optional.of(ticker.activity());
+            builder.topOfBook = ticker.topOfBook();
+            if (builder.topOfBook.isEmpty()) {
+                builder.missing.add("topOfBook");
+            }
+            addReferenceMissingFields(builder);
+        }
+
+        InstrumentData instrument = instruments.get(symbol);
+        if (instrument == null) {
+            builder.missing.add("rules");
+        } else {
+            builder.rules = Optional.of(instrument.rules());
+            instrument.refusalReason().ifPresent(reason -> issues.add(new SnapshotIssue(
+                    IssueSeverity.ERROR, VENUE, Optional.of(symbol),
+                    "NON_CRYPTO_OR_UNTRADEABLE_INSTRUMENT", reason)));
+        }
+        fetchDepth(symbol, builder, issues);
+        return new SymbolResult(builder.build(), issues);
     }
 
     private void fetchDepth(String symbol, XvfInstrumentSnapshotBuilder builder,
@@ -207,6 +233,25 @@ public final class BybitXvfVenueSnapshotSource implements XvfVenueSnapshotSource
                 bid.get(), bidSize.get(), ask.get(), askSize.get(), timing));
     }
 
+    private static Future<SymbolResult> submit(Executor executor,
+                                               java.util.concurrent.Callable<SymbolResult> task) {
+        FutureTask<SymbolResult> future = new FutureTask<>(task);
+        executor.execute(future);
+        return future;
+    }
+
+    private static SymbolResult await(Future<SymbolResult> future, String symbol) {
+        try {
+            return future.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted fetching " + VENUE + " " + symbol, e);
+        } catch (ExecutionException e) {
+            throw new IllegalStateException("Unexpected failure fetching " + VENUE + " " + symbol,
+                    e.getCause());
+        }
+    }
+
     private static XvfInstrumentSnapshotBuilder builder(String symbol) {
         return new XvfInstrumentSnapshotBuilder(VENUE, symbol,
                 XvfSnapshotParsing.canonicalBase(VENUE, symbol),
@@ -246,6 +291,14 @@ public final class BybitXvfVenueSnapshotSource implements XvfVenueSnapshotSource
         private InstrumentData {
             java.util.Objects.requireNonNull(rules, "rules");
             java.util.Objects.requireNonNull(refusalReason, "refusalReason");
+        }
+    }
+
+    private record SymbolResult(InstrumentSnapshot snapshot, List<SnapshotIssue> issues) {
+        SymbolResult {
+            java.util.Objects.requireNonNull(snapshot, "snapshot");
+            issues = Collections.unmodifiableList(new ArrayList<>(
+                    java.util.Objects.requireNonNull(issues, "issues")));
         }
     }
 }

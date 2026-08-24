@@ -55,14 +55,15 @@ public final class XvfShadowDecisionPlanner {
 
     public XvfSignalRun plan(
             UUID runId,
-            Instant cutoffUtc,
+            XvfCaptureTiming timing,
             Instant generatedAt,
             SignalEvaluation signal,
             XvfFundingSnapshot funding,
             Map<String, VenueSnapshot> venueSnapshots,
             XvfShadowConfiguration configuration) {
         Objects.requireNonNull(runId, "runId");
-        cutoffUtc = micros(cutoffUtc);
+        Objects.requireNonNull(timing, "timing");
+        Instant cutoffUtc = timing.cutoffUtc();
         generatedAt = micros(generatedAt);
         Objects.requireNonNull(signal, "signal");
         Objects.requireNonNull(funding, "funding");
@@ -104,13 +105,18 @@ public final class XvfShadowDecisionPlanner {
         String failureCode = status == CaptureStatus.PARTIAL ? "INCOMPLETE_SHADOW_INPUTS" : null;
         String failureDetail = status == CaptureStatus.PARTIAL
                 ? issues.size() + " shadow input issue(s); see data_issues" : null;
+        addCaptureWindowIssues(timing, issues);
         return new XvfSignalRun(
                 runId,
                 (short) 1,
+                timing.scheduledDecisionAt(),
                 cutoffUtc,
+                timing.captureStartedAt(),
+                timing.captureEndedAt(),
                 signal.asOf(),
                 configuration.productionZone(),
                 generatedAt,
+                timing.scheduledAttemptId(),
                 configuration.codeRevision(),
                 configuration.strategyVersion(),
                 XvfShadowJson.sha256(configurationSnapshot),
@@ -129,12 +135,13 @@ public final class XvfShadowDecisionPlanner {
     /** Creates a durable failed attempt when orchestration cannot produce candidate rows. */
     public XvfSignalRun failed(
             UUID runId,
-            Instant cutoffUtc,
+            XvfCaptureTiming timing,
             Instant generatedAt,
             XvfShadowConfiguration configuration,
             String failureCode,
             String failureDetail) {
-        cutoffUtc = micros(cutoffUtc);
+        Objects.requireNonNull(timing, "timing");
+        Instant cutoffUtc = timing.cutoffUtc();
         generatedAt = micros(generatedAt);
         JsonDocument configurationSnapshot = configurationSnapshot(configuration);
         List<Map<String, Object>> dataIssues = List.of(Map.of(
@@ -144,10 +151,14 @@ public final class XvfShadowDecisionPlanner {
         return new XvfSignalRun(
                 Objects.requireNonNull(runId, "runId"),
                 (short) 1,
+                timing.scheduledDecisionAt(),
                 cutoffUtc,
+                timing.captureStartedAt(),
+                timing.captureEndedAt(),
                 cutoffUtc.atZone(configuration.productionZone()).toLocalDate(),
                 configuration.productionZone(),
                 generatedAt,
+                timing.scheduledAttemptId(),
                 configuration.codeRevision(),
                 configuration.strategyVersion(),
                 XvfShadowJson.sha256(configurationSnapshot),
@@ -773,6 +784,9 @@ public final class XvfShadowDecisionPlanner {
         snapshot.put("maximumQuoteAgeSeconds", configuration.maximumQuoteAge().toSeconds());
         snapshot.put("maximumCrossVenueQuoteSkewSeconds",
                 configuration.maximumCrossVenueQuoteSkew().toSeconds());
+        snapshot.put("maximumCaptureDurationSeconds",
+                configuration.maximumCaptureDuration().toSeconds());
+        snapshot.put("scheduledAttemptId", configuration.scheduledAttemptId());
         snapshot.put("maximumTakerSlippageBps", configuration.maximumTakerSlippageBps());
         snapshot.put("makerRoutingPolicy",
                 "SCORE_BOTH_ONE_MAKER_ROUTES_AND_CHOOSE_HIGHEST_FEASIBLE_EXPECTED_NET");
@@ -1042,6 +1056,17 @@ public final class XvfShadowDecisionPlanner {
                 .forEach(watermark -> issues.add("SETTLED_VENUE_WATERMARK_"
                                 + watermark.freshness().name(), "ERROR", watermark.venue(), null,
                         "Latest settled funding row is " + watermark.freshness()));
+    }
+
+    private static void addCaptureWindowIssues(XvfCaptureTiming timing, IssueCollector issues) {
+        Duration window = Duration.between(timing.captureStartedAt(), timing.captureEndedAt());
+        if (window.isNegative()) {
+            issues.add("CAPTURE_WINDOW_NEGATIVE", "ERROR", "CAPTURE", null,
+                    "captureEndedAt is before captureStartedAt");
+            return;
+        }
+        issues.add("CAPTURE_WINDOW_MILLIS", "INFO", "CAPTURE", null,
+                "Wall-clock capture window was " + window.toMillis() + " ms");
     }
 
     private static Boolean pendingFresh(Optional<PendingObservation> shortFunding,

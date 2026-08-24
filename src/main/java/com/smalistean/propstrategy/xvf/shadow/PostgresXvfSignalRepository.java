@@ -32,12 +32,13 @@ public final class PostgresXvfSignalRepository {
 
     private static final String INSERT_RUN = """
             INSERT INTO xvf_signal_run (
-              signal_run_id, snapshot_schema_version, cutoff_utc, production_date,
-              production_zone, generated_at, code_revision, strategy_version,
+              signal_run_id, snapshot_schema_version, scheduled_decision_at, cutoff_utc,
+              capture_started_at, capture_ended_at, production_date, production_zone,
+              generated_at, scheduled_attempt_id, code_revision, strategy_version,
               configuration_hash, configuration_snapshot, settled_funding_watermarks,
               pending_funding_watermarks, venue_state_snapshot, capital_usd, candidate_count,
               data_issues, capture_status, failure_code, failure_detail)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb), CAST(? AS jsonb),
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb), CAST(? AS jsonb),
                     CAST(? AS jsonb), CAST(? AS jsonb), ?, ?, CAST(? AS jsonb), ?, ?, ?)
             """;
 
@@ -60,9 +61,10 @@ public final class PostgresXvfSignalRepository {
             """;
 
     private static final String SELECT_RUN = """
-            SELECT snapshot_schema_version, cutoff_utc, production_date, production_zone,
-                   generated_at, code_revision, strategy_version, configuration_hash,
-                   configuration_snapshot::text, settled_funding_watermarks::text,
+            SELECT snapshot_schema_version, scheduled_decision_at, cutoff_utc,
+                   capture_started_at, capture_ended_at, production_date, production_zone,
+                   generated_at, scheduled_attempt_id, code_revision, strategy_version,
+                   configuration_hash, configuration_snapshot::text, settled_funding_watermarks::text,
                    pending_funding_watermarks::text, venue_state_snapshot::text, capital_usd,
                    candidate_count, data_issues::text, capture_status, failure_code, failure_detail
             FROM xvf_signal_run
@@ -139,10 +141,14 @@ public final class PostgresXvfSignalRepository {
                     XvfSignalRun run = new XvfSignalRun(
                             signalRunId,
                             results.getShort("snapshot_schema_version"),
+                            results.getObject("scheduled_decision_at", OffsetDateTime.class).toInstant(),
                             results.getObject("cutoff_utc", OffsetDateTime.class).toInstant(),
+                            results.getObject("capture_started_at", OffsetDateTime.class).toInstant(),
+                            results.getObject("capture_ended_at", OffsetDateTime.class).toInstant(),
                             results.getObject("production_date", java.time.LocalDate.class),
                             ZoneId.of(results.getString("production_zone")),
                             results.getObject("generated_at", OffsetDateTime.class).toInstant(),
+                            results.getString("scheduled_attempt_id"),
                             results.getString("code_revision"),
                             results.getString("strategy_version"),
                             results.getString("configuration_hash"),
@@ -176,23 +182,27 @@ public final class PostgresXvfSignalRepository {
         try (PreparedStatement statement = connection.prepareStatement(INSERT_RUN)) {
             statement.setObject(1, run.signalRunId());
             statement.setShort(2, run.snapshotSchemaVersion());
-            statement.setObject(3, utc(run.cutoffUtc()));
-            statement.setObject(4, run.productionDate());
-            statement.setString(5, run.productionZone().getId());
-            statement.setObject(6, utc(run.generatedAt()));
-            statement.setString(7, run.codeRevision());
-            statement.setString(8, run.strategyVersion());
-            statement.setString(9, run.configurationHash());
-            statement.setString(10, run.configurationSnapshot().json());
-            statement.setString(11, run.settledFundingWatermarks().json());
-            statement.setString(12, run.pendingFundingWatermarks().json());
-            statement.setString(13, run.venueStateSnapshot().json());
-            setDecimal(statement, 14, run.capitalUsd());
-            statement.setInt(15, run.candidates().size());
-            statement.setString(16, run.dataIssues().json());
-            statement.setString(17, run.captureStatus().name());
-            setText(statement, 18, run.failureCode());
-            setText(statement, 19, run.failureDetail());
+            statement.setObject(3, utc(run.scheduledDecisionAt()));
+            statement.setObject(4, utc(run.cutoffUtc()));
+            statement.setObject(5, utc(run.captureStartedAt()));
+            statement.setObject(6, utc(run.captureEndedAt()));
+            statement.setObject(7, run.productionDate());
+            statement.setString(8, run.productionZone().getId());
+            statement.setObject(9, utc(run.generatedAt()));
+            statement.setString(10, run.scheduledAttemptId());
+            statement.setString(11, run.codeRevision());
+            statement.setString(12, run.strategyVersion());
+            statement.setString(13, run.configurationHash());
+            statement.setString(14, run.configurationSnapshot().json());
+            statement.setString(15, run.settledFundingWatermarks().json());
+            statement.setString(16, run.pendingFundingWatermarks().json());
+            statement.setString(17, run.venueStateSnapshot().json());
+            setDecimal(statement, 18, run.capitalUsd());
+            statement.setInt(19, run.candidates().size());
+            statement.setString(20, run.dataIssues().json());
+            statement.setString(21, run.captureStatus().name());
+            setText(statement, 22, run.failureCode());
+            setText(statement, 23, run.failureDetail());
             statement.executeUpdate();
         }
     }

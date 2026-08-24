@@ -47,7 +47,7 @@ class XvfShadowDecisionPlannerTest {
     @Test
     void choosesBybitMakerAndDoesNotAssumeBasisConvergenceProfit() {
         XvfSignalRun run = new XvfShadowDecisionPlanner().plan(
-                UUID.randomUUID(), CUTOFF, CUTOFF.plusSeconds(1), signal(), funding(Freshness.FRESH),
+                UUID.randomUUID(), timing(), CUTOFF.plusSeconds(1), signal(), funding(Freshness.FRESH),
                 markets(), configuration());
 
         assertEquals(XvfSignalRun.CaptureStatus.COMPLETE, run.captureStatus());
@@ -72,7 +72,7 @@ class XvfShadowDecisionPlannerTest {
     @Test
     void stalePendingFundingMakesTheRunPartialAndCandidateUnscorable() {
         XvfSignalRun run = new XvfShadowDecisionPlanner().plan(
-                UUID.randomUUID(), CUTOFF, CUTOFF.plusSeconds(1), signal(), funding(Freshness.STALE),
+                UUID.randomUUID(), timing(), CUTOFF.plusSeconds(1), signal(), funding(Freshness.STALE),
                 markets(), configuration());
 
         assertEquals(XvfSignalRun.CaptureStatus.PARTIAL, run.captureStatus());
@@ -87,7 +87,7 @@ class XvfShadowDecisionPlannerTest {
     @Test
     void failedCaptureHasNoCandidatesAndKeepsTheConfigurationIdentity() {
         XvfSignalRun run = new XvfShadowDecisionPlanner().failed(
-                UUID.randomUUID(), CUTOFF, CUTOFF.plusSeconds(1), configuration(),
+                UUID.randomUUID(), timing(), CUTOFF.plusSeconds(1), configuration(),
                 "PUBLIC_MARKET_FAILED", "timeout");
 
         assertEquals(XvfSignalRun.CaptureStatus.FAILED, run.captureStatus());
@@ -106,7 +106,7 @@ class XvfShadowDecisionPlannerTest {
                 "hyperliquid", new BigDecimal("1500")));
 
         XvfSignalRun run = new XvfShadowDecisionPlanner().plan(
-                UUID.randomUUID(), CUTOFF, CUTOFF.plusSeconds(1), signal(),
+                UUID.randomUUID(), timing(), CUTOFF.plusSeconds(1), signal(),
                 funding(Freshness.FRESH), markets(), constrained);
 
         XvfSignalRun.Candidate candidate = run.candidates().getFirst();
@@ -129,7 +129,7 @@ class XvfShadowDecisionPlannerTest {
                 Map.of(HL_SYMBOL, shallowHlAsk), List.of()));
 
         XvfSignalRun run = new XvfShadowDecisionPlanner().plan(
-                UUID.randomUUID(), CUTOFF, CUTOFF.plusSeconds(1), signal(),
+                UUID.randomUUID(), timing(), CUTOFF.plusSeconds(1), signal(),
                 funding(Freshness.FRESH), markets, configuration());
 
         XvfSignalRun.Candidate candidate = run.candidates().getFirst();
@@ -165,7 +165,7 @@ class XvfShadowDecisionPlannerTest {
                         bybitBook.asks())), List.of()));
 
         XvfSignalRun run = new XvfShadowDecisionPlanner().plan(
-                UUID.randomUUID(), CUTOFF, CUTOFF.plusSeconds(1), signal(),
+                UUID.randomUUID(), timing(), CUTOFF.plusSeconds(1), signal(),
                 funding(Freshness.FRESH), markets, configuration());
 
         XvfSignalRun.Candidate candidate = run.candidates().getFirst();
@@ -190,7 +190,7 @@ class XvfShadowDecisionPlannerTest {
                 original.pendingWatermarks(), original.settledWatermarks());
 
         XvfSignalRun run = new XvfShadowDecisionPlanner().plan(
-                UUID.randomUUID(), CUTOFF, CUTOFF.plusSeconds(1), signal(), mismatch,
+                UUID.randomUUID(), timing(), CUTOFF.plusSeconds(1), signal(), mismatch,
                 markets(), configuration());
 
         assertEquals(XvfSignalRun.CaptureStatus.PARTIAL, run.captureStatus());
@@ -214,7 +214,7 @@ class XvfShadowDecisionPlannerTest {
                 Map.of(BYBIT_SYMBOL, missingActivityValue), List.of()));
 
         XvfSignalRun run = new XvfShadowDecisionPlanner().plan(
-                UUID.randomUUID(), CUTOFF, CUTOFF.plusSeconds(1), signal(),
+                UUID.randomUUID(), timing(), CUTOFF.plusSeconds(1), signal(),
                 funding(Freshness.FRESH), markets, configuration());
 
         XvfSignalRun.Candidate candidate = run.candidates().getFirst();
@@ -246,7 +246,7 @@ class XvfShadowDecisionPlannerTest {
         markets.put("bybit", new VenueSnapshot("bybit", Map.of(BYBIT_SYMBOL, dislocated), List.of()));
 
         XvfSignalRun run = new XvfShadowDecisionPlanner().plan(
-                UUID.randomUUID(), CUTOFF, CUTOFF.plusSeconds(1), signal(),
+                UUID.randomUUID(), timing(), CUTOFF.plusSeconds(1), signal(),
                 funding(Freshness.FRESH), markets, configuration());
 
         XvfSignalRun.Candidate candidate = run.candidates().getFirst();
@@ -320,12 +320,14 @@ class XvfShadowDecisionPlannerTest {
                 Duration.ofHours(36),
                 Duration.ofSeconds(30),
                 Duration.ofSeconds(30),
+                Duration.ofSeconds(30),
                 new BigDecimal("25"),
                 BigDecimal.ZERO,
                 BigDecimal.ZERO,
                 ZoneId.of("Europe/Chisinau"),
                 "test-revision",
-                "xvf-shadow-test");
+                "xvf-shadow-test",
+                "test-attempt-1");
     }
 
     private static InstrumentSnapshot withBook(
@@ -385,6 +387,12 @@ class XvfShadowDecisionPlannerTest {
 
     private static SettledVenueWatermark settled(String venue) {
         return new SettledVenueWatermark(venue, CUTOFF.minusSeconds(3_600), Freshness.FRESH);
+    }
+
+    private static XvfCaptureTiming timing() {
+        Instant started = CUTOFF.minusSeconds(2);
+        Instant ended = CUTOFF.plusSeconds(1);
+        return new XvfCaptureTiming(CUTOFF, CUTOFF, started, ended, "test-attempt-1");
     }
 
     private static void assertDecimal(String expected, BigDecimal actual) {

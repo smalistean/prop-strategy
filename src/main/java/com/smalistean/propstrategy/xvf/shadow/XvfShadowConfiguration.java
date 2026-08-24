@@ -5,6 +5,7 @@ import com.smalistean.propstrategy.xvf.XvfConfig;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -20,12 +21,14 @@ public record XvfShadowConfiguration(
         Duration maximumSettledFundingAge,
         Duration maximumQuoteAge,
         Duration maximumCrossVenueQuoteSkew,
+        Duration maximumCaptureDuration,
         BigDecimal maximumTakerSlippageBps,
         BigDecimal expectedBasisCaptureFactor,
         BigDecimal riskPenaltyBps,
         ZoneId productionZone,
         String codeRevision,
-        String strategyVersion) {
+        String strategyVersion,
+        String scheduledAttemptId) {
 
     public static final String DEFAULT_STRATEGY_VERSION = "xvf-shadow-v1";
     public static final String MEASURED_FEE_PROVENANCE = "measured-live-fills-2026-08";
@@ -51,6 +54,7 @@ public record XvfShadowConfiguration(
         requirePositiveDuration(maximumSettledFundingAge, "maximumSettledFundingAge");
         requirePositiveDuration(maximumQuoteAge, "maximumQuoteAge");
         requirePositiveDuration(maximumCrossVenueQuoteSkew, "maximumCrossVenueQuoteSkew");
+        requirePositiveDuration(maximumCaptureDuration, "maximumCaptureDuration");
         requireNonNegative(maximumTakerSlippageBps, "maximumTakerSlippageBps");
         requireNonNegative(expectedBasisCaptureFactor, "expectedBasisCaptureFactor");
         if (expectedBasisCaptureFactor.compareTo(BigDecimal.ONE) > 0) {
@@ -70,6 +74,13 @@ public record XvfShadowConfiguration(
     public static XvfShadowConfiguration fromSystemProperties() {
         BigDecimal capital = new BigDecimal(System.getProperty("xvfCapital", "10000"));
         Map<String, BigDecimal> allocations = declaredAllocations(capital);
+        String codeRevision = requiredCodeRevision();
+        String strategyVersion = System.getProperty("xvfShadowStrategyVersion", DEFAULT_STRATEGY_VERSION);
+        String scheduledAttemptId = System.getProperty("xvfShadowScheduledAttemptId");
+        if (scheduledAttemptId == null || scheduledAttemptId.isBlank()) {
+            scheduledAttemptId = defaultScheduledAttemptId(LocalDate.now(ZoneId.of(
+                    System.getProperty("xvfZone", "Europe/Chisinau"))), codeRevision, strategyVersion);
+        }
         return new XvfShadowConfiguration(
                 capital,
                 allocations,
@@ -83,13 +94,24 @@ public record XvfShadowConfiguration(
                         System.getProperty("xvfShadowMaximumQuoteAgeSeconds", "30"))),
                 Duration.ofSeconds(Long.parseLong(
                         System.getProperty("xvfShadowMaximumQuoteSkewSeconds", "30"))),
+                Duration.ofSeconds(Long.parseLong(
+                        System.getProperty("xvfShadowMaximumCaptureDurationSeconds", "60"))),
                 new BigDecimal(System.getProperty("xvfShadowMaximumSlippageBps",
                         Double.toString(XvfConfig.MAX_TAKER_SLIPPAGE_BPS))),
                 new BigDecimal(System.getProperty("xvfShadowExpectedBasisCaptureFactor", "0")),
                 new BigDecimal(System.getProperty("xvfShadowRiskPenaltyBps", "0")),
                 ZoneId.of(System.getProperty("xvfZone", "Europe/Chisinau")),
-                requiredCodeRevision(),
-                System.getProperty("xvfShadowStrategyVersion", DEFAULT_STRATEGY_VERSION));
+                codeRevision,
+                strategyVersion,
+                scheduledAttemptId);
+    }
+
+    private static String defaultScheduledAttemptId(LocalDate asOf, String codeRevision,
+                                                     String strategyVersion) {
+        String revision = codeRevision.length() >= 8 ? codeRevision.substring(0, 8) : codeRevision;
+        String version = strategyVersion.length() >= 16 ? strategyVersion.substring(0, 16)
+                : strategyVersion;
+        return asOf + "-" + revision + "-" + version;
     }
 
     static Map<String, FeeSchedule> measuredFees() {

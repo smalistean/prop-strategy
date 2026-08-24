@@ -17,12 +17,17 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 
 /** Binance USD-M public market snapshot source. It has no signed/account endpoint. */
 public final class BinanceXvfVenueSnapshotSource implements XvfVenueSnapshotSource {
@@ -50,6 +55,11 @@ public final class BinanceXvfVenueSnapshotSource implements XvfVenueSnapshotSour
 
     @Override
     public VenueSnapshot fetch(Set<String> venueSymbols) {
+        return fetch(venueSymbols, Runnable::run);
+    }
+
+    @Override
+    public VenueSnapshot fetch(Set<String> venueSymbols, Executor executor) {
         Set<String> symbols = XvfSnapshotParsing.symbols(venueSymbols);
         TimedJson premiumResponse = transport.get(XvfSnapshotParsing.uri(
                 baseUri, "/fapi/v1/premiumIndex"));
@@ -64,24 +74,41 @@ public final class BinanceXvfVenueSnapshotSource implements XvfVenueSnapshotSour
                 premiumResponse, fundingIntervals(fundingInfoResponse));
         Map<String, ActivitySnapshot> activities = activities(activityResponse);
         Map<String, InstrumentRules> rules = rules(rulesResponse);
+
+        List<String> sortedSymbols = symbols.stream().sorted().toList();
+        List<Future<SymbolResult>> futures = new ArrayList<>(sortedSymbols.size());
+        for (String symbol : sortedSymbols) {
+            futures.add(submit(executor, () -> fetchSymbol(symbol, references, activities, rules)));
+        }
+
         Map<String, InstrumentSnapshot> snapshots = new LinkedHashMap<>();
         List<SnapshotIssue> issues = new ArrayList<>();
-
-        for (String symbol : symbols.stream().sorted().toList()) {
-            XvfInstrumentSnapshotBuilder builder = builder(symbol);
-            builder.reference = Optional.ofNullable(references.get(symbol));
-            builder.activity = Optional.ofNullable(activities.get(symbol));
-            builder.rules = Optional.ofNullable(rules.get(symbol));
-            missing(builder, "reference", builder.reference);
-            missing(builder, "activity", builder.activity);
-            missing(builder, "rules", builder.rules);
-
-            fetchTopOfBook(symbol, builder, issues);
-            fetchDepth(symbol, builder, issues);
-            addReferenceMissingFields(builder);
-            snapshots.put(symbol, builder.build());
+        for (int index = 0; index < sortedSymbols.size(); index++) {
+            SymbolResult result = await(futures.get(index), sortedSymbols.get(index));
+            snapshots.put(sortedSymbols.get(index), result.snapshot());
+            issues.addAll(result.issues());
         }
         return new VenueSnapshot(VENUE, snapshots, issues);
+    }
+
+    private SymbolResult fetchSymbol(
+            String symbol,
+            Map<String, ReferenceSnapshot> references,
+            Map<String, ActivitySnapshot> activities,
+            Map<String, InstrumentRules> rules) {
+        XvfInstrumentSnapshotBuilder builder = builder(symbol);
+        builder.reference = Optional.ofNullable(references.get(symbol));
+        builder.activity = Optional.ofNullable(activities.get(symbol));
+        builder.rules = Optional.ofNullable(rules.get(symbol));
+        missing(builder, "reference", builder.reference);
+        missing(builder, "activity", builder.activity);
+        missing(builder, "rules", builder.rules);
+
+        List<SnapshotIssue> issues = new ArrayList<>();
+        fetchTopOfBook(symbol, builder, issues);
+        fetchDepth(symbol, builder, issues);
+        addReferenceMissingFields(builder);
+        return new SymbolResult(builder.build(), issues);
     }
 
     private void fetchTopOfBook(String symbol, XvfInstrumentSnapshotBuilder builder,
@@ -203,6 +230,25 @@ public final class BinanceXvfVenueSnapshotSource implements XvfVenueSnapshotSour
         return Map.copyOf(out);
     }
 
+    private static Future<SymbolResult> submit(Executor executor,
+                                               java.util.concurrent.Callable<SymbolResult> task) {
+        FutureTask<SymbolResult> future = new FutureTask<>(task);
+        executor.execute(future);
+        return future;
+    }
+
+    private static SymbolResult await(Future<SymbolResult> future, String symbol) {
+        try {
+            return future.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted fetching " + VENUE + " " + symbol, e);
+        } catch (ExecutionException e) {
+            throw new IllegalStateException("Unexpected failure fetching " + VENUE + " " + symbol,
+                    e.getCause());
+        }
+    }
+
     private static XvfInstrumentSnapshotBuilder builder(String symbol) {
         return new XvfInstrumentSnapshotBuilder(VENUE, symbol,
                 XvfSnapshotParsing.canonicalBase(VENUE, symbol),
@@ -228,5 +274,13 @@ public final class BinanceXvfVenueSnapshotSource implements XvfVenueSnapshotSour
     private static SnapshotIssue issue(String symbol, String code, RuntimeException error) {
         return new SnapshotIssue(IssueSeverity.ERROR, VENUE, Optional.of(symbol), code,
                 error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage());
+    }
+
+    private record SymbolResult(InstrumentSnapshot snapshot, List<SnapshotIssue> issues) {
+        SymbolResult {
+            java.util.Objects.requireNonNull(snapshot, "snapshot");
+            issues = Collections.unmodifiableList(new ArrayList<>(
+                    java.util.Objects.requireNonNull(issues, "issues")));
+        }
     }
 }
