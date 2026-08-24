@@ -54,7 +54,7 @@ class PostgresXvfSignalRepositoryIT {
     }
 
     @Test
-    void migratesV21AndRoundTripsTypedAuditData() throws Exception {
+    void migratesLatestAndRoundTripsTypedAuditData() throws Exception {
         UUID runId = UUID.randomUUID();
         XvfSignalRun run = XvfSignalRunFixtures.complete(runId, List.of(
                 XvfSignalRunFixtures.binanceBybit(1, 1, 1, 2),
@@ -63,8 +63,25 @@ class PostgresXvfSignalRepositoryIT {
         repository.insert(run);
         XvfSignalRun stored = repository.findById(runId).orElseThrow();
 
-        assertTrue(flywayMigrationSucceeded("21"));
+        assertTrue(flywayMigrationSucceeded("23"));
         assertRunEquals(run, stored);
+    }
+
+    @Test
+    void findsAndUniquelyEnforcesScheduledAttemptIdentity() {
+        XvfSignalRun first = XvfSignalRunFixtures.complete(UUID.randomUUID(), List.of());
+        repository.insert(first);
+
+        XvfSignalRun found = repository.findByScheduledAttemptId(
+                first.scheduledAttemptId()).orElseThrow();
+        assertEquals(first.signalRunId(), found.signalRunId());
+        assertEquals(first.scheduledAttemptId(), found.scheduledAttemptId());
+
+        XvfSignalRun duplicateAttempt = copyWithScheduledAttemptId(
+                XvfSignalRunFixtures.complete(UUID.randomUUID(), List.of()),
+                first.scheduledAttemptId());
+        assertThrows(IllegalStateException.class, () -> repository.insert(duplicateAttempt));
+        assertFalse(repository.findById(duplicateAttempt.signalRunId()).isPresent());
     }
 
     @Test
@@ -205,6 +222,20 @@ class PostgresXvfSignalRepositoryIT {
 
     private static Connection open() throws SQLException {
         return DriverManager.getConnection(database.url(), database.user(), database.password());
+    }
+
+    private static XvfSignalRun copyWithScheduledAttemptId(
+            XvfSignalRun source, String scheduledAttemptId) {
+        return new XvfSignalRun(
+                source.signalRunId(), source.snapshotSchemaVersion(), source.scheduledDecisionAt(),
+                source.cutoffUtc(), source.captureStartedAt(), source.captureEndedAt(),
+                source.productionDate(), source.productionZone(), source.generatedAt(),
+                scheduledAttemptId, source.codeRevision(), source.strategyVersion(),
+                source.configurationHash(), source.configurationSnapshot(),
+                source.settledFundingWatermarks(), source.pendingFundingWatermarks(),
+                source.venueStateSnapshot(), source.capitalUsd(), source.dataIssues(),
+                source.captureStatus(), source.failureCode(), source.failureDetail(),
+                source.candidates());
     }
 
     private static void assertDecimalEquals(BigDecimal expected, BigDecimal actual) {

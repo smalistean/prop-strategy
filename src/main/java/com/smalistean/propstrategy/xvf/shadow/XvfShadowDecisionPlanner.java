@@ -101,11 +101,12 @@ public final class XvfShadowDecisionPlanner {
         }
 
         JsonDocument configurationSnapshot = configurationSnapshot(configuration);
-        CaptureStatus status = issues.isEmpty() ? CaptureStatus.COMPLETE : CaptureStatus.PARTIAL;
+        addCaptureWindowIssues(timing, issues);
+        int problemCount = issues.problemCount();
+        CaptureStatus status = problemCount == 0 ? CaptureStatus.COMPLETE : CaptureStatus.PARTIAL;
         String failureCode = status == CaptureStatus.PARTIAL ? "INCOMPLETE_SHADOW_INPUTS" : null;
         String failureDetail = status == CaptureStatus.PARTIAL
-                ? issues.size() + " shadow input issue(s); see data_issues" : null;
-        addCaptureWindowIssues(timing, issues);
+                ? problemCount + " shadow input problem(s); see data_issues" : null;
         return new XvfSignalRun(
                 runId,
                 (short) 1,
@@ -786,7 +787,6 @@ public final class XvfShadowDecisionPlanner {
                 configuration.maximumCrossVenueQuoteSkew().toSeconds());
         snapshot.put("maximumCaptureDurationSeconds",
                 configuration.maximumCaptureDuration().toSeconds());
-        snapshot.put("scheduledAttemptId", configuration.scheduledAttemptId());
         snapshot.put("maximumTakerSlippageBps", configuration.maximumTakerSlippageBps());
         snapshot.put("makerRoutingPolicy",
                 "SCORE_BOTH_ONE_MAKER_ROUTES_AND_CHOOSE_HIGHEST_FEASIBLE_EXPECTED_NET");
@@ -1286,12 +1286,10 @@ public final class XvfShadowDecisionPlanner {
             values.putIfAbsent(key, issue);
         }
 
-        boolean isEmpty() {
-            return values.isEmpty();
-        }
-
-        int size() {
-            return values.size();
+        int problemCount() {
+            return (int) values.values().stream()
+                    .filter(issue -> !"INFO".equals(issue.get("severity")))
+                    .count();
         }
 
         List<Map<String, Object>> asJson() {

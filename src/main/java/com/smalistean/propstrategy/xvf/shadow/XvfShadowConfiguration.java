@@ -76,10 +76,13 @@ public record XvfShadowConfiguration(
         Map<String, BigDecimal> allocations = declaredAllocations(capital);
         String codeRevision = requiredCodeRevision();
         String strategyVersion = System.getProperty("xvfShadowStrategyVersion", DEFAULT_STRATEGY_VERSION);
+        ZoneId productionZone = ZoneId.of(
+                System.getProperty("xvfZone", "Europe/Chisinau"));
+        LocalDate asOf = LocalDate.parse(System.getProperty(
+                "xvfAsOf", LocalDate.now(productionZone).toString()));
         String scheduledAttemptId = System.getProperty("xvfShadowScheduledAttemptId");
         if (scheduledAttemptId == null || scheduledAttemptId.isBlank()) {
-            scheduledAttemptId = defaultScheduledAttemptId(LocalDate.now(ZoneId.of(
-                    System.getProperty("xvfZone", "Europe/Chisinau"))), codeRevision, strategyVersion);
+            scheduledAttemptId = defaultScheduledAttemptId(asOf);
         }
         return new XvfShadowConfiguration(
                 capital,
@@ -100,18 +103,14 @@ public record XvfShadowConfiguration(
                         Double.toString(XvfConfig.MAX_TAKER_SLIPPAGE_BPS))),
                 new BigDecimal(System.getProperty("xvfShadowExpectedBasisCaptureFactor", "0")),
                 new BigDecimal(System.getProperty("xvfShadowRiskPenaltyBps", "0")),
-                ZoneId.of(System.getProperty("xvfZone", "Europe/Chisinau")),
+                productionZone,
                 codeRevision,
                 strategyVersion,
                 scheduledAttemptId);
     }
 
-    private static String defaultScheduledAttemptId(LocalDate asOf, String codeRevision,
-                                                     String strategyVersion) {
-        String revision = codeRevision.length() >= 8 ? codeRevision.substring(0, 8) : codeRevision;
-        String version = strategyVersion.length() >= 16 ? strategyVersion.substring(0, 16)
-                : strategyVersion;
-        return asOf + "-" + revision + "-" + version;
+    static String defaultScheduledAttemptId(LocalDate asOf) {
+        return "daily-" + Objects.requireNonNull(asOf, "asOf");
     }
 
     static Map<String, FeeSchedule> measuredFees() {

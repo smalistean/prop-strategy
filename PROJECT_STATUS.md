@@ -10,20 +10,28 @@ Last updated: 2026-08-24
   suspends and then restores V21's append-only row trigger for that transaction-owned backfill.
 - Added `XvfCaptureTiming` record and threaded it through `XvfShadowSnapshotService`,
   `XvfShadowDecisionPlanner` and `PostgresXvfSignalRepository`. The scheduled decision time is now
-  recorded before any market fetch and used as the funding/watermark cutoff, instead of being
-  assigned after market responses return.
+  recorded before any market fetch; the funding/watermark cutoff is assigned after market responses
+  return so every accepted response is at or before that cutoff.
 - Added `scheduledAttemptId` and `maximumCaptureDuration` to `XvfShadowConfiguration`. When no
-  idempotency key is supplied it is derived from the production date, code revision and strategy
-  version so scheduler retries are identifiable.
+  idempotency key is supplied it identifies the requested daily production slot. An optional
+  `xvfShadowScheduledDecisionAt` preserves the scheduler timestamp across late starts and retries.
+- Added Flyway V23 uniqueness for `scheduled_attempt_id` plus repository lookup. A sequential
+  scheduler retry reuses the immutable existing result instead of collecting a duplicate; distinct
+  manual experiments remain possible with explicit attempt ids.
 - Added bounded concurrent symbol fetching: `XvfVenueSnapshotSource` gained a
   `fetch(Set<String>, Executor)` overload; Binance, Bybit and Hyperliquid sources now fetch
   per-symbol market data concurrently using a shared 20-thread pool, with Hyperliquid limited to
   10 concurrent requests by a Semaphore.
-- Added an INFO-level `CAPTURE_WINDOW_MILLIS` data issue and a WARNING-level
-  `CAPTURE_DURATION_EXCEEDED` issue when the wall-clock capture window exceeds the configured
-  maximum (default 60 seconds).
-- Updated unit and integration tests; all 189 Maven tests pass. The next step is Checkpoint A3:
-  append-only 72-hour outcome persistence (`xvf_signal_candidate_outcome`).
+- The full capture attempt now runs under the configured hard deadline (default 60 seconds). A
+  timeout interrupts the coordinator and all bounded market workers and persists one immutable
+  `CAPTURE_DEADLINE_EXCEEDED` failed run; persistence itself remains outside the deadline. Completed
+  attempts retain the `CAPTURE_WINDOW_MILLIS` timing diagnostic.
+- INFO diagnostics no longer make a run partial or inflate its reported problem count, and the
+  scheduler attempt id is no longer included in the strategy configuration hash.
+- Checkpoint A2 is complete. All 213 Maven tests pass, including advancing-clock timing, hard-deadline
+  cancellation, V21-to-V23 migration with an existing immutable row, and scheduled-attempt
+  uniqueness. The next step is Checkpoint A3: append-only 72-hour outcome persistence
+  (`xvf_signal_candidate_outcome`).
 
 ## XVF immutable shadow decision ledger (2026-08-21)
 

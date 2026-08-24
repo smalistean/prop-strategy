@@ -134,7 +134,7 @@ final class XvfSignalRunFixtures {
                 LocalDate.of(2026, 8, 21),
                 ZoneId.of("Europe/Chisinau"),
                 cutoff.plusSeconds(3),
-                "2026-08-21-codex-xvf-v1",
+                "test-attempt-" + runId,
                 "codex-shadow-ledger-v1",
                 "xvf-v1",
                 CONFIGURATION_HASH,

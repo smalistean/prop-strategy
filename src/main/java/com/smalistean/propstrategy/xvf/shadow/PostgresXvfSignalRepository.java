@@ -89,6 +89,12 @@ public final class PostgresXvfSignalRepository {
             ORDER BY evaluation_order
             """;
 
+    private static final String SELECT_RUN_ID_BY_SCHEDULED_ATTEMPT = """
+            SELECT signal_run_id
+            FROM xvf_signal_run
+            WHERE scheduled_attempt_id = ?
+            """;
+
     private final DatabaseConfig config;
 
     public PostgresXvfSignalRepository(DatabaseConfig config) {
@@ -171,6 +177,28 @@ public final class PostgresXvfSignalRepository {
             }
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to read XVF signal run " + signalRunId, e);
+        }
+    }
+
+    /** Returns the immutable result of a scheduler attempt, allowing a retry to reuse it. */
+    public Optional<XvfSignalRun> findByScheduledAttemptId(String scheduledAttemptId) {
+        if (scheduledAttemptId == null || scheduledAttemptId.isBlank()) {
+            throw new IllegalArgumentException("scheduledAttemptId must not be blank");
+        }
+        try (Connection connection = open();
+             PreparedStatement statement = connection.prepareStatement(
+                     SELECT_RUN_ID_BY_SCHEDULED_ATTEMPT)) {
+            connection.setReadOnly(true);
+            statement.setString(1, scheduledAttemptId);
+            try (ResultSet results = statement.executeQuery()) {
+                if (!results.next()) {
+                    return Optional.empty();
+                }
+                return findById(results.getObject("signal_run_id", UUID.class));
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException(
+                    "Failed to find XVF scheduled attempt " + scheduledAttemptId, e);
         }
     }
 

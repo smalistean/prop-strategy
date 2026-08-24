@@ -5,7 +5,9 @@ import com.smalistean.propstrategy.database.DatabaseMigrator;
 import com.smalistean.propstrategy.xvf.signal.XvfSignalEngine;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -19,6 +21,10 @@ import java.util.List;
  *   -DxvfShadowCapital.binance=4000
  *   -DxvfShadowCapital.bybit=2500
  *   -DxvfShadowCapital.hyperliquid=3500
+ *
+ *   Optional scheduler identity (reuse the same values on a retry):
+ *   -DxvfShadowScheduledAttemptId=daily-2026-08-24
+ *   -DxvfShadowScheduledDecisionAt=2026-08-24T09:00:00Z
  * </pre>
  */
 public final class XvfShadowSnapshotApplication {
@@ -34,6 +40,7 @@ public final class XvfShadowSnapshotApplication {
         DatabaseMigrator.migrate(database);
 
         PostgresXvfSignalRepository repository = new PostgresXvfSignalRepository(database);
+        Clock clock = Clock.systemUTC();
         XvfShadowSnapshotService service = new XvfShadowSnapshotService(
                 date -> {
                     XvfSignalEngine.requireFreshFunding(database, date);
@@ -47,9 +54,10 @@ public final class XvfShadowSnapshotApplication {
                 new XvfShadowDecisionPlanner(),
                 repository::insert,
                 configuration,
-                Clock.systemUTC());
+                clock);
 
-        XvfSignalRun run = service.capture(asOf);
+        XvfSignalRun run = repository.findByScheduledAttemptId(configuration.scheduledAttemptId())
+                .orElseGet(() -> service.capture(asOf, scheduledDecisionAt(clock)));
         long scorable = run.candidates().stream()
                 .filter(candidate -> candidate.scoreStatus() == XvfSignalRun.ScoreStatus.SCORABLE)
                 .count();
@@ -64,5 +72,13 @@ public final class XvfShadowSnapshotApplication {
             throw new IllegalStateException("XVF shadow capture is " + run.captureStatus()
                     + ": " + run.failureDetail());
         }
+    }
+
+    private static Instant scheduledDecisionAt(Clock clock) {
+        String configured = System.getProperty("xvfShadowScheduledDecisionAt");
+        if (configured == null || configured.isBlank()) {
+            return clock.instant().truncatedTo(ChronoUnit.MICROS);
+        }
+        return Instant.parse(configured);
     }
 }

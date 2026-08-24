@@ -34,6 +34,7 @@ class XvfShadowCaptureTimingMigrationIT {
             migrateToLatest(postgres);
 
             assertTrue(migrationSucceeded(postgres, "22"));
+            assertTrue(migrationSucceeded(postgres, "23"));
             assertLegacyTimingBackfill(postgres, legacyRunId);
             assertAppendOnlyProtectionRestored(postgres, legacyRunId);
         } finally {

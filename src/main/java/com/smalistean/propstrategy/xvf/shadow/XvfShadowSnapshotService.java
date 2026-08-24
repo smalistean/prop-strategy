@@ -24,6 +24,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /** Orchestrates one isolated shadow capture and persists exactly one final audit run. */
 public final class XvfShadowSnapshotService {
@@ -72,10 +74,81 @@ public final class XvfShadowSnapshotService {
      * second failed capture with the same UUID.
      */
     public XvfSignalRun capture(LocalDate asOf) {
+        return captureInternal(asOf, null);
+    }
+
+    /** Captures a scheduler run while preserving its intended decision timestamp across retries. */
+    public XvfSignalRun capture(LocalDate asOf, Instant scheduledDecisionAt) {
+        return captureInternal(asOf,
+                java.util.Objects.requireNonNull(scheduledDecisionAt, "scheduledDecisionAt"));
+    }
+
+    private XvfSignalRun captureInternal(LocalDate asOf, Instant suppliedScheduledDecisionAt) {
         java.util.Objects.requireNonNull(asOf, "asOf");
         UUID runId = UUID.randomUUID();
         Instant captureStartedAt = now();
-        Instant scheduledDecisionAt = captureStartedAt;
+        Instant scheduledDecisionAt = suppliedScheduledDecisionAt == null
+                ? captureStartedAt : suppliedScheduledDecisionAt;
+        if (scheduledDecisionAt.getNano() % 1_000 != 0) {
+            throw new IllegalArgumentException(
+                    "scheduledDecisionAt exceeds PostgreSQL microsecond precision");
+        }
+        if (scheduledDecisionAt.isAfter(captureStartedAt)) {
+            throw new IllegalArgumentException("scheduledDecisionAt cannot follow capture start");
+        }
+        if (!asOf.equals(scheduledDecisionAt.atZone(
+                configuration.productionZone()).toLocalDate())) {
+            throw new IllegalArgumentException(
+                    "asOf must equal scheduledDecisionAt date in production zone");
+        }
+        ExecutorService coordinator = Executors.newSingleThreadExecutor(
+                Thread.ofPlatform().daemon().name("xvf-shadow-capture-", 0).factory());
+        Future<XvfSignalRun> attempt = coordinator.submit(() -> captureAttempt(
+                runId, asOf, scheduledDecisionAt, captureStartedAt));
+        Instant cutoffUtc = captureStartedAt;
+        XvfSignalRun run;
+        try {
+            run = attempt.get(configuration.maximumCaptureDuration().toNanos(),
+                    TimeUnit.NANOSECONDS);
+        } catch (TimeoutException timeout) {
+            attempt.cancel(true);
+            Instant captureEndedAt = now();
+            cutoffUtc = captureEndedAt;
+            XvfCaptureTiming timing = new XvfCaptureTiming(
+                    scheduledDecisionAt, cutoffUtc,
+                    captureStartedAt, captureEndedAt,
+                    configuration.scheduledAttemptId());
+            run = planner.failed(runId, timing, now(), configuration,
+                    "CAPTURE_DEADLINE_EXCEEDED",
+                    "Capture exceeded configured maximum "
+                            + configuration.maximumCaptureDuration()
+                            + "; unfinished work was cancelled");
+        } catch (InterruptedException interrupted) {
+            attempt.cancel(true);
+            Thread.currentThread().interrupt();
+            Instant captureEndedAt = now();
+            cutoffUtc = captureEndedAt;
+            XvfCaptureTiming timing = new XvfCaptureTiming(
+                    scheduledDecisionAt, cutoffUtc,
+                    captureStartedAt, captureEndedAt,
+                    configuration.scheduledAttemptId());
+            run = planner.failed(runId, timing, now(), configuration,
+                    "SHADOW_CAPTURE_INTERRUPTED", failureDetail(interrupted));
+        } catch (ExecutionException failure) {
+            throw new IllegalStateException("Unexpected shadow capture task failure",
+                    failure.getCause());
+        } finally {
+            coordinator.shutdownNow();
+        }
+        runSink.insert(run);
+        return run;
+    }
+
+    private XvfSignalRun captureAttempt(
+            UUID runId,
+            LocalDate asOf,
+            Instant scheduledDecisionAt,
+            Instant captureStartedAt) {
         Instant cutoffUtc = captureStartedAt;
         XvfSignalRun run;
         try {
@@ -114,13 +187,15 @@ public final class XvfShadowSnapshotService {
             run = planner.failed(runId, timing, now(), configuration,
                     "SHADOW_CAPTURE_FAILED", failureDetail(failure));
         }
-        runSink.insert(run);
         return run;
     }
 
     private Map<String, VenueSnapshot> fetchMarkets(Map<String, Set<String>> requested) {
         Map<String, Future<VenueSnapshot>> futures = new LinkedHashMap<>();
-        try (ExecutorService executor = Executors.newFixedThreadPool(SHARED_SYMBOL_CONCURRENCY)) {
+        ExecutorService executor = Executors.newFixedThreadPool(
+                SHARED_SYMBOL_CONCURRENCY,
+                Thread.ofPlatform().daemon().name("xvf-shadow-market-", 0).factory());
+        try {
             for (XvfVenueSnapshotSource source : venueSources) {
                 Set<String> symbols = requested.getOrDefault(source.venue(), Set.of());
                 if (symbols.isEmpty()) {
@@ -143,6 +218,9 @@ public final class XvfShadowSnapshotService {
                 }
             }
             return Map.copyOf(out);
+        } finally {
+            futures.values().forEach(future -> future.cancel(true));
+            executor.shutdownNow();
         }
     }
 

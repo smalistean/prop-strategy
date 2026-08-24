@@ -10,9 +10,11 @@ import com.smalistean.propstrategy.xvf.shadow.XvfVenueSnapshotSource.ActivitySna
 import com.smalistean.propstrategy.xvf.shadow.XvfVenueSnapshotSource.BookLevel;
 import com.smalistean.propstrategy.xvf.shadow.XvfVenueSnapshotSource.InstrumentRules;
 import com.smalistean.propstrategy.xvf.shadow.XvfVenueSnapshotSource.InstrumentSnapshot;
+import com.smalistean.propstrategy.xvf.shadow.XvfVenueSnapshotSource.IssueSeverity;
 import com.smalistean.propstrategy.xvf.shadow.XvfVenueSnapshotSource.OrderBookSnapshot;
 import com.smalistean.propstrategy.xvf.shadow.XvfVenueSnapshotSource.ReferenceSnapshot;
 import com.smalistean.propstrategy.xvf.shadow.XvfVenueSnapshotSource.ResponseTiming;
+import com.smalistean.propstrategy.xvf.shadow.XvfVenueSnapshotSource.SnapshotIssue;
 import com.smalistean.propstrategy.xvf.shadow.XvfVenueSnapshotSource.TopOfBookSnapshot;
 import com.smalistean.propstrategy.xvf.shadow.XvfVenueSnapshotSource.VenueSnapshot;
 import com.smalistean.propstrategy.xvf.signal.XvfSignalEngine.Candidate;
@@ -34,6 +36,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -85,6 +88,24 @@ class XvfShadowDecisionPlannerTest {
     }
 
     @Test
+    void informationalCaptureTimingDoesNotInflatePartialIssueCount() {
+        Map<String, VenueSnapshot> withWarning = new java.util.LinkedHashMap<>(markets());
+        VenueSnapshot bybit = withWarning.get("bybit");
+        withWarning.put("bybit", new VenueSnapshot("bybit", bybit.instruments(), List.of(
+                new SnapshotIssue(IssueSeverity.WARNING, "bybit", Optional.empty(),
+                        "FIXTURE_WARNING", "one actionable input problem"))));
+
+        XvfSignalRun run = new XvfShadowDecisionPlanner().plan(
+                UUID.randomUUID(), timing(), CUTOFF.plusSeconds(1), signal(),
+                funding(Freshness.FRESH), withWarning, configuration());
+
+        assertEquals(XvfSignalRun.CaptureStatus.PARTIAL, run.captureStatus());
+        assertEquals(2, run.dataIssues().size());
+        assertEquals("1 shadow input problem(s); see data_issues", run.failureDetail());
+        assertTrue(run.dataIssues().json().contains("CAPTURE_WINDOW_MILLIS"));
+    }
+
+    @Test
     void failedCaptureHasNoCandidatesAndKeepsTheConfigurationIdentity() {
         XvfSignalRun run = new XvfShadowDecisionPlanner().failed(
                 UUID.randomUUID(), timing(), CUTOFF.plusSeconds(1), configuration(),
@@ -96,6 +117,20 @@ class XvfShadowDecisionPlannerTest {
         assertEquals(64, run.configurationHash().length());
         assertTrue(run.configurationSnapshot().json().contains(
                 "DECLARED_CONFIGURATION_NOT_EXCHANGE"));
+    }
+
+    @Test
+    void schedulerAttemptIdentityDoesNotChangeTheStrategyConfigurationHash() {
+        XvfShadowConfiguration secondConfiguration = withScheduledAttemptId("test-attempt-2");
+        XvfSignalRun first = new XvfShadowDecisionPlanner().failed(
+                UUID.randomUUID(), timing(), CUTOFF.plusSeconds(1), configuration(),
+                "FIXTURE_FAILURE", "fixture");
+        XvfSignalRun second = new XvfShadowDecisionPlanner().failed(
+                UUID.randomUUID(), timing("test-attempt-2"), CUTOFF.plusSeconds(1),
+                secondConfiguration, "FIXTURE_FAILURE", "fixture");
+
+        assertEquals(first.configurationHash(), second.configurationHash());
+        assertFalse(first.configurationSnapshot().json().contains("scheduledAttemptId"));
     }
 
     @Test
@@ -330,6 +365,18 @@ class XvfShadowDecisionPlannerTest {
                 "test-attempt-1");
     }
 
+    private static XvfShadowConfiguration withScheduledAttemptId(String scheduledAttemptId) {
+        XvfShadowConfiguration base = configuration();
+        return new XvfShadowConfiguration(
+                base.capitalUsd(), base.venueCapitalUsd(), base.feeSchedules(),
+                base.plannedHoldHours(), base.maximumPendingFundingAge(),
+                base.maximumSettledFundingAge(), base.maximumQuoteAge(),
+                base.maximumCrossVenueQuoteSkew(), base.maximumCaptureDuration(),
+                base.maximumTakerSlippageBps(), base.expectedBasisCaptureFactor(),
+                base.riskPenaltyBps(), base.productionZone(), base.codeRevision(),
+                base.strategyVersion(), scheduledAttemptId);
+    }
+
     private static InstrumentSnapshot withBook(
             InstrumentSnapshot original,
             List<BookLevel> bids,
@@ -390,9 +437,13 @@ class XvfShadowDecisionPlannerTest {
     }
 
     private static XvfCaptureTiming timing() {
+        return timing("test-attempt-1");
+    }
+
+    private static XvfCaptureTiming timing(String scheduledAttemptId) {
         Instant started = CUTOFF.minusSeconds(2);
         Instant ended = CUTOFF.plusSeconds(1);
-        return new XvfCaptureTiming(CUTOFF, CUTOFF, started, ended, "test-attempt-1");
+        return new XvfCaptureTiming(CUTOFF, CUTOFF, started, ended, scheduledAttemptId);
     }
 
     private static void assertDecimal(String expected, BigDecimal actual) {

@@ -4,6 +4,7 @@ import com.smalistean.propstrategy.xvf.shadow.XvfVenueSnapshotSource.VenueSnapsh
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -13,6 +14,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -82,6 +85,29 @@ class XvfShadowSnapshotServiceTest {
     }
 
     @Test
+    void preservesExplicitSchedulerTimeWhenCaptureStartsLate() {
+        Instant scheduled = CUTOFF.minusSeconds(30);
+        XvfShadowSnapshotService service = new XvfShadowSnapshotService(
+                ignored -> XvfShadowDecisionPlannerTest.signal(),
+                (cutoff, policy) -> XvfShadowDecisionPlannerTest.funding(
+                        XvfFundingSnapshot.Freshness.FRESH),
+                List.of(source("bybit", XvfShadowDecisionPlannerTest.markets().get("bybit")),
+                        source("hyperliquid",
+                                XvfShadowDecisionPlannerTest.markets().get("hyperliquid")),
+                        source("binance", XvfShadowDecisionPlannerTest.markets().get("binance"))),
+                new XvfShadowDecisionPlanner(),
+                ignored -> { },
+                XvfShadowDecisionPlannerTest.configuration(),
+                Clock.fixed(CUTOFF, ZoneOffset.UTC));
+
+        XvfSignalRun run = service.capture(LocalDate.of(2026, 8, 21), scheduled);
+
+        assertEquals(scheduled, run.scheduledDecisionAt());
+        assertEquals(CUTOFF, run.captureStartedAt());
+        assertEquals(CUTOFF, run.cutoffUtc());
+    }
+
+    @Test
     void acceptsMarketFactsCollectedAfterCaptureStartedAndBeforeCutoff() {
         Instant captureStarted = CUTOFF.minusSeconds(2);
         Instant captureEnded = CUTOFF.plusMillis(500);
@@ -138,6 +164,37 @@ class XvfShadowSnapshotServiceTest {
     }
 
     @Test
+    void cancelsUnfinishedVenueWorkAndPersistsDeadlineFailure() throws Exception {
+        List<XvfSignalRun> persisted = new ArrayList<>();
+        BlockingVenueSource bybit = new BlockingVenueSource("bybit");
+        XvfShadowSnapshotService service = new XvfShadowSnapshotService(
+                ignored -> XvfShadowDecisionPlannerTest.signal(),
+                (cutoff, policy) -> XvfShadowDecisionPlannerTest.funding(
+                        XvfFundingSnapshot.Freshness.FRESH),
+                List.of(bybit,
+                        source("hyperliquid",
+                                XvfShadowDecisionPlannerTest.markets().get("hyperliquid")),
+                        source("binance", XvfShadowDecisionPlannerTest.markets().get("binance"))),
+                new XvfShadowDecisionPlanner(),
+                persisted::add,
+                withMaximumCaptureDuration(Duration.ofMillis(500)),
+                Clock.systemUTC());
+
+        long startedNanos = System.nanoTime();
+        XvfSignalRun run = service.capture(LocalDate.now(ZoneId.of("Europe/Chisinau")));
+        Duration elapsed = Duration.ofNanos(System.nanoTime() - startedNanos);
+
+        assertEquals(XvfSignalRun.CaptureStatus.FAILED, run.captureStatus());
+        assertEquals("CAPTURE_DEADLINE_EXCEEDED", run.failureCode());
+        assertTrue(run.failureDetail().contains("PT0.5S"));
+        assertEquals(List.of(run), persisted);
+        assertTrue(bybit.started.await(1, TimeUnit.SECONDS));
+        assertTrue(bybit.interrupted.await(1, TimeUnit.SECONDS));
+        assertTrue(elapsed.compareTo(Duration.ofSeconds(2)) < 0,
+                () -> "Capture returned after " + elapsed);
+    }
+
+    @Test
     void requestsDetailedMarketDataOnlyForCandidatesPassingSignalGates() {
         Map<String, Set<String>> requested = XvfShadowSnapshotService.requestedSymbols(
                 XvfShadowDecisionPlannerTest.signal());
@@ -149,6 +206,27 @@ class XvfShadowSnapshotServiceTest {
 
     private static RecordingVenueSource source(String venue, VenueSnapshot snapshot) {
         return new RecordingVenueSource(venue, snapshot);
+    }
+
+    private static XvfShadowConfiguration withMaximumCaptureDuration(Duration duration) {
+        XvfShadowConfiguration base = XvfShadowDecisionPlannerTest.configuration();
+        return new XvfShadowConfiguration(
+                base.capitalUsd(),
+                base.venueCapitalUsd(),
+                base.feeSchedules(),
+                base.plannedHoldHours(),
+                base.maximumPendingFundingAge(),
+                base.maximumSettledFundingAge(),
+                base.maximumQuoteAge(),
+                base.maximumCrossVenueQuoteSkew(),
+                duration,
+                base.maximumTakerSlippageBps(),
+                base.expectedBasisCaptureFactor(),
+                base.riskPenaltyBps(),
+                base.productionZone(),
+                base.codeRevision(),
+                base.strategyVersion(),
+                base.scheduledAttemptId());
     }
 
     private static final class RecordingVenueSource implements XvfVenueSnapshotSource {
@@ -172,6 +250,35 @@ class XvfShadowSnapshotServiceTest {
             called = true;
             requested = Set.copyOf(venueSymbols);
             return snapshot;
+        }
+    }
+
+    private static final class BlockingVenueSource implements XvfVenueSnapshotSource {
+        private final String venue;
+        private final CountDownLatch started = new CountDownLatch(1);
+        private final CountDownLatch interrupted = new CountDownLatch(1);
+
+        private BlockingVenueSource(String venue) {
+            this.venue = venue;
+        }
+
+        @Override
+        public String venue() {
+            return venue;
+        }
+
+        @Override
+        public VenueSnapshot fetch(Set<String> venueSymbols) {
+            started.countDown();
+            try {
+                new CountDownLatch(1).await();
+                throw new AssertionError("Blocking venue source unexpectedly resumed");
+            } catch (InterruptedException expected) {
+                interrupted.countDown();
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Venue fetch interrupted at capture deadline",
+                        expected);
+            }
         }
     }
 
