@@ -2,6 +2,219 @@
 
 Last updated: 2026-08-24
 
+## XVF realistic entry timing and exit sensitivity (2026-08-24)
+
+- Found and corrected a material replay timing error: `observed_hour` is the snapshot's bucket, but
+  the AWS observations were actually recorded around `HH:50:34`. The earlier replay entered at
+  `HH:00`, creating about 51 minutes of look-ahead and sometimes including a settlement from before
+  the trade. All results below execute at the first complete minute after both venues' `observed_at`.
+- Refreshed settled funding only for the two stale active venues: Bybit added 142,929 rows across
+  837 symbols with zero failures; Hyperliquid added 7,656 hourly rows across 232 coins.
+- Binance exchange metadata confirmed `SHAZ`, `SAMSUNGEM` and `LGELECTRONICS` are TradFi/equity
+  perpetuals; they are excluded from the crypto comparison. The corrected clean baseline has 338
+  observations. Its median net remains negative at every fixed horizon: -17.39 bp at 24h, -16.12 bp
+  at 48h and -14.40 bp at 72h.
+- The corrected persistence-plus-entry-basis gate retains 12 observations / 10 bases across seven
+  cohorts. Fixed-24h median net is +3.20 bp, 8/12 beat fees and the worst is -46.10 bp. Fixed-48h
+  median is +16.12 bp but only 7/12 beat fees. Fixed-72h median is +4.55 bp, 7/12 beat fees and the
+  worst is -100.36 bp. ACX dominates all averages: without its two observations, medians are only
+  +0.84 / +0.38 / -1.10 bp and averages -2.43 / +14.87 / -16.11 bp at 24/48/72h.
+- Tested one causal dynamic exit: close after two consecutive hourly observations show a
+  non-positive funding gap, executing after the actual observations arrived. It triggered on all 12
+  entries after 9.33 hours on average and degraded median net to -4.60 bp and the fee-beating ratio
+  to 4/12. It limits some losses but exits the large basis-convergence winners too early, so this
+  rule is rejected.
+- Chronological and concentration checks show the apparent edge is not diversified. At 24h, the
+  early/late median falls from +5.27 to +0.56 bp; without ACX the two medians are +3.20 and -1.96 bp.
+  At 48h the early/late median falls from +17.34 to -14.14 bp; without ACX the late median is
+  -15.38 bp and only 2/6 entries beat fees.
+- ACX supplies 109.4% of the total fixed-24h net result: every other symbol combined loses money.
+  It supplies 79.6% at 48h, with COTI another 20.8%. Equal-weighting symbols rather than repeated
+  observations reduces the average from +21.60 to +10.94 bp at 24h; removing ACX makes it -3.59 bp.
+  A per-symbol capital cap is still prudent risk control, but it cannot turn this concentrated sample
+  into evidence of a broad entry edge.
+- Entry-basis cushion sensitivity is the strongest improvement measured so far. Keeping the frozen
+  funding-persistence rule and requiring entry basis to cover the full 22.6 bp round-trip fee retains
+  6 observations / 4 bases across five cohorts at 24h: median net +12.89 bp, 5/6 beat fees, 5/6 have
+  both positive funding and non-negative basis P&L, and the worst is -6.85 bp. Without ACX, the
+  early and late medians are +8.05 and +4.05 bp, but each half contains only two observations.
+- A half-fee cushion retains 8 observations / 6 bases: 24h median +8.05 bp, 6/8 beat fees and worst
+  -6.85 bp, but without ACX its late-half median is -4.49 bp and only 1/3 beats fees. A 1.5x-fee
+  cushion collapses to three observations / two bases and is effectively an ACX concentration bet.
+  The full-fee rule is therefore a useful conservative shadow challenger and the half-fee rule a
+  higher-sample comparison; neither is validated for live capital.
+- A sequential capital ledger rejects overlapping re-entry while a base is already open. Both
+  basis-cushion policies lose two repeated COW/ACX signals. The full-fee rule accepts four positions:
+  peak concurrency is 2 at 24h and 4 at 48h. The half-fee rule accepts six: peaks are 3 and 5.
+- Returns are quoted on one-leg notional, so capital-efficiency calculations divide by the gross
+  two-leg capital. Full-fee 24h and 48h produce 20.86 and 20.33 bp per occupied capital-day;
+  half-fee produces 13.63 and 13.34. A longer hold therefore does not improve occupied-capital
+  productivity in this sample.
+- Against the configured 20-position capacity, utilization is only 7.27% / 10.67% for full-fee
+  24h / 48h and 8.57% / 13.33% for half-fee. The corresponding whole-book return is 1.52 / 2.17
+  and 1.17 / 1.78 bp per day. The 48h book number is higher only because scarce trades remain open
+  longer; if another valid opportunity exists, 24h frees capital with essentially the same occupied
+  efficiency. Do not resize the few passing trades to consume all available capital: keep fixed
+  per-symbol slots and allow unused capital to remain idle until the edge is validated.
+- Every accepted half-fee/full-fee position in this observation slice is Binance-Bybit. The existing
+  22.6 bp round-trip model already makes Bybit at entry: 3.6 bp Bybit maker plus 4.5 bp Binance
+  taker, followed by a 14.5 bp two-leg taker exit. Making Binance instead costs 26.3 bp because the
+  Bybit entry becomes the measured 10 bp taker; both entry legs taker cost 29.0 bp.
+- A filled Bybit-maker route saves 3.7 bp versus Binance-maker. If a miss falls back to both legs
+  taker at unchanged prices, the fee-only break-even fill probability is 42.2%: expected fee is
+  26.3 bp, equal to Binance-maker. At 75% / 50% fills it is 24.2 / 25.8 bp; at 25% it is 27.4 bp.
+  For the four accepted full-fee positions, filled Bybit-maker adds 14.8 aggregate one-leg bp versus
+  Binance-maker at either hold horizon.
+- Making the full-fee entry gate fill-aware reduces six candidate signals to four at a 75% fill
+  assumption, three at 50%, and two under all-taker fees. If maker misses remain cash, expected P&L
+  simply scales with fills and does not incur fallback fees, but utilization falls further. The
+  1-minute candles cannot identify post-only fills, cancels, hedge latency, or adverse markout, so
+  actual Bybit maker fill probability must come from order-attempt and private-fill records.
+- A read-only seven-day Bybit order-history audit found 121 XVF orders: 52 entry-maker attempts,
+  39 exit-maker attempts and 30 Bybit IOC hedges. All 91 accepted post-only attempts received a
+  maker fill; 81 filled completely and 10 were canceled after partial fills. Quantity-weighted fill
+  across attempts was 98.33%. Seven lifecycles required a chase/replacement, with at most three
+  attempts.
+- Grouped into actual maker lifecycles, entries filled at least partially in 47/47 and completely in
+  46/47; BNT was the one incomplete entry at 11%. Exits completed in 35/35. Entry time to first
+  maker fill was 12.18 seconds median, 29.93 seconds p90, 47.72 seconds p95 and 73.93 seconds max;
+  exit median/p90/p95/max was 10.35/20.80/25.12/26.16 seconds.
+- Matching Bybit's first maker-fill timestamp to Binance `xvfh-*` trades reconstructed 81/82 first
+  hedges; CASHCAT was the only unmatched lifecycle. Entry hedge latency was 0.55 seconds median,
+  2.02 seconds p90, 6.44 seconds p95 and 21.08 seconds max. Exit latency was 1.89/3.44/3.83/4.06
+  seconds. All matched Binance hedge fills were taker, as designed.
+- No explicit `xvfxc-*` exit-cross fallback occurred; all 30 Bybit IOC hedge orders filled. The
+  observed accepted-order fill performance is well above the 42.2% fee-only routing hurdle, but
+  Bybit history omits synchronous post-only submissions rejected before an order exists. With no
+  retained execution log, this audit cannot measure those rejects or claim an unconditional maker
+  submission fill rate. The result also applies only to the account's observed small live sizing.
+- Backfilled 77,455 public Bybit one-minute candles for the seven execution symbols that were absent
+  from PostgreSQL, giving candle coverage for all 144 audited Bybit maker fills. A direction-adjusted
+  markout is positive when price moves in the maker order's favor. Entry markout was -2.61 bp at
+  +1m, -10.55 bp at +5m and +5.86 bp at +30m on a notional-weighted basis (86 fills / 40 bases).
+  Exit markout was -0.76 / +4.80 / +1.28 bp (58 fills / 31 bases). The sign reversal and zero
+  medians show that one-minute candles are a noisy adverse-selection proxy rather than evidence of
+  a persistent post-fill move.
+- Downloaded only the 73 required public Binance Futures daily aggregate-trade archives, spanning
+  40 symbols and three UTC dates. All archives existed and exact pre-hedge references were obtained
+  for all 81 matched maker/hedge lifecycles. Entry Binance taker execution cost versus the last
+  aggregate trade at or before the Bybit maker fill was +2.859 bp notional-weighted, +3.454 bp
+  median, +6.667 bp p90 and +10.735 bp worst across 47 entries. Exit cost was +3.815 bp weighted,
+  +1.163 bp median, +10.060 bp p90 and +22.287 bp worst across 34 exits. Positive means adverse.
+  The reference was at most 60 seconds old; restricting entries to references no older than one
+  second leaves 29 observations and lowers weighted/median cost to +2.138/+2.161 bp.
+- The observed +1m entry maker adverse markout consumes about 2.61 bp of the 3.7 bp fee advantage
+  over Binance-maker, leaving only about 1.09 bp before route-specific slippage. The additional
+  observed Binance hedge cost is real current-route cost, but it cannot be subtracted as a clean
+  route comparison because the Binance-maker alternative would instead pay unknown Bybit taker
+  slippage. Therefore the data supports Bybit-maker at this small size on fill/fee grounds, but does
+  not yet prove an all-in execution-price advantage over Binance-maker. Capturing both venues' L1
+  bid/ask at each submission and fill is required for that counterfactual.
+- The actionable next policy is a forward-shadow challenger, not leverage: four-observation funding
+  persistence, median expected funding above twice complete fees, entry basis covering the full
+  round-trip fee, one open position per canonical base, fixed slot notional and unused capacity left
+  in cash. Preserve the existing small-size Bybit-maker route while measuring it. The exact future
+  bid/ask/depth capture fields and route counterfactual are recorded in the Codex improvement plan.
+- Added `CODEX_ARTIFACTS/CODEX_XVF_NARROW_STRATEGY_FOR_CLAUDE_REVIEW_2026-08-24.md` as a standalone
+  external-review specification. It freezes the exact formulas, gates, causal timing, routing,
+  sizing, outcome calculation, evidence limits and questions that need independent challenge.
+- These corrected results supersede the earlier `observed_hour`-entry figures below. The sample is
+  small, overlapping and dominated by ACX; no hold or exit policy is production-ready from it.
+
+## XVF entry-analysis one-minute candle coverage (2026-08-24)
+
+- Imported the recoverable `1m` candles needed by the eight-day XVF funding-observation study,
+  restricted to symbols that cleared the preliminary 24-hour funding/fee screen: 183 Binance,
+  182 Bybit and 51 Hyperliquid instruments were requested.
+- PostgreSQL now contains a contiguous 2026-08-16 through 2026-08-24 window for all 183 requested
+  Binance symbols (2,220,339 rows in that window) and 180 of 182 requested Bybit symbols
+  (2,196,540 rows). Bybit returned no candles for `HFTUSDT` and `VINEUSDT`.
+- Hyperliquid's public API exposes only its latest 5,000 one-minute candles. It supplied contiguous
+  data from 2026-08-20 20:27 UTC through 2026-08-24 11:22 UTC for 45 of 51 requested coins
+  (230,816 rows); `BLAST`, `BNT`, `CHILLGUY`, `ILV`, `MAVIA` and `TST` returned no candles. The
+  older portion of the observation window cannot now be recovered from that endpoint at `1m`.
+- Verification found no internal minute gaps for any symbol that returned data. No production Java
+  code or schema was changed; the import used temporary, targeted public-data scripts and existing
+  tables.
+- The first strict-`1m` 24-hour entry replay is complete for Binance/Bybit. After removing known
+  ticker/contract collisions and unverified non-crypto contracts, the current funding-only screen
+  produced 347 observations: average net -13.56 bp after the conservative 22.6 bp round-trip fee,
+  median -16.24 bp, 38.0% with both positive funding and non-negative basis P&L, and 18.4% net
+  positive. A diagnostic entry gate requiring four same-direction hourly observations, four-hour
+  median expected funding above twice the fee hurdle, and `entry_basis_bps >= 0` retained 13
+  observations / 11 bases across 8 of 15 sampled cohorts: all 13 had positive funding, 11 had
+  non-negative basis P&L, 9 beat fees, average net +17.59 bp and median +8.72 bp. This is a small,
+  overlapping one-week diagnostic, not a production-calibrated threshold. The completed 48/72-hour
+  sensitivity does not justify a longer fixed hold; the next step is forward shadow validation.
+  These figures used the rounded `observed_hour` as the entry and are superseded by the realistic
+  `observed_at` timing results above.
+
+## XVF Shadow Section 3 — stateful book and capital occupancy (2026-08-24)
+
+- Added Flyway V26 with `xvf_shadow_book_transition_v1`. It orders immutable decision runs and
+  compares the exact normalized pair identity to derive `OPEN`, `RETAIN`, `CLOSE` and `REVERSE`
+  rows for both baseline and shadow policies.
+- Entry and exit fees are now charged only on actual transitions. Retained pairs carry the next
+  interval's funding and relative-price P&L without another round-trip fee; a terminal close makes
+  total-horizon fee accounting balance.
+- Added `03_xvf_shadow_book_transitions.sql` with row-level old/new identities, turnover, fee
+  savings, missing outcomes, venue use and unused capital. Both close-before-open and diagnostic
+  open-before-close capital peaks are reported.
+- Updated the policy comparison to use the stateful ledger and to report transition counts,
+  turnover, retention fee savings and stateful expected/realized net P&L.
+- The model is deliberately SQL-only. Outcome funding still uses initial leg notional and each
+  retained interval uses that cycle's executable mark-out; persistent contract quantities and
+  settlement-time funding notionals are not fabricated from unavailable facts.
+- Flyway V26, every SQL report, the explicit OPEN/RETAIN/terminal-CLOSE fee fixture and the full
+  Java 25 `mvn verify` suite pass.
+
+## XVF Shadow Section 4 — improvement comparison SQL (2026-08-24)
+
+- Added Flyway V25 with reusable `xvf_shadow_depth_vwap(...)` and
+  `xvf_shadow_candidate_outcome_v1`, so every comparison uses the same normalized depth, funding,
+  basis, fee and net-P&L formula rather than copying arithmetic between reports.
+- Added policy comparison for baseline versus fee/basis-aware shadow membership while holding route
+  and notional fixed (`04_xvf_shadow_policy_comparison.sql`).
+- Added an equal-thirds, 40/25/35 and coarse-grid capital report with exact greedy backfill,
+  one-pair-per-base and 20-position constraints, venue use/stranding, capital rejections and expected
+  value blocked (`05_xvf_shadow_capital_grid.sql`).
+- Added routing sensitivity for current routing, Bybit-maker, cheapest feasible execution and
+  all-taker, including maker fill probabilities and cash-on-miss bounds
+  (`06_xvf_shadow_maker_sensitivity.sql`).
+- Added symbol and venue-pair contribution with observation counts, funding/basis/fees, medians,
+  tails, winners/losers and explicit evidence thresholds (`07_xvf_shadow_symbol_contribution.sql`).
+- Added 1.00x/1.25x/1.50x/2.00x leverage diagnostics that recalculate entry/exit depth at scaled
+  size and report venue reserve breaches, adverse moves and an independent-cycle drawdown proxy
+  (`08_xvf_shadow_leverage_stress.sql`).
+- Capital-grid, routing and leverage scenarios remain independent-policy experiments; the baseline
+  versus shadow membership comparison now uses Section 3's stateful transitions. Transfers, forced
+  deleveraging and exact liquidation remain unmodelled without venue maintenance-margin tiers.
+- PostgreSQL integration verification executes every report and requires a non-empty fixed-fixture
+  result. The full Java 25 `mvn verify` suite passes.
+
+## XVF Shadow Checkpoints A3–A4 — outcome measurement (2026-08-24)
+
+- Added Flyway V24 with append-only `xvf_signal_candidate_outcome` attempts. The database accepts
+  outcomes only for `SCORABLE` candidates, derives the target from the original
+  `scheduled_decision_at + planned_hold_hours`, allows failed/partial retries, and permits only one
+  `COMPLETE` result per candidate and horizon. Updates, deletes and truncates are rejected.
+- Added a one-shot public-data outcome collector for due candidates. It captures close-side depth,
+  top of book, mark/index references, exact source timings and lateness; freezes settled funding
+  facts from strictly after the entry cutoff through the target exit; records missing data as
+  `PARTIAL`/`FAILED`; and places no orders or reads no exchange credentials.
+- Added `scripts/xvf-shadow/02_xvf_shadow_candidate_outcomes.sql`. It produces one auditable row per
+  complete outcome with normalized entry/exit prices, depth VWAPs, entry/exit basis, short/long
+  price P&L, settled funding, assumed fees, expected and realized net, prediction error, and return
+  on used and declared capital. Its limitations are explicit: funding cash uses initial leg
+  notional, fees reuse decision-time assumptions, and passive maker entry remains an optimistic
+  touch rather than a proven fill.
+- Verification covers V24 migration, due-time selection, funding-window reads, failed-then-complete
+  retry behavior, complete-outcome uniqueness, append-only enforcement, the public collector path,
+  and exact report reconciliation. The full Java 25 `mvn verify` suite passes.
+- Checkpoint A (reliable capture plus basic outcome measurement) is complete. The next optional step
+  is B1: derive stateful book transitions and actual capital occupancy in SQL before comparing
+  allocation policies.
+
 ## XVF Shadow Checkpoint A2 — capture timing and bounded concurrency (2026-08-24)
 
 - Added Flyway V22 with `scheduled_decision_at`, `capture_started_at`, `capture_ended_at` and

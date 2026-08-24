@@ -269,6 +269,46 @@ Unused capacity: remain in cash
 Keep 40/25/35 capital, conditional transfers, and 1.25x leverage as separate challengers so their
 individual effects remain measurable.
 
+## Investigation update: 2026-08-24
+
+The corrected one-week replay enters only after both venues' real observation timestamps. It found
+that the broad funding-only selection loses after fees, while persistence plus a favourable entry
+basis is the strongest measured improvement. The current shadow challenger should therefore:
+
+- require four consecutive same-direction hourly funding observations;
+- require the four-hour median expected funding to exceed twice the complete fee hurdle;
+- require the short venue's executable entry basis to cover the full planned round-trip fee;
+- allow only one open position per canonical base and reject overlapping re-entry;
+- keep fixed slot notional, treat 20 positions as a maximum, and leave unused capital in cash; and
+- retain Bybit-maker for the observed small Binance-Bybit entries while continuing to measure it.
+
+This is a forward-shadow policy, not a live-capital promotion. The full-fee basis rule retained only
+six observations / four bases before overlap handling, and the result remains too small for
+leverage or adaptive sizing. The tested two-consecutive-non-positive-gap exit degraded results and
+should not advance. A 48-hour hold did not improve return per occupied capital-day over 24 hours,
+so both horizons should remain outcome measurements rather than assuming that longer is better.
+
+### Bid/ask capture required for maker-route proof
+
+For every maker submission, acknowledgement, first/partial/final maker fill, hedge submission and
+hedge fill, capture a shared lifecycle ID, exchange timestamp, local receive timestamp, both
+venues' best bid/ask and displayed size, depth to the requested notional, mark/index, order side,
+price, quantity, maker/taker flag, actual fee and fee tier. Preserve rejected post-only submissions
+and canceled/replaced attempts as well as accepted orders.
+
+This permits both routes to be priced from the same market state:
+
+```text
+observed route cost     = maker fill + opposite-venue hedge fill + actual fees
+counterfactual route    = other venue's maker price + first venue's executable taker price + fees
+maker adverse selection = direction-adjusted 1s / 5s / 30s post-fill markout
+```
+
+The latest audit found a 3.7 bp fee advantage for Bybit-maker, about -2.61 bp notional-weighted
+entry markout at +1 minute, and +2.86 bp observed Binance hedge cost versus the last pre-hedge
+aggregate trade. The hedge cost cannot be compared fairly with Binance-maker until the missing
+counterfactual Bybit taker bid/ask is captured at the same instant.
+
 ## Decision rule
 
 Advance an improvement only when it:
