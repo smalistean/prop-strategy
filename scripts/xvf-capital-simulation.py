@@ -34,12 +34,25 @@ blends in lower-ranked candidates, pays real round-trip fees, and loses real cap
 is a direct consequence of the no-cross-margin constraint, not a bug in this simulator.
 """
 import csv
+import random
 from collections import defaultdict
 from datetime import date, timedelta
 
 import os
 CANDIDATES_CSV = os.environ.get("CANDIDATES_CSV", "candidates.csv")
 FUNDING_CSV = os.environ.get("FUNDING_CSV", "funding_daily.csv")
+
+# "ranked" (default) walks each day's eligible candidates by trailing-funding magnitude, same as
+# production. "random" walks the SAME eligible pool (same spread/volume/basis gates, same capital
+# constraints, same hold periods) in a random order instead - the only thing that changes is which
+# of the day's already-qualified candidates gets a slot first. Added 2026-08-23 to answer a real
+# question raised the same day: does ranking by trailing magnitude actually pick better candidates
+# than picking arbitrarily from the same qualifying set, or is the magnitude decoration on top of a
+# selection that would do just as well at random? Requires candidates.csv exported WITHOUT the
+# rk<=20 cap (see analysis-capital-simulation-export.sql) - random mode needs the candidates ranked
+# mode never reaches, not just the ones that already won.
+SELECTION_MODE = os.environ.get("SELECTION_MODE", "ranked")
+RANDOM_SEED = int(os.environ.get("RANDOM_SEED", "0"))
 
 # Per-venue, not the flat 1.8/5.0 XvfConfig assumes. XVF_LIVE_FINDINGS.md measured real fills:
 # Binance taker 4.5bp (BNB discount active - cheaper than its own 5.0bp published schedule),
@@ -65,15 +78,65 @@ def load_candidates():
     with open(CANDIDATES_CSV) as f:
         for row in csv.DictReader(f):
             w = parse_date(row["w"])
+            raw_basis = row.get("entry_basis_bps", "")
             by_week[w].append({
                 "base": row["base"], "spread": float(row["spread"]),
                 "sv": row["sv"], "sv_sym": row["sv_sym"],
                 "lv": row["lv"], "lv_sym": row["lv_sym"],
                 "pair_type": row["pair_type"],
+                # None, not 0.0, when the export couldn't price a leg (mostly early Hyperliquid
+                # history) - a missing measurement must not silently read as "flat basis."
+                "entry_basis_bps": float(raw_basis) if raw_basis not in ("", None) else None,
             })
-    for w in by_week:
-        by_week[w].sort(key=lambda c: -c["spread"])
+    if SELECTION_MODE == "random":
+        rng = random.Random(RANDOM_SEED)
+        for w in by_week:
+            rng.shuffle(by_week[w])
+    else:
+        for w in by_week:
+            by_week[w].sort(key=lambda c: -c["spread"])
     return by_week
+
+
+# Set via env, not a CLI flag, to keep both baseline and challenger runs invoking the script the
+# same way - only the environment differs. None (default) applies no filter at all; a candidate
+# with no measured entry_basis_bps always passes, since "unmeasured" is not evidence of anything.
+# Threshold measured 2026-08-22: a short venue already >50bp cheaper than the long venue at entry
+# saw realized funding flip fully negative ~54% of the time, against ~18-19% for a flat-to-mildly-
+# aligned entry - see funding-sign-flip analysis, same date.
+ADVERSE_BASIS_FLOOR_BPS = os.environ.get("ADVERSE_BASIS_FLOOR_BPS")
+ADVERSE_BASIS_FLOOR_BPS = float(ADVERSE_BASIS_FLOOR_BPS) if ADVERSE_BASIS_FLOOR_BPS else None
+
+# Same finer-bucket table that set the floor also measured the OTHER extreme: a short venue already
+# >50bp MORE EXPENSIVE than the long venue flipped 29.5% of the time - worse than the 18.0% safest
+# bucket (5-50bp expensive) and close to the cheap side's own damage, not a monotonically safer
+# direction to lean into. Added 2026-08-22 after a live COTI entry at +96bp (short venue expensive)
+# flipped negative, landing exactly in this unmeasured-by-the-floor bucket. None (default) applies no
+# ceiling.
+ADVERSE_BASIS_CEILING_BPS = os.environ.get("ADVERSE_BASIS_CEILING_BPS")
+ADVERSE_BASIS_CEILING_BPS = float(ADVERSE_BASIS_CEILING_BPS) if ADVERSE_BASIS_CEILING_BPS else None
+
+# Closes a position the day its cumulative realized funding since entry first goes negative, rather
+# than riding out the scheduled 3/7-day hold - tests whether cutting a reversed position early beats
+# waiting, or whether it just sells into reversion right before it reverts back (a real risk raised
+# 2026-08-22: an observed case where the spread went positive again shortly after a manual close).
+# The exit fee is paid either way (scheduled or early), so this is not an extra cost, only a timing
+# change. None (default) disables it. EARLY_EXIT_AFTER_DAYS delays the first check by that many days,
+# since day-0/1 noise is exactly what STALE_SIGNAL_DISCOUNT and the completeness floor already treat
+# as unreliable elsewhere in this codebase.
+EARLY_EXIT_AFTER_DAYS = os.environ.get("EARLY_EXIT_AFTER_DAYS")
+EARLY_EXIT_AFTER_DAYS = int(EARLY_EXIT_AFTER_DAYS) if EARLY_EXIT_AFTER_DAYS else None
+
+
+def fails_basis_filter(candidate):
+    basis = candidate["entry_basis_bps"]
+    if basis is None:
+        return False
+    if ADVERSE_BASIS_FLOOR_BPS is not None and basis < ADVERSE_BASIS_FLOOR_BPS:
+        return True
+    if ADVERSE_BASIS_CEILING_BPS is not None and basis > ADVERSE_BASIS_CEILING_BPS:
+        return True
+    return False
 
 
 def load_funding():
@@ -109,6 +172,8 @@ def main():
     leg_notional_history = []
     trades_opened = 0
     trades_skipped_capital = 0
+    trades_skipped_basis = 0
+    trades_closed_early = 0
     week_idx = {w: i for i, w in enumerate(weeks)}
 
     day = START
@@ -123,11 +188,17 @@ def main():
             balance[p["lv"]] += lv_pnl
             funding_net[p["sv"]] += sv_pnl
             funding_net[p["lv"]] += lv_pnl
+            p["cum_funding"] += sv_pnl + lv_pnl
 
-        # 2. close anything expiring today - taker/taker, a resting exit leaves the other leg naked
+        # 2. close anything expiring today, or early if EARLY_EXIT_AFTER_DAYS is set and this
+        # position has gone net-negative on funding since entry - taker/taker either way, a resting
+        # exit leaves the other leg naked
         still_open = []
         for p in open_positions:
-            if p["exit_date"] == day:
+            days_held = (day - p["entry_date"]).days
+            early = (EARLY_EXIT_AFTER_DAYS is not None and days_held >= EARLY_EXIT_AFTER_DAYS
+                     and p["cum_funding"] < 0 and p["exit_date"] != day)
+            if p["exit_date"] == day or early:
                 sv_fee = p["notional"] * (TAKER_BPS[p["sv"]] / 10000.0)
                 lv_fee = p["notional"] * (TAKER_BPS[p["lv"]] / 10000.0)
                 balance[p["sv"]] -= sv_fee
@@ -136,6 +207,8 @@ def main():
                 fees_paid[p["lv"]] += lv_fee
                 used[p["sv"]] -= p["notional"]
                 used[p["lv"]] -= p["notional"]
+                if early:
+                    trades_closed_early += 1
             else:
                 still_open.append(p)
         open_positions = still_open
@@ -150,6 +223,9 @@ def main():
                 if len(open_positions) >= POSITIONS:
                     break
                 if c["base"] in open_bases:
+                    continue
+                if fails_basis_filter(c):
+                    trades_skipped_basis += 1
                     continue
                 sv, lv = c["sv"], c["lv"]
                 if balance[sv] - used[sv] < leg_notional or balance[lv] - used[lv] < leg_notional:
@@ -169,6 +245,7 @@ def main():
                     "base": c["base"], "pair_type": c["pair_type"],
                     "sv": sv, "sv_sym": c["sv_sym"], "lv": lv, "lv_sym": c["lv_sym"],
                     "exit_date": day + timedelta(days=hold), "notional": leg_notional,
+                    "entry_date": day, "cum_funding": 0.0,
                 })
                 open_bases.add(c["base"])
                 trades_opened += 1
@@ -177,8 +254,13 @@ def main():
 
     # close whatever's still open at year end, mark-to-market skipped (funding-only model) -
     # report both the settled balance and what's still committed as open notional
-    print(f"=== simulation {START} to {END} ===")
-    print(f"trades opened: {trades_opened}, skipped for lack of venue capital: {trades_skipped_capital}")
+    print(f"=== simulation {START} to {END} selection={SELECTION_MODE}"
+          f"{('/seed='+str(RANDOM_SEED)) if SELECTION_MODE == 'random' else ''} "
+          f"(adverse basis floor: {ADVERSE_BASIS_FLOOR_BPS if ADVERSE_BASIS_FLOOR_BPS is not None else 'off'}, "
+          f"ceiling: {ADVERSE_BASIS_CEILING_BPS if ADVERSE_BASIS_CEILING_BPS is not None else 'off'}) ===")
+    print(f"trades opened: {trades_opened}, skipped for lack of venue capital: {trades_skipped_capital}, "
+          f"skipped for adverse entry basis: {trades_skipped_basis}, closed early: {trades_closed_early} "
+          f"(early exit after days: {EARLY_EXIT_AFTER_DAYS if EARLY_EXIT_AFTER_DAYS is not None else 'off'})")
     print(f"positions still open at end: {len(open_positions)}")
     print()
     print(f"{'venue':12} {'start':>10} {'end (settled)':>15} {'still committed':>17} {'fees paid':>12} {'funding net':>13}")

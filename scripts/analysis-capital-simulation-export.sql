@@ -15,19 +15,34 @@
 -- STALE_SIGNAL_DISCOUNT moved from 0.5 to 0.65 on the same corrected calibration (see
 -- XvfConfig.java's STALE_SIGNAL_DISCOUNT javadoc and analysis-freshness-discount.sql).
 --
+-- EXTENDED 2026-08-22 with entry-time price basis (entry_basis_bps), after measuring that a
+-- deeply adverse entry basis (the venue about to be shorted already >50bp cheaper in price than
+-- the venue being longed) predicts realized funding flipping fully negative roughly 54% of the
+-- time, versus ~18% for a moderately aligned entry - see funding-vs-basis correlation and
+-- funding-sign-flip work, 2026-08-22. Bybit's volume filter now pins interval='1d' explicitly:
+-- an earlier version of this query had no interval filter at all, which was harmless while Bybit
+-- only had daily klines but would have double-counted volume once Bybit's 1h history was imported
+-- the same day this basis column was added.
+--
+-- entry_basis_bps is NULL whenever either leg's daily open price is unavailable - most of
+-- Hyperliquid's history (only 7 of 232 coins have 1h depth before 2026, and CEX-DEX pairs are
+-- priced here from the SAME daily klines used for the liquidity floor, which is broad for
+-- Hyperliquid too, so coverage is usually fine; NULL mainly shows up for a base that just listed).
+-- A NULL means "not measured," not "flat" - the simulator must not silently treat it as zero.
+--
 -- Usage:
 --   psql -U prop_strategy_app -d prop_strategy -f scripts/analysis-capital-simulation-export.sql
 --   (writes /tmp/candidates_fresh.csv and /tmp/funding_daily_fresh.csv)
 --   CANDIDATES_CSV=/tmp/candidates_fresh.csv FUNDING_CSV=/tmp/funding_daily_fresh.csv \
 --     SIM_START=2025-08-21 SIM_END=2026-08-20 python3 scripts/xvf-capital-simulation.py 1500 1500 1500
 --
--- Runtime: ~50s for both exports.
+-- Runtime: ~60s for both exports.
 
 CREATE TEMP TABLE vol AS
 SELECT 'binance' venue, symbol sym, date_trunc('week',open_time) w, sum(volume*close_price) q
 FROM binance_perp_kline WHERE interval='1h' AND open_time>='2023-11-01' GROUP BY 1,2,3
 UNION ALL SELECT 'bybit', venue_symbol, date_trunc('week',open_time), sum(base_volume*close_price)
-FROM bybit_perp_kline WHERE open_time>='2023-11-01' GROUP BY 1,2,3
+FROM bybit_perp_kline WHERE interval='1d' AND open_time>='2023-11-01' GROUP BY 1,2,3
 UNION ALL SELECT 'hyperliquid', coin, date_trunc('week',open_time), sum(base_volume*close_price)
 FROM hyperliquid_perp_kline WHERE interval='1d' AND open_time>='2023-11-01' GROUP BY 1,2,3;
 CREATE INDEX ON vol (venue, sym, w);
@@ -42,6 +57,23 @@ FROM perp_funding_all
 WHERE venue IN ('binance','bybit','hyperliquid') AND funding_time >= '2023-11-01'
 GROUP BY 1,2,3,4;
 CREATE INDEX ON daily (venue, sym, d);
+
+-- Daily open price per (venue, base), for entry_basis_bps below. Binance has no native daily
+-- klines - DISTINCT ON its own 1h feed's first candle of the day is the same technique used in
+-- the funding-vs-basis check, before binance_perp_kline's 1d interval was imported; both branches
+-- now read real daily klines directly, since that import landed the same day as this change.
+CREATE TEMP TABLE daily_price AS
+SELECT 'binance' venue, normalise_perp_base(left(symbol, length(symbol)-4)) AS base,
+       date_trunc('day', open_time) d, open_price::double precision px
+FROM binance_perp_kline WHERE interval='1d' AND symbol LIKE '%USDT' AND symbol <> 'FTTUSDT'
+UNION ALL
+SELECT 'bybit', normalise_perp_base(left(venue_symbol, length(venue_symbol)-4)),
+       date_trunc('day', open_time), open_price::double precision
+FROM bybit_perp_kline WHERE interval='1d' AND venue_symbol LIKE '%USDT' AND venue_symbol <> 'FTTUSDT'
+UNION ALL
+SELECT 'hyperliquid', coin, date_trunc('day', open_time), open_price::double precision
+FROM hyperliquid_perp_kline WHERE interval='1d' AND coin <> 'FTT';
+CREATE INDEX ON daily_price (venue, base, d);
 
 CREATE TEMP TABLE rolling AS
 SELECT venue, base, sym, d, date_trunc('week', d) w,
@@ -71,7 +103,11 @@ FROM ok a JOIN ok b ON a.base=b.base AND a.d=b.d AND a.venue<>b.venue
 ORDER BY a.base, a.d, (a.back7-b.back7) DESC;
 
 CREATE TEMP TABLE elig AS
-SELECT * FROM pairs WHERE spread > 20 AND thin >= 500000;
+SELECT pr.*, ln(ps.px/pl.px)*10000 AS entry_basis_bps
+FROM pairs pr
+LEFT JOIN daily_price ps ON ps.venue=pr.sv AND ps.base=pr.base AND ps.d=pr.d
+LEFT JOIN daily_price pl ON pl.venue=pr.lv AND pl.base=pr.base AND pl.d=pr.d
+WHERE pr.spread > 20 AND pr.thin >= 500000;
 CREATE INDEX ON elig (base, d);
 
 -- Freshness discount, mirroring XvfSignalEngine.rankedCandidates: apply STALE_SIGNAL_DISCOUNT to
@@ -81,7 +117,7 @@ SELECT *, d::date - LAG(d::date) OVER (PARTITION BY base ORDER BY d) AS gap_back
 FROM elig;
 
 CREATE TEMP TABLE discounted AS
-SELECT base, d, pair_type, sv, sv_sym, lv, lv_sym, thin,
+SELECT base, d, pair_type, sv, sv_sym, lv, lv_sym, thin, entry_basis_bps,
        CASE WHEN gap_back IS NULL OR gap_back > 1 THEN spread ELSE spread * 0.65 END AS disc_spread
 FROM gapped;
 
@@ -90,5 +126,9 @@ SELECT *, row_number() OVER (PARTITION BY d ORDER BY disc_spread DESC) rk
 FROM discounted
 WHERE disc_spread > 20 AND (d::date - date '2024-01-02') % 3 = 0;
 
-\copy (SELECT d w, base, sv, sv_sym, lv, lv_sym, pair_type, disc_spread spread FROM ranked WHERE rk<=20 ORDER BY d, rk) TO '/tmp/candidates_fresh.csv' WITH CSV HEADER
+-- No rk<=20 cap: xvf-capital-simulation.py's ranked mode re-sorts by spread and stops at POSITIONS
+-- slots itself, so this is unchanged for that mode - but its random-selection mode (added 2026-08-23
+-- to test whether ranking by trailing magnitude beats picking randomly from the same eligible day's
+-- pool) needs every eligible candidate, not just the ones that already won the ranking.
+\copy (SELECT d w, base, sv, sv_sym, lv, lv_sym, pair_type, disc_spread spread, entry_basis_bps FROM ranked ORDER BY d, rk) TO '/tmp/candidates_fresh.csv' WITH CSV HEADER
 \copy (SELECT venue, sym venue_symbol, d, rate rate_sum FROM daily) TO '/tmp/funding_daily_fresh.csv' WITH CSV HEADER

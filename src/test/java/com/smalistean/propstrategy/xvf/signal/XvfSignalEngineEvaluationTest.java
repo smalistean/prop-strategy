@@ -187,6 +187,31 @@ class XvfSignalEngineEvaluationTest {
         assertThrows(UnsupportedOperationException.class, () -> first.baselineFullBook().clear());
     }
 
+    @Test
+    void rejectsANewCandidateWhenTheShortVenueIsAlreadyAdverselyCheapInPrice() {
+        List<Leg> today = List.of(
+                legWithPrice("binance", "ADVUSDT", 40, LIQUID, 99.0),
+                legWithPrice("bybit", "ADVUSDT", 0, LIQUID, 100.0));
+        // ln(99/100)*10000 ~= -100.5bp, past XvfConfig.ADVERSE_ENTRY_BASIS_FLOOR_BPS.
+
+        SignalEvaluation evaluation = XvfSignalEngine.evaluateLoadedLegs(AS_OF, today, List.of());
+
+        assertTrue(evaluation.baselineFullBook().isEmpty(),
+                "an adverse entry basis rejects an otherwise-eligible new candidate");
+    }
+
+    @Test
+    void aMissingLivePriceDoesNotBlockAnOtherwiseEligibleCandidate() {
+        List<Leg> today = List.of(
+                leg("binance", "NOPXUSDT", 40, LIQUID),
+                leg("bybit", "NOPXUSDT", 0, LIQUID));
+
+        SignalEvaluation evaluation = XvfSignalEngine.evaluateLoadedLegs(AS_OF, today, List.of());
+
+        assertEquals(List.of("NOPX"), evaluation.baselineFullBook().stream()
+                .map(Candidate::base).toList());
+    }
+
     private static EvaluatedPair byBase(SignalEvaluation evaluation, String base) {
         return evaluation.alternatives().stream()
                 .filter(pair -> pair.alternative().base().equals(base))
@@ -194,8 +219,14 @@ class XvfSignalEngineEvaluationTest {
     }
 
     private static Leg leg(String venue, String symbol, double annualPct, double weeklyVolume) {
+        return legWithPrice(venue, symbol, annualPct, weeklyVolume, 0.0);
+    }
+
+    /** {@code price} of 0.0 means "unmeasured", matching {@link Leg}'s own convention. */
+    private static Leg legWithPrice(String venue, String symbol, double annualPct,
+                                    double weeklyVolume, double price) {
         double trailingRate = annualPct
                 / (365.0 / XvfConfig.LOOKBACK_DAYS * 100);
-        return new Leg(venue, symbol, trailingRate, trailingRate, weeklyVolume);
+        return new Leg(venue, symbol, trailingRate, trailingRate, weeklyVolume, price);
     }
 }

@@ -99,6 +99,38 @@ public final class XvfConfig {
     public static final double STALE_SIGNAL_DISCOUNT = 0.65;
 
     /**
+     * Entry-basis floor, in basis points. A NEW candidate is rejected when {@code ln(shortPrice /
+     * longPrice) * 10000} - the venue about to be shorted priced against the venue going long, at the
+     * live last-traded price - falls below this. Negative means the short venue is already cheap
+     * against the long venue before the position is even opened.
+     *
+     * <p>Measured 2024-01 to 2026-08 (2026-08-22): realised funding fully flips negative - not just
+     * discounted, opposite sign from the signal - for 22.1% of eligible candidates overall (n=33,711).
+     * Entry basis direction predicts this: 28.4% for a short venue already &gt;5bp cheap against 18.5%
+     * for one already &gt;5bp expensive. Finer buckets show a cliff, not a slope: 54.2% flip when the
+     * short venue is &gt;50bp cheap (n=992) against 18.0% at 5-50bp expensive (n=10,437); a symmetric
+     * &gt;50bp-expensive bucket is worse again at 29.5%, so this is a floor on cheapness, not a general
+     * momentum score.
+     *
+     * <p>Validated as a full capital-constrained filtered-book replay (not just the conditional slice
+     * above), $4,500 across 3 venues, both independent test years: baseline (no filter) +0.59%/+6.56%
+     * (Year 1/Year 2), a -50bp floor +0.77%/+7.54%, -70bp +0.75%/+8.45%, -100bp +0.75%/+8.38% - a flat
+     * plateau from -50 to -100. A -30bp floor is worse than baseline on both years (+0.50%/+6.10%),
+     * which is what marks -50 as the edge of the real effect rather than an arbitrary round number.
+     * Set to -50 as the least aggressive floor inside the validated plateau, minimizing candidates
+     * excluded for no measured benefit. See scripts/analysis-capital-simulation-export.sql's
+     * {@code entry_basis_bps} column and scripts/xvf-capital-simulation.py's
+     * {@code ADVERSE_BASIS_FLOOR_BPS} for the backing query and replay, and XVF_LIVE_FINDINGS.md for
+     * the full writeup including the mechanistic link to the separately-measured funding-vs-basis
+     * correlation (r=-0.61, liquid Binance-Bybit pairs).
+     *
+     * <p>Applied only to what a NEW candidate needs to clear to enter {@code XvfSignalEngine}'s ranked
+     * book - a live price, not a stored one, since a stored kline can be a day stale by the time a
+     * position is actually opened.
+     */
+    public static final double ADVERSE_ENTRY_BASIS_FLOOR_BPS = -50.0;
+
+    /**
      * Book size. Top 20 beat top 10 on Sharpe (5.12 vs 4.83) because ranks 11-20 realise as much
      * forward funding as 6-10 - 24.3% and 23.0% against 22.3%. Past rank 20 it halves to 13%.
      */

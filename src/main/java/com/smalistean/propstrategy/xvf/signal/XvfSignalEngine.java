@@ -31,7 +31,7 @@ public final class XvfSignalEngine {
      * applies depends on the venue it ends up paired against, not on this leg alone.
      */
     public record Leg(String venue, String venueSymbol, double rateCexDex, double rateCexCex,
-                      double weeklyQuoteVolume) {
+                      double weeklyQuoteVolume, double price) {
         double annualPct(boolean cexDex) {
             return cexDex
                     ? rateCexDex * (365.0 / XvfConfig.LOOKBACK_DAYS) * 100
@@ -246,11 +246,11 @@ public final class XvfSignalEngine {
     public static SignalEvaluation evaluate(DatabaseConfig database, LocalDate asOf) throws Exception {
         Objects.requireNonNull(database, "database");
         Objects.requireNonNull(asOf, "asOf");
-        Map<String, Double> volume24h = LiveVolume.fetch();
+        LiveVolume.Snapshot snapshot = LiveVolume.fetchSnapshot();
         return evaluateLoadedLegs(
                 asOf,
-                loadCompleteLegs(database, asOf, volume24h),
-                loadCompleteLegs(database, asOf.minusDays(1), volume24h));
+                loadCompleteLegs(database, asOf, snapshot),
+                loadCompleteLegs(database, asOf.minusDays(1), snapshot));
     }
 
     /**
@@ -290,12 +290,25 @@ public final class XvfSignalEngine {
      * week's payments inside a 3-day window is not the bar a real symbol clears.
      *
      * <p>Undiscounted - {@link #rankedCandidates} is what applies the freshness discount, calling this
-     * twice (today and yesterday) to see which candidates are new. {@code volume24h} is a parameter
+     * twice (today and yesterday) to see which candidates are new. {@code snapshot} is a parameter
      * rather than fetched here so that second call does not hit every venue's live ticker again for
      * data that has not changed between the two calls.
+     *
+     * <p>Binance and Bybit legs are restricted to USDT-quoted symbols. {@link XvfConfig#collateral}
+     * documents both venues as USDT-only by design, but nothing enforced that here - the query pulled
+     * whatever symbol existed in {@code perp_funding_all} for a base with no preference for the quote
+     * asset. Binance also lists USDC-margined contracts on some bases (BOMEUSDC alongside BOMEUSDT),
+     * quote-agnostic to a spread comparison but drawing on a SEPARATE USDC collateral wallet the
+     * account does not fund. Measured live 2026-08-22: BOMEUSDC won the day's widest spread against
+     * Hyperliquid, its Hyperliquid maker leg filled, and its Binance hedge was rejected five times with
+     * "Margin is insufficient" - real USDT sat free the whole time, because the order needed USDC. The
+     * pair went UNHEDGED_ALERT with a naked $113 Hyperliquid short. {@code bestCrossVenuePair}'s own
+     * javadoc already covers the SAME-venue USDT/USDC collision (KAITOUSDT vs KAITOUSDC on Binance
+     * alone); this is the cross-venue case that guard never touched, since a Binance leg racing a
+     * Hyperliquid or Bybit leg never trips the same-venue check at all.
      */
     private static List<Leg> loadCompleteLegs(DatabaseConfig database, LocalDate asOf,
-                                              Map<String, Double> volume24h) throws Exception {
+                                              LiveVolume.Snapshot snapshot) throws Exception {
         String sql = """
                 WITH trail_cex_dex AS (
                   SELECT venue, venue_symbol, sum(funding_rate) AS rate, count(*) AS payments
@@ -324,6 +337,7 @@ public final class XvfSignalEngine {
                 JOIN typical y USING (venue, venue_symbol)
                 WHERE d.payments >= ? * y.med
                   AND c.payments >= ? * y.med * ? / 7.0
+                  AND (d.venue <> ALL (ARRAY['binance','bybit']) OR d.venue_symbol LIKE '%USDT')
                 """;
         List<Leg> legs = new ArrayList<>();
         try (Connection connection = DriverManager.getConnection(
@@ -349,8 +363,10 @@ public final class XvfSignalEngine {
                     String venue = results.getString(1);
                     String symbol = results.getString(2);
                     // x7 converts a 24h figure to the weekly basis the floor is expressed in.
-                    double weekly = volume24h.getOrDefault(venue + "|" + symbol, 0.0) * 7;
-                    legs.add(new Leg(venue, symbol, results.getDouble(3), results.getDouble(4), weekly));
+                    double weekly = snapshot.volume().getOrDefault(venue + "|" + symbol, 0.0) * 7;
+                    double price = snapshot.price().getOrDefault(venue + "|" + symbol, 0.0);
+                    legs.add(new Leg(venue, symbol, results.getDouble(3), results.getDouble(4),
+                            weekly, price));
                 }
             }
         }
@@ -459,12 +475,38 @@ public final class XvfSignalEngine {
                         alternative, PairKey.of(alternative).equals(PairKey.of(best))));
             }
             if (best.spreadAnnualPct() > XvfConfig.MIN_SPREAD_ANNUAL_PCT
-                    && best.thinLegWeeklyVolume() >= XvfConfig.MIN_WEEKLY_QUOTE_VOLUME) {
+                    && best.thinLegWeeklyVolume() >= XvfConfig.MIN_WEEKLY_QUOTE_VOLUME
+                    && !failsAdverseBasis(best)) {
                 out.add(best);
             }
         }
         out.sort(Comparator.comparingDouble(Candidate::spreadAnnualPct).reversed());
         return new RawDay(List.copyOf(out), List.copyOf(alternatives));
+    }
+
+    /**
+     * True when a candidate's live entry basis is adverse enough to reject - see
+     * {@link XvfConfig#ADVERSE_ENTRY_BASIS_FLOOR_BPS} for the measurement behind the floor.
+     *
+     * <p>NaN (either leg's live price was unavailable) never fails this: "not measured" and "flat"
+     * are different things, and treating a missing price as adverse would reject candidates for a
+     * ticker outage rather than a real signal.
+     */
+    private static boolean failsAdverseBasis(Candidate candidate) {
+        double basisBps = entryBasisBps(candidate.shortLeg(), candidate.longLeg());
+        return !Double.isNaN(basisBps) && basisBps < XvfConfig.ADVERSE_ENTRY_BASIS_FLOOR_BPS;
+    }
+
+    /**
+     * {@code ln(shortPrice / longPrice) * 10000} - the venue about to be shorted, priced against the
+     * venue going long. Negative means the short venue is already cheap against the long venue before
+     * the position is even opened. NaN when either leg's live price is unavailable.
+     */
+    private static double entryBasisBps(Leg shortLeg, Leg longLeg) {
+        if (shortLeg.price() <= 0 || longLeg.price() <= 0) {
+            return Double.NaN;
+        }
+        return Math.log(shortLeg.price() / longLeg.price()) * 10_000;
     }
 
     private static List<PairAlternative> allCrossVenuePairs(String base, List<Leg> legs) {

@@ -12,7 +12,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 24-hour quote volume per venue and symbol, straight from each venue's ticker endpoint.
+ * 24-hour quote volume and last-traded price per venue and symbol, straight from each venue's ticker
+ * endpoint.
  *
  * <h2>Why not the kline tables</h2>
  * The participation cap is the guard that stops XVF sizing into a market that cannot absorb it — REN
@@ -21,6 +22,11 @@ import java.util.Map;
  * are backfills: Binance 1h currently holds 1,230 rows for the last seven days where a full universe
  * would carry roughly 140,000. Reading liquidity from a stale backfill means the cap silently passes
  * or silently blocks everything, and both failures look like a normal empty book.
+ *
+ * <p>Price travels in the same snapshot for the same reason: {@link XvfSignalEngine}'s entry-basis
+ * gate (see {@code XvfConfig.ADVERSE_ENTRY_BASIS_FLOOR_BPS}) needs a live figure at ranking time, and
+ * every ticker response used for volume already carries a last-traded price, so reading it costs
+ * nothing extra.
  *
  * <p>One request per venue, all symbols. Fresh by construction.
  */
@@ -31,27 +37,35 @@ public final class LiveVolume {
     private LiveVolume() {
     }
 
-    /** Keyed {@code venue|venueSymbol}, value is 24h quote volume in USD. */
-    public static Map<String, Double> fetch() {
+    /** Both keyed {@code venue|venueSymbol}: 24h quote volume in USD, and last-traded price. */
+    public record Snapshot(Map<String, Double> volume, Map<String, Double> price) { }
+
+    public static Snapshot fetchSnapshot() {
         HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build();
-        Map<String, Double> out = new HashMap<>();
+        Map<String, Double> volume = new HashMap<>();
+        Map<String, Double> price = new HashMap<>();
 
         for (JsonNode t : get(client, "https://fapi.binance.com/fapi/v1/ticker/24hr")) {
-            out.put("binance|" + t.path("symbol").asText(), t.path("quoteVolume").asDouble());
+            String key = "binance|" + t.path("symbol").asText();
+            volume.put(key, t.path("quoteVolume").asDouble());
+            price.put(key, t.path("lastPrice").asDouble());
         }
         for (JsonNode t : get(client, "https://api.bybit.com/v5/market/tickers?category=linear")
                 .path("result").path("list")) {
-            out.put("bybit|" + t.path("symbol").asText(), t.path("turnover24h").asDouble());
+            String key = "bybit|" + t.path("symbol").asText();
+            volume.put(key, t.path("turnover24h").asDouble());
+            price.put(key, t.path("lastPrice").asDouble());
         }
         // Hyperliquid returns [meta, contexts] as parallel arrays rather than one keyed object.
         JsonNode hl = post(client, "https://api.hyperliquid.xyz/info", "{\"type\":\"metaAndAssetCtxs\"}");
         JsonNode universe = hl.get(0).path("universe");
         JsonNode contexts = hl.get(1);
         for (int i = 0; i < universe.size() && i < contexts.size(); i++) {
-            out.put("hyperliquid|" + universe.get(i).path("name").asText(),
-                    contexts.get(i).path("dayNtlVlm").asDouble());
+            String key = "hyperliquid|" + universe.get(i).path("name").asText();
+            volume.put(key, contexts.get(i).path("dayNtlVlm").asDouble());
+            price.put(key, contexts.get(i).path("midPx").asDouble());
         }
-        return out;
+        return new Snapshot(volume, price);
     }
 
     private static JsonNode get(HttpClient client, String url) {

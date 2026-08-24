@@ -255,8 +255,8 @@ class XvfShadowDecisionPlannerTest {
     }
 
     static SignalEvaluation signal() {
-        Leg shortLeg = new Leg("bybit", BYBIT_SYMBOL, 0.02, 0.02, 7_000_000);
-        Leg longLeg = new Leg("hyperliquid", HL_SYMBOL, 0.001, 0.001, 7_000_000);
+        Leg shortLeg = new Leg("bybit", BYBIT_SYMBOL, 0.02, 0.02, 7_000_000, 0.0);
+        Leg longLeg = new Leg("hyperliquid", HL_SYMBOL, 0.001, 0.001, 7_000_000, 0.0);
         PairAlternative alternative = new PairAlternative(
                 "PEPE", shortLeg, longLeg, PairType.CEX_DEX, 80.0, 7_000_000);
         EvaluatedPair evaluated = new EvaluatedPair(

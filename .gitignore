@@ -26,3 +26,4 @@ dist/
 # (they carry absolute paths and timestamps), so they are working output rather than source.
 logs/
 *.log
+__pycache__/

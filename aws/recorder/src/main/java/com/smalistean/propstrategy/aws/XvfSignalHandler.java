@@ -85,6 +85,10 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
      *  calibration - a base already eligible one day earlier reads roughly 2x its forward
      *  realisation, and this is what corrects for it. */
     private static final double STALE_SIGNAL_DISCOUNT = 0.65;
+    /** Mirrors {@code XvfConfig.ADVERSE_ENTRY_BASIS_FLOOR_BPS}. See that constant's javadoc for the
+     *  backing measurement - a short venue already deeply cheap in price against the long venue
+     *  predicts realised funding flipping fully negative. */
+    private static final double ADVERSE_ENTRY_BASIS_FLOOR_BPS = -50.0;
     /** v1 venues. dYdX is excluded on measurement - see XVF_V1_SCOPE.md. */
     private static final List<String> VENUES = List.of("binance", "bybit", "hyperliquid");
 
@@ -93,8 +97,13 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(20)).build();
 
-    /** One venue's trailing funding for one symbol. */
-    private record Leg(String venue, String symbol, double rate, int payments, double weeklyVolume) { }
+    /** One venue's trailing funding for one symbol, plus its live last-traded price. */
+    private record Leg(String venue, String symbol, double rate, int payments, double weeklyVolume,
+                       double price) { }
+
+    /** 24h quote volume and last-traded price per {@code venue|symbol}, from the same ticker
+     *  responses - the participation cap and the entry-basis gate both need a live figure. */
+    private record Market(Map<String, Double> volume, Map<String, Double> price) { }
 
     private record Candidate(String base, Leg shortLeg, Leg longLeg, double spreadPct, double thinVol) { }
 
@@ -109,9 +118,9 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
         Instant yesterday = now.minus(1, ChronoUnit.DAYS);
 
         Map<String, Integer> intervalHours = fundingIntervals();
-        Map<String, Double> volume24h = liveVolume();
+        Market market = liveMarket();
         log(context, "intervals for %,d symbols, volume for %,d".formatted(
-                intervalHours.size(), volume24h.size()));
+                intervalHours.size(), market.volume().size()));
 
         // Scanned ONCE as the union of both windows, not once per window: today's [now-lookback, now)
         // and yesterday's [now-lookback-1, now-1) overlap on all but their newest and oldest day, so
@@ -132,10 +141,10 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
         log(context, "scanned %,d observations over %d hours (today+yesterday union)"
                 .formatted(scanned, (lookbackDays + 1) * 24));
 
-        List<Leg> todayLegs = legsFrom(perHour, now, lookbackDays, intervalHours, volume24h,
+        List<Leg> todayLegs = legsFrom(perHour, now, lookbackDays, intervalHours, market,
                 context, "today");
         List<Leg> yesterdayLegs = legsFrom(perHour, yesterday, lookbackDays, intervalHours,
-                volume24h, context, "yesterday");
+                market, context, "yesterday");
 
         List<Candidate> book = rank(todayLegs, yesterdayLegs, lookbackDays);
         String runId = now.toString();
@@ -152,7 +161,7 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
      *  from the already-scanned per-hour buckets rather than re-querying DynamoDB. */
     private static List<Leg> legsFrom(Map<Instant, Map<String, double[]>> perHour, Instant asOf,
                                       int lookbackDays, Map<String, Integer> intervalHours,
-                                      Map<String, Double> volume24h, Context context, String label) {
+                                      Market market, Context context, String label) {
         Instant from = asOf.minus(lookbackDays, ChronoUnit.DAYS);
         int windowHours = lookbackDays * 24;
 
@@ -172,6 +181,15 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
         for (var entry : summed.entrySet()) {
             String[] key = entry.getKey().split("\\|", 2);
             double[] agg = entry.getValue();
+            // Binance and bybit are USDT-collateral only - mirrors XvfSignalEngine.loadCompleteLegs's
+            // same filter and the live incident that added it (BOMEUSDC won a ranking on Binance,
+            // filled its Hyperliquid maker, and its hedge failed for real: "Margin is insufficient",
+            // because a USDC-margined Binance contract draws on a separate wallet the account does not
+            // fund, and nothing here preferred the USDT-quoted symbol that actually has capital behind
+            // it). See XvfConfig.collateral's javadoc for the same venue/collateral pairing.
+            if (("binance".equals(key[0]) || "bybit".equals(key[0])) && !key[1].endsWith("USDT")) {
+                continue;
+            }
             int interval = intervalHours.getOrDefault(entry.getKey(),
                     "hyperliquid".equals(key[0]) ? 1 : 0);
             if (interval <= 0) {
@@ -182,7 +200,8 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
                 continue;   // partial window reads as a LOW rate, because the figure is a sum
             }
             legs.add(new Leg(key[0], key[1], agg[0], (int) agg[1],
-                    volume24h.getOrDefault(entry.getKey(), 0.0) * 7));
+                    market.volume().getOrDefault(entry.getKey(), 0.0) * 7,
+                    market.price().getOrDefault(entry.getKey(), 0.0)));
         }
         log(context, "%s: %,d legs pass completeness".formatted(label, legs.size()));
         return legs;
@@ -266,11 +285,27 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
     private static List<Candidate> eligible(List<Leg> legs, int lookbackDays) {
         List<Candidate> out = new ArrayList<>();
         for (Candidate c : widestPerBase(legs, lookbackDays)) {
-            if (c.spreadPct() > MIN_SPREAD_ANNUAL_PCT && c.thinVol() >= MIN_WEEKLY_QUOTE_VOLUME) {
+            if (c.spreadPct() > MIN_SPREAD_ANNUAL_PCT && c.thinVol() >= MIN_WEEKLY_QUOTE_VOLUME
+                    && !failsAdverseBasis(c)) {
                 out.add(c);
             }
         }
         return out;
+    }
+
+    /** Mirrors {@code XvfSignalEngine.failsAdverseBasis}. NaN (either leg's live price missing)
+     *  never fails this - "not measured" and "flat" are different things. */
+    private static boolean failsAdverseBasis(Candidate c) {
+        double basisBps = entryBasisBps(c.shortLeg(), c.longLeg());
+        return !Double.isNaN(basisBps) && basisBps < ADVERSE_ENTRY_BASIS_FLOOR_BPS;
+    }
+
+    /** {@code ln(shortPrice / longPrice) * 10000}. NaN when either leg's live price is unavailable. */
+    private static double entryBasisBps(Leg shortLeg, Leg longLeg) {
+        if (shortLeg.price() <= 0 || longLeg.price() <= 0) {
+            return Double.NaN;
+        }
+        return Math.log(shortLeg.price() / longLeg.price()) * 10_000;
     }
 
     /**
@@ -318,24 +353,31 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
         return out;
     }
 
-    /** 24h quote volume per {@code venue|symbol}; the participation cap needs a live figure. */
-    private static Map<String, Double> liveVolume() {
-        Map<String, Double> out = new HashMap<>();
+    /** 24h quote volume and last-traded price per {@code venue|symbol}, from the same ticker
+     *  responses - the participation cap and the entry-basis gate both need a live figure. */
+    private static Market liveMarket() {
+        Map<String, Double> volume = new HashMap<>();
+        Map<String, Double> price = new HashMap<>();
         for (JsonNode t : get("https://fapi.binance.com/fapi/v1/ticker/24hr")) {
-            out.put("binance|" + t.path("symbol").asText(), t.path("quoteVolume").asDouble());
+            String key = "binance|" + t.path("symbol").asText();
+            volume.put(key, t.path("quoteVolume").asDouble());
+            price.put(key, t.path("lastPrice").asDouble());
         }
         for (JsonNode t : get("https://api.bybit.com/v5/market/tickers?category=linear")
                 .path("result").path("list")) {
-            out.put("bybit|" + t.path("symbol").asText(), t.path("turnover24h").asDouble());
+            String key = "bybit|" + t.path("symbol").asText();
+            volume.put(key, t.path("turnover24h").asDouble());
+            price.put(key, t.path("lastPrice").asDouble());
         }
         JsonNode hl = post("https://api.hyperliquid.xyz/info", "{\"type\":\"metaAndAssetCtxs\"}");
         JsonNode universe = hl.get(0).path("universe");
         JsonNode contexts = hl.get(1);
         for (int i = 0; i < universe.size() && i < contexts.size(); i++) {
-            out.put("hyperliquid|" + universe.get(i).path("name").asText(),
-                    contexts.get(i).path("dayNtlVlm").asDouble());
+            String key = "hyperliquid|" + universe.get(i).path("name").asText();
+            volume.put(key, contexts.get(i).path("dayNtlVlm").asDouble());
+            price.put(key, contexts.get(i).path("midPx").asDouble());
         }
-        return out;
+        return new Market(volume, price);
     }
 
     /** Mirrors {@code XvfConfig.normaliseBase} and migration V14. */
@@ -394,6 +436,10 @@ public final class XvfSignalHandler implements RequestHandler<Map<String, Object
             item.put("long_rate", n(c.longLeg().rate()));
             item.put("spread_annual_pct", n(c.spreadPct()));
             item.put("thin_leg_weekly_volume", n(c.thinVol()));
+            double basisBps = entryBasisBps(c.shortLeg(), c.longLeg());
+            if (!Double.isNaN(basisBps)) {
+                item.put("entry_basis_bps", n(basisBps));
+            }
             item.put("expires_at", n(expiresAt));
             items.add(item);
         }

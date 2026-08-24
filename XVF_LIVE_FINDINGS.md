@@ -508,3 +508,118 @@ this reason, not a code defect. The entry loop still sizes against target notion
 cap; it never checks a venue's actual free margin before attempting an order, so it can walk into an
 exhausted venue and only find out via a rejected order after the other leg has already filled. Proposed
 but not built: check `availableCapital()` per venue before attempting a candidate that needs it.
+
+## 14. Entry-time price basis predicts funding flipping fully negative, not just discounted (2026-08-22)
+
+**The question.** COTI's Bybit leg realised negative funding while its Binance leg realised positive -
+not a case of the signal over-reading a real payment (the discount problem `STALE_SIGNAL_DISCOUNT`
+already addresses), but the funding actually paying the wrong direction. That is a different failure
+mode from anything measured before this, so it needed its own investigation: how often does realised
+funding fully flip sign against the entry signal, and is there anything observable AT ENTRY that
+predicts it.
+
+**The mechanism.** A separate measurement found a strong negative correlation (r=-0.611, liquid
+Binance-Bybit pairs, rolling 3-day funding spread against same-day price basis) between the funding gap
+and which venue is already priced cheap - consistent with Codex's independently-measured -0.169 to
+-0.243 correlation between funding gap and basis direction. A large funding gap tends to coincide with
+the paying venue's price already being relatively cheap: the market has partly settled the imbalance
+through price before funding gets a chance to pay it out through the funding mechanism, which leaves
+less of the signal's read actually available to collect - and, in the worst case, lets it reverse
+entirely once the price gap itself mean-reverts.
+
+**The sign-flip rate.** 2024-01 to 2026-08, n=33,711 eligible candidates: realised funding is fully
+negative (opposite sign from the entry signal, not merely discounted) for **22.1%** overall. Entry
+basis direction is a real predictor - **28.4%** flip when the short venue is already >5bp cheap in
+price against the long venue, versus **18.5%** when it is already >5bp expensive. Finer buckets show a
+cliff, not a slope:
+
+| Entry basis bucket | n | avg signal | avg realised | % flips negative |
+|---|---|---|---|---|
+| >50bp cheap | 992 | 341.2% | 29.6% | **54.2%** |
+| 5-50bp cheap | 10,757 | 55.6% | 19.5% | 26.0% |
+| flat, within 5bp | 11,027 | 40.5% | 15.8% | 18.9% |
+| 5-50bp expensive | 10,437 | 46.5% | 18.1% | **18.0%** |
+| >50bp expensive | 498 | 138.5% | 24.8% | 29.5% |
+
+A short venue already deeply cheap in price is where over half of candidates flip negative, against
+roughly one in five for the safest bucket - and the >50bp-expensive bucket being worse again than
+5-50bp-expensive confirms this is a floor on cheapness, not a general momentum score that would keep
+improving in one direction.
+
+**Validated as a full replay, not just a conditional slice.** The bucket table above conditions on
+basis after the fact; the real question is whether REJECTING those candidates at entry actually
+improves a capital-constrained book. Replayed with the same methodology as the rest of this file's
+capital-simulation work ($4,500 across 3 venues, $1,500/venue, exact-pair retention, real per-venue
+fees, both independent test years):
+
+| Adverse-basis floor | Year 1 | Year 2 |
+|---|---|---|
+| none (baseline) | +0.59% | +6.56% |
+| -30bp | +0.50% (worse) | +6.10% (worse) |
+| **-50bp** | **+0.77%** | **+7.54%** |
+| -70bp | +0.75% | +8.45% |
+| -100bp | +0.75% | +8.38% |
+
+Both years improve at every floor from -50 to -100bp, and the result is flat across that whole range -
+the signature of a real, non-fragile effect rather than a fitted point. -30bp being WORSE than doing
+nothing at all is what locates the actual cliff: it is close enough to zero to start rejecting
+candidates whose entry basis was never the problem, not just the genuinely adverse ones. This is
+funding-and-fees-only (no price P&L modelled), which if anything understates the case for the filter,
+since it does not credit the filter for the price-basis moves it also avoids.
+
+**Shipped.** `XvfConfig.ADVERSE_ENTRY_BASIS_FLOOR_BPS = -50.0` (the least aggressive floor inside the
+validated plateau) now gates new candidates in `XvfSignalEngine.rankedCandidatesRaw`, using a live
+last-traded price pulled from the same ticker snapshot `LiveVolume` already fetches for the
+participation cap - no extra API calls. The Lambda path (`XvfSignalHandler`, DynamoDB-backed) mirrors
+the same gate from the same live ticker responses it already fetches for volume, and now also stores
+`entry_basis_bps` per ranked candidate for visibility. Both defaults are NaN-safe: a missing live price
+never rejects a candidate on its own, matching "not measured" rather than "flat" everywhere else this
+file's data-quality notes make the same distinction.
+
+**What's still open.** The shadow decision-audit ledger (`XvfShadowDecisionPlanner`) already records
+its own, more precise entry basis from live top-of-book snapshots (bid/ask, not last-price), but
+deliberately weights it at zero in the expected-net model pending its own calibration - this finding
+was not wired into that separate system, which has its own basis-quality infrastructure and its own
+plan for when to stop treating it as zero. See `scripts/analysis-capital-simulation-export.sql`'s
+`entry_basis_bps` column and `scripts/xvf-capital-simulation.py`'s `ADVERSE_BASIS_FLOOR_BPS` for the
+backing query and replay. The Binance-daily-kline gap found while building this measurement (zero
+`interval='1d'` rows existed before this investigation) is now fixed via `KlineArchiveImportApplication
+-DklineInterval=1d`, and 17 bases were found and excluded from all three venue-pair basis measurements
+for multiplier/ticker-collision contamination (ON, SATS, TURBO, TAG, TOSHI, HNT, SNT, WAVES, SLP, CVC,
+CVX, LRC, B3, MAVIA, PUFFER, XCN, CAT, plus FTT for average-log-ratio contamination on Hyperliquid).
+
+## 15. A closing pair that gets rejected once, with nothing filled, was abandoned rather than retried (2026-08-22)
+
+**What happened.** A `closeallmaker` run closed 19 of 20 pairs cleanly. KAITO's maker order was rejected
+once at placement (`Post only order would have immediately matched, bbo was 0.35233@0.35244` - an
+ordinary price tick between fetching the reference price and sending the order, not a persistent
+problem) and then never appeared in the log again. It stayed fully open on both venues, unchanged, for
+the rest of the run and every check after it - confirmed live against both venues directly, not from
+the log.
+
+**Root cause.** `PairedEntryEngine.placeMaker()`'s rejection handling marks a pair `PairState.ABANDONED`
+whenever nothing has filled yet, with no distinction between an entry and an exit. `ABANDONED` is
+terminal and deliberately excluded from `outstanding()` - correct for an entry (see §13's CASHCAT
+lesson: no exposure was taken, nothing to report) and exactly backwards for an exit, whose position is
+still fully open. Once terminal, `work()`/`chase()` never scheduled another attempt, so the chase loop
+and the deadline-triggered cross-to-close (`finalizeDeadline`'s documented last resort, "closing, so
+giving up is not available") never got a chance to run - not because they failed, but because nothing
+ever reached them. The bug was invisible in dry run (there's no real position to reject an order
+against) and would have stayed invisible even watching the run to completion, since `outstanding()`
+- the thing an operator is told to poll - is exactly what filters it out.
+
+**Fix.** `PairedEntryEngine.placeMaker()` no longer marks a closing pair `ABANDONED` on a rejection with
+nothing filled. A new `shouldKeepChasing()` check, used in both `work()`'s initial placement and
+`chase()`'s re-placement, keeps scheduling a chase for a closing pair regardless of a rejection, so it
+either fills on a later attempt or reaches `finalizeDeadline` and gets crossed - the guarantee `close()`'s
+own javadoc already promised but the rejection path silently bypassed. An entry's behavior is unchanged:
+one rejection still ends it immediately, which is correct there. Regression test:
+`aRejectedCloseWithNothingFilledKeepsChasingRatherThanBeingAbandoned` in `PairedEntryEngineTest.java`.
+
+**What's still open.** `GRVT`, `SUN`, and `TRIA` came out of the same run as single naked legs (their
+paired leg closed fine, their hedge partially filled and stalled) worth $3.14, $0.02, and $0.01
+respectively - the $3.14 is a real, if small, unhedged exposure and the other two are step-size
+rounding dust. Neither `closeallmaker` nor `closepair` can close a base with anything other than exactly
+two legs; both explicitly skip it with "not two venues - skipped, close it by hand." There is currently
+no tool in this codebase for flattening a single unpaired leg - it has to be closed directly on the
+venue. Given the amounts, that was done by hand rather than building one.
