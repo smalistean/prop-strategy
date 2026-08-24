@@ -48,14 +48,23 @@ say "=== refresh start ==="
 # hours, which is not a daily job.
 FROM="$(date -u -v-10d +%Y-%m-%dT00:00:00Z 2>/dev/null || date -u -d '10 days ago' +%Y-%m-%dT00:00:00Z)"
 
-say "funding: binance,bybit,dydx,okx,bitget,gate from $FROM"
-"$JAVA" -Dvenues=binance,bybit,dydx,okx,bitget,gate -DvenueFundingFrom="$FROM" \
+# binance, bybit and hyperliquid are the three venues XvfConfig.VENUES actually trades - they run
+# first so the book that matters is refreshable as early as possible. dydx/okx/bitget/gate only feed
+# the broader signal-scope research (XVF_V1_SCOPE.md), not anything this account holds, so they run
+# last and a slow one of them never delays the venues that do.
+say "funding: binance,bybit from $FROM"
+"$JAVA" -Dvenues=binance,bybit -DvenueFundingFrom="$FROM" \
     -cp "$CP" com.smalistean.propstrategy.marketdownloader.VenueFundingImportApplication \
-    >>"$LOG" 2>&1 || say "!! venue funding import failed"
+    >>"$LOG" 2>&1 || say "!! venue funding import failed (binance,bybit)"
 
 say "funding: hyperliquid"
 "$JAVA" -cp "$CP" com.smalistean.propstrategy.marketdownloader.HyperliquidFundingImportApplication \
     >>"$LOG" 2>&1 || say "!! hyperliquid funding import failed"
+
+say "funding: dydx,okx,bitget,gate from $FROM"
+"$JAVA" -Dvenues=dydx,okx,bitget,gate -DvenueFundingFrom="$FROM" \
+    -cp "$CP" com.smalistean.propstrategy.marketdownloader.VenueFundingImportApplication \
+    >>"$LOG" 2>&1 || say "!! venue funding import failed (dydx,okx,bitget,gate)"
 
 say "candles: bybit,dydx"
 "$JAVA" -DcandleFrom="$FROM" -cp "$CP" \
