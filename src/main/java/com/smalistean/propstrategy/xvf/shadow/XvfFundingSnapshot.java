@@ -18,13 +18,25 @@ import java.util.Optional;
 public record XvfFundingSnapshot(
         Instant cutoffUtc,
         Map<Instrument, PendingObservation> pendingByInstrument,
+        Map<Instrument, List<PendingObservation>> pendingHistoryByInstrument,
         List<PendingVenueWatermark> pendingWatermarks,
         List<SettledVenueWatermark> settledWatermarks) {
+
+    /** Compatibility constructor for fixtures or callers that only own the latest observation. */
+    public XvfFundingSnapshot(
+            Instant cutoffUtc,
+            Map<Instrument, PendingObservation> pendingByInstrument,
+            List<PendingVenueWatermark> pendingWatermarks,
+            List<SettledVenueWatermark> settledWatermarks) {
+        this(cutoffUtc, pendingByInstrument, singletonHistories(pendingByInstrument),
+                pendingWatermarks, settledWatermarks);
+    }
 
     public XvfFundingSnapshot {
         Objects.requireNonNull(cutoffUtc, "cutoffUtc");
         pendingByInstrument = Map.copyOf(Objects.requireNonNull(
                 pendingByInstrument, "pendingByInstrument"));
+        pendingHistoryByInstrument = immutableHistories(pendingHistoryByInstrument);
         pendingWatermarks = List.copyOf(Objects.requireNonNull(
                 pendingWatermarks, "pendingWatermarks"));
         settledWatermarks = List.copyOf(Objects.requireNonNull(
@@ -39,6 +51,38 @@ public record XvfFundingSnapshot(
                 throw new IllegalArgumentException("pending observation cannot be after cutoffUtc");
             }
         }
+        if (!pendingHistoryByInstrument.keySet().equals(pendingByInstrument.keySet())) {
+            throw new IllegalArgumentException(
+                    "pending history and latest pending instruments must match");
+        }
+        for (Map.Entry<Instrument, List<PendingObservation>> entry
+                : pendingHistoryByInstrument.entrySet()) {
+            List<PendingObservation> history = entry.getValue();
+            if (history.isEmpty() || history.size() > 4) {
+                throw new IllegalArgumentException(
+                        "pending history must contain between one and four observations");
+            }
+            PendingObservation previous = null;
+            for (PendingObservation observation : history) {
+                if (!entry.getKey().equals(observation.instrument())) {
+                    throw new IllegalArgumentException(
+                            "pending history key must match every observation instrument");
+                }
+                if (observation.observedAt().isAfter(cutoffUtc)) {
+                    throw new IllegalArgumentException(
+                            "pending history observation cannot be after cutoffUtc");
+                }
+                if (previous != null && compareObservation(previous, observation) >= 0) {
+                    throw new IllegalArgumentException(
+                            "pending history must be strictly ordered oldest to newest");
+                }
+                previous = observation;
+            }
+            if (!history.getLast().equals(pendingByInstrument.get(entry.getKey()))) {
+                throw new IllegalArgumentException(
+                        "latest pending observation must equal the final history observation");
+            }
+        }
         for (SettledVenueWatermark watermark : settledWatermarks) {
             if (watermark.latestFundingTime() != null
                     && watermark.latestFundingTime().isAfter(cutoffUtc)) {
@@ -50,6 +94,12 @@ public record XvfFundingSnapshot(
     /** Exact lookup; an absent observation is missing data, never a zero funding rate. */
     public Optional<PendingObservation> pending(String venue, String venueSymbol) {
         return Optional.ofNullable(pendingByInstrument.get(new Instrument(venue, venueSymbol)));
+    }
+
+    /** Up to four causal observations, ordered oldest to newest. */
+    public List<PendingObservation> pendingHistory(String venue, String venueSymbol) {
+        return pendingHistoryByInstrument.getOrDefault(
+                new Instrument(venue, venueSymbol), List.of());
     }
 
     public enum Freshness { FRESH, STALE, MISSING }
@@ -162,5 +212,25 @@ public record XvfFundingSnapshot(
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(name + " must not be blank");
         }
+    }
+
+    private static Map<Instrument, List<PendingObservation>> singletonHistories(
+            Map<Instrument, PendingObservation> pending) {
+        Objects.requireNonNull(pending, "pendingByInstrument");
+        return pending.entrySet().stream().collect(java.util.stream.Collectors.toUnmodifiableMap(
+                Map.Entry::getKey, entry -> List.of(entry.getValue())));
+    }
+
+    private static Map<Instrument, List<PendingObservation>> immutableHistories(
+            Map<Instrument, List<PendingObservation>> histories) {
+        Objects.requireNonNull(histories, "pendingHistoryByInstrument");
+        return histories.entrySet().stream().collect(java.util.stream.Collectors.toUnmodifiableMap(
+                Map.Entry::getKey, entry -> List.copyOf(Objects.requireNonNull(
+                        entry.getValue(), "pending history"))));
+    }
+
+    private static int compareObservation(PendingObservation left, PendingObservation right) {
+        int hour = left.observedHour().compareTo(right.observedHour());
+        return hour != 0 ? hour : left.observedAt().compareTo(right.observedAt());
     }
 }

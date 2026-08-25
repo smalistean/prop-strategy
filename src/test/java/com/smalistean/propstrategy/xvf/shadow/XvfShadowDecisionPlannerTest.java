@@ -73,6 +73,23 @@ class XvfShadowDecisionPlannerTest {
     }
 
     @Test
+    void persistsFourHourFundingHistoryWithEachCandidateLeg() {
+        XvfSignalRun run = new XvfShadowDecisionPlanner().plan(
+                UUID.randomUUID(), timing(), CUTOFF.plusSeconds(1), signal(),
+                withFourObservationHistory(funding(Freshness.FRESH)), markets(), configuration());
+
+        XvfSignalRun.Candidate candidate = run.candidates().getFirst();
+        assertTrue(candidate.shortLegSnapshot().json().contains(
+                "\"pendingFundingHistoryCount\":4"));
+        assertTrue(candidate.longLegSnapshot().json().contains(
+                "\"pendingFundingHistoryCount\":4"));
+        assertTrue(candidate.shortLegSnapshot().json().contains(
+                "\"observedHour\":\"2026-08-21T05:00:00Z\""));
+        assertTrue(candidate.shortLegSnapshot().json().contains(
+                "\"observedHour\":\"2026-08-21T08:00:00Z\""));
+    }
+
+    @Test
     void stalePendingFundingMakesTheRunPartialAndCandidateUnscorable() {
         XvfSignalRun run = new XvfShadowDecisionPlanner().plan(
                 UUID.randomUUID(), timing(), CUTOFF.plusSeconds(1), signal(), funding(Freshness.STALE),
@@ -325,6 +342,28 @@ class XvfShadowDecisionPlannerTest {
         return new XvfFundingSnapshot(CUTOFF,
                 Map.of(bybit, bybitObservation, hyperliquid, hlObservation),
                 pendingWatermarks, settled);
+    }
+
+    private static XvfFundingSnapshot withFourObservationHistory(XvfFundingSnapshot snapshot) {
+        Map<Instrument, List<PendingObservation>> histories = new java.util.LinkedHashMap<>();
+        snapshot.pendingByInstrument().forEach((instrument, latest) -> {
+            List<PendingObservation> observations = new java.util.ArrayList<>();
+            for (int hoursAgo = 3; hoursAgo >= 0; hoursAgo--) {
+                observations.add(new PendingObservation(
+                        instrument,
+                        latest.fundingRate(),
+                        latest.observedHour().minus(Duration.ofHours(hoursAgo)),
+                        latest.observedAt().minus(Duration.ofHours(hoursAgo)),
+                        latest.targetStamp(),
+                        latest.fundingIntervalHours(),
+                        latest.intervalSource(),
+                        latest.freshness()));
+            }
+            histories.put(instrument, List.copyOf(observations));
+        });
+        return new XvfFundingSnapshot(
+                snapshot.cutoffUtc(), snapshot.pendingByInstrument(), histories,
+                snapshot.pendingWatermarks(), snapshot.settledWatermarks());
     }
 
     static Map<String, VenueSnapshot> markets() {

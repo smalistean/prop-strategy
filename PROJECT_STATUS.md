@@ -1,6 +1,70 @@
 # Project Status
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
+
+## LaunchAgent source files (2026-08-25)
+
+- Added repository plist files matching the three pre-existing loaded user LaunchAgents: daily XVF
+  settled-funding refresh at 06:45, hourly XVF DynamoDB observation export at `:55`, and hourly
+  Deribit DynamoDB export at `:20`. The inactive Tardis downloader was not included.
+
+## XVF narrow signal — explicit execution opt-in (2026-08-24)
+
+- Added `-DxvfSignalPolicy=narrow-v1` to `XvfExecutionApplication`. The default remains `baseline`,
+  so existing commands and books are unchanged unless the new value is supplied explicitly.
+- The opt-in starts from the existing seven-day settled-funding candidates, then requires four
+  consecutive hourly pending observations in the same direction, median expected 24-hour funding
+  strictly above twice complete route fees, and executable entry basis at least equal to complete
+  round-trip fees. Passing candidates are ordered by funding surplus and then entry basis.
+- Bybit is the maker whenever it is one of the two venues; Binance-Hyperliquid retains the existing
+  thinner-venue route. The route used for fee and basis evaluation is also the route used for the
+  actual post-only entry.
+- Focused selector, route and policy tests pass together with the production signal characterization
+  test. A live-data dry run on 2026-08-24 produced one policy pass out of 48 baseline candidates,
+  `CSOPSAMSUNG2L`; instrument validation is now part of the opt-in selector, so that ETF is reported
+  as rejected rather than appearing as `PASS`. This leaves zero executable pairs at this time.
+- Installed `com.smalistean.propstrategy.xvf-narrow-dry-run` as a user LaunchAgent. It runs the
+  pinned `xvfDryRun=true` wrapper hourly at `:05`, after the installed DynamoDB exporter at `:55`,
+  writes `logs/xvf-narrow-dry-run.log`, and cannot submit orders. The temporary Codex automation was
+  removed, so hourly previews do not consume Codex usage or run twice.
+
+## XVF narrow shadow Step 2 — pure all-pairs policy evaluator (2026-08-24)
+
+- Added `XvfNarrowShadowPolicy` as a pure report-only evaluator. It accepts an already-produced
+  candidate pair and direction, its already-selected feasible maker/taker route, four-hour funding
+  histories, executable entry basis and fee schedules. It has no repository or venue gateway and
+  cannot change ranks, books or orders.
+- The evaluator covers Binance-Bybit, Binance-Hyperliquid and Bybit-Hyperliquid rather than
+  hard-coding Binance-Bybit. Complete fee hurdles are route-specific: 22.6 bp for Binance-Bybit with
+  Bybit maker, 15.3 bp for Binance-Hyperliquid, and 22.6 / 26.3 bp for Bybit-Hyperliquid with Bybit /
+  Hyperliquid maker under the measured fee table.
+- It pairs observations by exact `observed_hour`, requires four consecutive hours with known funding
+  intervals, preserves the current signal direction, requires every normalized expected 24h gap to
+  be positive, requires the four-point median to be strictly above twice complete fees, and permits
+  entry basis equal to or above complete fees. It returns typed gates, hourly gaps, median, surplus
+  and explicit rejection reasons.
+- Boundary tests cover all venue pairs and both Bybit-Hyperliquid routes, equality at the strict
+  funding boundary, equality/below the basis boundary, non-consecutive and unmatched hours, unknown
+  funding cadence and an opposite funding direction. Existing shadow-planner and production-signal
+  characterization tests pass unchanged.
+- The evaluator remains unpersisted. It is now also invoked only by the explicit `narrow-v1`
+  execution opt-in; the default production signal remains unchanged.
+
+## XVF narrow shadow Step 1 — four-hour funding history (2026-08-24)
+
+- Extended the report-only funding snapshot with up to four causal pending-rate observations per
+  instrument, ordered oldest to newest. The existing latest-observation lookup remains available
+  and must equal the final history row, so current shadow scoring semantics are unchanged.
+- PostgreSQL reads only rows whose `observed_at` is at or before the run cutoff, ranks the latest
+  four per venue symbol inside a bounded recent window, and derives each observation's funding
+  interval from earlier target stamps. Rows recorded after the cutoff cannot enter the snapshot.
+- Each candidate leg now persists `pendingFundingHistory` and its count inside the immutable leg
+  snapshot. The same four-hour history is read by the explicit `narrow-v1` execution opt-in; the
+  baseline execution path does not read it.
+- Focused planner and PostgreSQL Testcontainers tests pass. The existing production signal
+  characterization test also passes unchanged. No `XvfSignalEngine`, `XvfConfig`, execution or
+  order-routing code was modified.
+- Step 2 completed the pure all-pairs evaluator. Policy persistence remains intentionally separate.
 
 ## XVF realistic entry timing and exit sensitivity (2026-08-24)
 

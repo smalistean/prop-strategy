@@ -37,36 +37,43 @@ import java.util.Objects;
  */
 public final class PostgresXvfFundingSnapshotSource implements XvfFundingSnapshotSource {
 
-    private static final String LATEST_PENDING_SQL = """
-            WITH latest AS (
-              SELECT DISTINCT ON (venue, venue_symbol)
-                     venue, venue_symbol, observed_hour, observed_at, target_stamp, funding_rate
+    private static final String PENDING_HISTORY_SQL = """
+            WITH causal AS (
+              SELECT venue, venue_symbol, observed_hour, observed_at, target_stamp, funding_rate,
+                     row_number() OVER (
+                         PARTITION BY venue, venue_symbol
+                         ORDER BY observed_hour DESC, observed_at DESC) AS history_rank
               FROM venue_funding_observation
               WHERE venue = ANY (?)
                 AND observed_at <= ?
-              ORDER BY venue, venue_symbol, observed_at DESC, observed_hour DESC
+                AND observed_hour >= ? - interval '6 hours'
+            ), recent AS (
+              SELECT venue, venue_symbol, observed_hour, observed_at, target_stamp, funding_rate
+              FROM causal
+              WHERE history_rank <= 4
             )
-            SELECT latest.venue,
-                   latest.venue_symbol,
-                   latest.observed_hour,
-                   latest.observed_at,
-                   latest.target_stamp,
-                   latest.funding_rate,
+            SELECT recent.venue,
+                   recent.venue_symbol,
+                   recent.observed_hour,
+                   recent.observed_at,
+                   recent.target_stamp,
+                   recent.funding_rate,
                    previous.target_stamp AS previous_target_stamp
-            FROM latest
+            FROM recent
             LEFT JOIN LATERAL (
               SELECT older.target_stamp
               FROM venue_funding_observation older
-              WHERE older.venue = latest.venue
-                AND older.venue_symbol = latest.venue_symbol
-                AND older.observed_at <= ?
-                AND latest.target_stamp IS NOT NULL
-                AND older.target_stamp < latest.target_stamp
+              WHERE older.venue = recent.venue
+                AND older.venue_symbol = recent.venue_symbol
+                AND older.observed_at <= recent.observed_at
+                AND recent.target_stamp IS NOT NULL
+                AND older.target_stamp < recent.target_stamp
               GROUP BY older.target_stamp
               ORDER BY older.target_stamp DESC
               LIMIT 1
             ) previous ON true
-            ORDER BY latest.venue, latest.venue_symbol
+            ORDER BY recent.venue, recent.venue_symbol,
+                     recent.observed_hour, recent.observed_at
             """;
 
     private static final String SETTLED_WATERMARK_SQL = """
@@ -96,14 +103,15 @@ public final class PostgresXvfFundingSnapshotSource implements XvfFundingSnapsho
             connection.setAutoCommit(false);
             connection.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
             try {
-                Map<Instrument, PendingObservation> pending = readPending(
+                Map<Instrument, List<PendingObservation>> pendingHistory = readPendingHistory(
                         connection, cutoffUtc, freshnessPolicy.maximumPendingAge());
+                Map<Instrument, PendingObservation> pending = latestPending(pendingHistory);
                 List<SettledVenueWatermark> settled = readSettledWatermarks(
                         connection, cutoffUtc, freshnessPolicy.maximumSettledAge());
                 List<PendingVenueWatermark> pendingWatermarks = pendingWatermarks(pending, cutoffUtc);
                 connection.commit();
                 return new XvfFundingSnapshot(
-                        cutoffUtc, pending, pendingWatermarks, settled);
+                        cutoffUtc, pending, pendingHistory, pendingWatermarks, settled);
             } catch (SQLException | RuntimeException e) {
                 rollback(connection, e);
                 throw e;
@@ -113,10 +121,10 @@ public final class PostgresXvfFundingSnapshotSource implements XvfFundingSnapsho
         }
     }
 
-    private Map<Instrument, PendingObservation> readPending(
+    private Map<Instrument, List<PendingObservation>> readPendingHistory(
             Connection connection, Instant cutoffUtc, Duration maximumAge) throws SQLException {
-        Map<Instrument, PendingObservation> observations = new LinkedHashMap<>();
-        try (PreparedStatement statement = connection.prepareStatement(LATEST_PENDING_SQL)) {
+        Map<Instrument, List<PendingObservation>> observations = new LinkedHashMap<>();
+        try (PreparedStatement statement = connection.prepareStatement(PENDING_HISTORY_SQL)) {
             java.sql.Array venues = connection.createArrayOf("text", activeVenues.toArray(String[]::new));
             try {
                 statement.setArray(1, venues);
@@ -131,16 +139,18 @@ public final class PostgresXvfFundingSnapshotSource implements XvfFundingSnapsho
                         Instant targetStamp = nullableInstant(results, "target_stamp");
                         Instant previousTargetStamp = nullableInstant(results, "previous_target_stamp");
                         Integer intervalHours = inferWholeHours(previousTargetStamp, targetStamp);
-                        observations.put(instrument, new PendingObservation(
-                                instrument,
-                                results.getBigDecimal("funding_rate"),
-                                observedHour,
-                                observedAt,
-                                targetStamp,
-                                intervalHours,
-                                intervalHours == null
-                                        ? IntervalSource.UNKNOWN : IntervalSource.TARGET_STAMP_DELTA,
-                                freshness(observedAt, cutoffUtc, maximumAge)));
+                        observations.computeIfAbsent(instrument, ignored -> new ArrayList<>()).add(
+                                new PendingObservation(
+                                        instrument,
+                                        results.getBigDecimal("funding_rate"),
+                                        observedHour,
+                                        observedAt,
+                                        targetStamp,
+                                        intervalHours,
+                                        intervalHours == null
+                                                ? IntervalSource.UNKNOWN
+                                                : IntervalSource.TARGET_STAMP_DELTA,
+                                        freshness(observedAt, cutoffUtc, maximumAge)));
                     }
                 }
             } finally {
@@ -148,6 +158,18 @@ public final class PostgresXvfFundingSnapshotSource implements XvfFundingSnapsho
             }
         }
         return observations;
+    }
+
+    private static Map<Instrument, PendingObservation> latestPending(
+            Map<Instrument, List<PendingObservation>> histories) {
+        Map<Instrument, PendingObservation> latest = new LinkedHashMap<>();
+        histories.forEach((instrument, observations) -> {
+            if (observations.isEmpty()) {
+                throw new IllegalStateException("Pending history cannot be empty");
+            }
+            latest.put(instrument, observations.getLast());
+        });
+        return latest;
     }
 
     private List<PendingVenueWatermark> pendingWatermarks(

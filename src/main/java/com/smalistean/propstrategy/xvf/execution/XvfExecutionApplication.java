@@ -2,6 +2,8 @@ package com.smalistean.propstrategy.xvf.execution;
 
 import com.smalistean.propstrategy.database.DatabaseConfig;
 import com.smalistean.propstrategy.xvf.XvfConfig;
+import com.smalistean.propstrategy.xvf.shadow.PostgresXvfFundingSnapshotSource;
+import com.smalistean.propstrategy.xvf.shadow.XvfFundingSnapshotSource.FreshnessPolicy;
 import com.smalistean.propstrategy.xvf.signal.XvfSignalEngine;
 import com.smalistean.propstrategy.xvf.signal.XvfSignalEngine.Candidate;
 import com.smalistean.propstrategy.xvf.venue.BinanceGateway;
@@ -16,6 +18,7 @@ import com.smalistean.propstrategy.xvf.venue.VenueGateway.TopOfBook;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -115,11 +118,31 @@ public final class XvfExecutionApplication {
 
         DatabaseConfig database = DatabaseConfig.fromEnvironment();
         XvfSignalEngine.requireFreshFunding(database, java.time.LocalDate.now());
+        String signalPolicy = System.getProperty("xvfSignalPolicy", "baseline");
+        if (!java.util.Set.of("baseline", XvfNarrowExecutionSignal.POLICY_NAME).contains(signalPolicy)) {
+            throw new IllegalArgumentException(
+                    "xvfSignalPolicy must be baseline or " + XvfNarrowExecutionSignal.POLICY_NAME);
+        }
         // Uncapped: a candidate that ranks in the top POSITIONS by spread but cannot actually be
         // opened - CAT's step size, ON's ticker collision - must not waste that slot forever. Both
         // the entry loop and reconcile() walk past a candidate like that to the next one instead of
         // stopping at exactly POSITIONS candidates considered.
-        List<Target> book = XvfSignalEngine.fullBook(database, java.time.LocalDate.now()).stream()
+        List<Candidate> candidates = XvfSignalEngine.fullBook(database, java.time.LocalDate.now());
+        if (XvfNarrowExecutionSignal.POLICY_NAME.equals(signalPolicy)) {
+            Instant cutoff = Instant.now();
+            var funding = new PostgresXvfFundingSnapshotSource(database).read(
+                    cutoff, new FreshnessPolicy(Duration.ofMinutes(100), Duration.ofHours(36)));
+            var narrow = XvfNarrowExecutionSignal.select(
+                    candidates,
+                    funding,
+                    instrument -> requiredGateway(gateways, instrument.venue())
+                            .topOfBook(instrument.venueSymbol()),
+                    instrument -> requiredGateway(gateways, instrument.venue())
+                            .rules(instrument.venueSymbol()));
+            printNarrowSignal(narrow);
+            candidates = narrow.eligible();
+        }
+        List<Target> book = candidates.stream()
                 .map(XvfExecutionApplication::toTarget).toList();
         double legNotional = capital * XvfConfig.LEG_LEVERAGE / (XvfConfig.POSITIONS * 2.0);
 
@@ -216,7 +239,10 @@ public final class XvfExecutionApplication {
 
                 // The THINNER venue rests. That is where crossing costs most, so the maker order is
                 // worth more there and the market order lands where liquidity is deepest.
-                boolean shortIsThinner = isThinner(t.shortVenue(), t.longVenue());
+                boolean shortIsThinner = XvfNarrowExecutionSignal.POLICY_NAME.equals(signalPolicy)
+                        ? XvfNarrowExecutionSignal.makerVenue(t.shortVenue(), t.longVenue())
+                                .equals(t.shortVenue())
+                        : isThinner(t.shortVenue(), t.longVenue());
                 VenueGateway makerGw = shortIsThinner ? shortGw : longGw;
                 VenueGateway takerGw = shortIsThinner ? longGw : shortGw;
                 String makerSymbol = shortIsThinner ? t.shortSymbol() : t.longSymbol();
@@ -748,6 +774,35 @@ public final class XvfExecutionApplication {
             case "bybit" -> 2;
             default -> 3;   // binance deepest
         };
+    }
+
+    private static void printNarrowSignal(XvfNarrowExecutionSignal.Selection selection) {
+        System.out.printf("%nnew signal %s: %d of %d settled-funding candidates passed%n",
+                XvfNarrowExecutionSignal.POLICY_NAME,
+                selection.eligible().size(), selection.evaluated().size());
+        for (var row : selection.evaluated()) {
+            var evaluation = row.evaluation();
+            if (row.eligible()) {
+                System.out.printf("  PASS %-10s funding surplus %s bp  basis %s bp  maker %s%n",
+                        row.candidate().base(), evaluation.fundingSurplusBps(),
+                        evaluation.entryBasisBps(), evaluation.route().makerVenue());
+            } else {
+                String reason = row.instrumentRejection() != null
+                        ? "NON_CRYPTO_INSTRUMENT: " + row.instrumentRejection()
+                        : evaluation.rejectionReasons().isEmpty()
+                                ? "NOT_ELIGIBLE" : evaluation.rejectionReasons().getFirst();
+                System.out.printf("  skip %-10s %s%n", row.candidate().base(), reason);
+            }
+        }
+    }
+
+    private static VenueGateway requiredGateway(
+            Map<String, VenueGateway> gateways, String venue) {
+        VenueGateway gateway = gateways.get(venue);
+        if (gateway == null) {
+            throw new IllegalArgumentException("No gateway for " + venue);
+        }
+        return gateway;
     }
 
     /**

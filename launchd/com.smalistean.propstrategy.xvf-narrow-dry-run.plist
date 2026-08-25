@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.smalistean.propstrategy.xvf-narrow-dry-run</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/stas/workspace/other/prop-strategy/scripts/xvf-narrow-dry-run.sh</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/stas/workspace/other/prop-strategy</string>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Minute</key>
+        <integer>5</integer>
+    </dict>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/Users/stas/workspace/other/prop-strategy/logs/xvf-narrow-dry-run-launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/stas/workspace/other/prop-strategy/logs/xvf-narrow-dry-run-launchd.err.log</string>
+</dict>
+</plist>

@@ -235,10 +235,12 @@ public final class XvfShadowDecisionPlanner {
                 : ScoreResult.unscorable();
         RouteChoice route = result.route() == null ? fallbackRoute : result.route();
 
-        JsonDocument shortSnapshot = legSnapshot(shortKey, alternative.shortLeg(), shortMarket, shortFunding,
-                signalEligible);
-        JsonDocument longSnapshot = legSnapshot(longKey, alternative.longLeg(), longMarket, longFunding,
-                signalEligible);
+        JsonDocument shortSnapshot = legSnapshot(
+                shortKey, alternative.shortLeg(), shortMarket, shortFunding,
+                funding.pendingHistory(shortKey.venue(), shortKey.symbol()), signalEligible);
+        JsonDocument longSnapshot = legSnapshot(
+                longKey, alternative.longLeg(), longMarket, longFunding,
+                funding.pendingHistory(longKey.venue(), longKey.symbol()), signalEligible);
         Map<String, Object> scoreComponents = scoreComponents(
                 route, result, standardLegNotional, participationCap, configuration);
 
@@ -855,6 +857,7 @@ public final class XvfShadowDecisionPlanner {
             Leg signalLeg,
             Optional<InstrumentSnapshot> market,
             Optional<PendingObservation> funding,
+            List<PendingObservation> fundingHistory,
             boolean requested) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("venue", key.venue());
@@ -897,18 +900,25 @@ public final class XvfShadowDecisionPlanner {
             out.put("pendingFundingPresent", false);
         } else {
             PendingObservation value = funding.get();
-            Map<String, Object> pending = new LinkedHashMap<>();
-            pending.put("fundingRate", value.fundingRate());
-            pending.put("observedHour", value.observedHour().toString());
-            pending.put("observedAt", value.observedAt().toString());
-            pending.put("targetStamp", timestamp(value.targetStamp()));
-            pending.put("fundingIntervalHours", value.fundingIntervalHours());
-            pending.put("intervalSource", value.intervalSource().name());
-            pending.put("freshness", value.freshness().name());
             out.put("pendingFundingPresent", true);
-            out.put("pendingFunding", pending);
+            out.put("pendingFunding", pendingObservationJson(value));
         }
+        out.put("pendingFundingHistoryCount", fundingHistory.size());
+        out.put("pendingFundingHistory", fundingHistory.stream()
+                .map(XvfShadowDecisionPlanner::pendingObservationJson).toList());
         return XvfShadowJson.object(out);
+    }
+
+    private static Map<String, Object> pendingObservationJson(PendingObservation value) {
+        Map<String, Object> pending = new LinkedHashMap<>();
+        pending.put("fundingRate", value.fundingRate());
+        pending.put("observedHour", value.observedHour().toString());
+        pending.put("observedAt", value.observedAt().toString());
+        pending.put("targetStamp", timestamp(value.targetStamp()));
+        pending.put("fundingIntervalHours", value.fundingIntervalHours());
+        pending.put("intervalSource", value.intervalSource().name());
+        pending.put("freshness", value.freshness().name());
+        return pending;
     }
 
     private static Map<String, Object> referenceJson(ReferenceSnapshot reference) {

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.smalistean.propstrategy.deribit-export</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/stas/workspace/other/prop-strategy/scripts/deribit-export.sh</string>
+    </array>
+
+    <!-- Hourly at :20, after the recorder Lambda's :05 invocation. -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Minute</key><integer>20</integer></dict>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/stas/workspace/other/prop-strategy</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/stas/workspace/other/prop-strategy/logs/deribit-export-launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/stas/workspace/other/prop-strategy/logs/deribit-export-launchd.err.log</string>
+</dict>
+</plist>

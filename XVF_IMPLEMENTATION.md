@@ -35,7 +35,8 @@ Three separate processes. They do not share memory and communicate only through 
 | Process | Entry point | Cadence | Sends orders |
 | --- | --- | --- | --- |
 | **Data refresh** | `scripts/xvf-refresh.sh` | daily, launchd 06:45 | no |
-| **Observation export** | `scripts/xvf-funding-export.sh` | hourly, launchd `:20` | no |
+| **Observation export** | `scripts/xvf-funding-export.sh` | hourly, launchd `:55` | no |
+| **Narrow signal preview** | `scripts/xvf-narrow-dry-run.sh` | hourly, launchd `:05` | no |
 | **Signal / reporting** | `XvfSignalApplication` | on demand | no |
 | **Execution** | `XvfExecutionApplication` | every 3 days | yes, if `-DxvfDryRun=false` |
 
@@ -766,7 +767,8 @@ it; holding lets it mean-revert.
 5. ~~**No launchd agent** for `scripts/xvf-refresh.sh`.~~ Closed on 2026-08-18.
    `com.smalistean.propstrategy.xvf-refresh` runs it daily at 06:45 local, and
    `com.smalistean.propstrategy.xvf-funding-export` drains the DynamoDB observation buffer hourly at
-   `:20`. Both are loaded. What the gap cost while it was open: settled funding had gone six days
+   `:55`. The report-only `com.smalistean.propstrategy.xvf-narrow-dry-run` follows at `:05` and pins
+   `xvfDryRun=true`. Both are loaded. What the gap cost while it was open: settled funding had gone six days
    stale (bybit and hyperliquid last at 2026-08-12) and 43 hours of pending-rate observations were
    sitting in a buffer with a 30-day TTL.
 

@@ -324,6 +324,34 @@ venue direction and chronological cohort, including the portfolio result without
 - No claim that favourable entry basis must converge.
 - No production exit change from the current exit sensitivity.
 
+## 13. Data collection and execution cadence
+
+The main evidence limitation is the short pending-funding history, not the settled-funding archive.
+Retain at least two to three months of hourly observations with venue, venue symbol, exact
+`observed_at`, `observed_hour`, target funding stamp, funding rate and funding interval. Export the
+DynamoDB buffer into PostgreSQL before its 30-day TTL removes observations that cannot be recovered
+from venue history endpoints.
+
+For every preliminary candidate, capture synchronized executable market state on both venues: best
+bid/ask and displayed quantities, depth through the intended leg notional, exchange and local receive
+timestamps, mark price and index price. Continue refreshing `perp_funding_all` for exact settled
+outcomes. For attempted entries, retain every post-only acceptance/rejection, partial/final fill,
+maker/taker classification, hedge timestamp and price, fee, cancellation and chase. Snapshot
+instrument identity, asset class, contract multiplier, funding interval and listing state so an ETF,
+equity or ticker collision cannot silently enter the crypto cohort.
+
+Review after 60 complete days as a first frequency checkpoint. Initial performance evidence should
+contain at least 50 non-overlapping entries across at least 20 bases; a stronger assessment needs
+roughly 100-200 entries across multiple regimes. At the first observed rate of approximately one
+accepted entry every two days, 100 entries could require about six months.
+
+The recorder writes DynamoDB observations at `HH:50`, and the installed local launchd export copies
+them into `venue_funding_observation` at `HH:55`. Because the narrow execution selector reads
+PostgreSQL, its dry-run launchd job follows once per hour at `HH:05`. Running more
+often cannot add funding information because observations arrive hourly. Running less often can miss
+a candidate that passes for only one hourly snapshot. Repeated live runs read actual open positions
+and must not reopen a base already held; empty cycles should remain in cash.
+
 ## Compact rule
 
 Trade only verified Binance–Bybit contracts where the same funding direction persists for four
@@ -348,4 +376,3 @@ capital in cash, and measure 24h and 48h all-in outcomes without leverage.
 8. What minimum independent forward sample and concentration limits should be required before any
    live promotion?
 9. Which assumptions would most likely make the encouraging six-observation result disappear?
-

@@ -113,7 +113,7 @@ public record XvfShadowConfiguration(
         return "daily-" + Objects.requireNonNull(asOf, "asOf");
     }
 
-    static Map<String, FeeSchedule> measuredFees() {
+    public static Map<String, FeeSchedule> measuredFees() {
         return Map.of(
                 "binance", new FeeSchedule(new BigDecimal("1.8"), new BigDecimal("4.5"),
                         ASSUMED_FEE_PROVENANCE, MEASURED_FEE_PROVENANCE),

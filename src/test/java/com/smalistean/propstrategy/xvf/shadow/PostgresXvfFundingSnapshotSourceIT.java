@@ -75,6 +75,12 @@ class PostgresXvfFundingSnapshotSourceIT {
 
         observation("binance", "BTCUSDT", "2026-08-21T00:00:00Z",
                 "2026-08-21T00:00:00.123456Z", "2026-08-21T08:00:00Z", "0.000100000000");
+        observation("binance", "BTCUSDT", "2026-08-21T06:00:00Z",
+                "2026-08-21T06:40:00Z", "2026-08-21T08:00:00Z", "0.000200000000");
+        observation("binance", "BTCUSDT", "2026-08-21T07:00:00Z",
+                "2026-08-21T07:40:00Z", "2026-08-21T08:00:00Z", "0.000300000000");
+        observation("binance", "BTCUSDT", "2026-08-21T08:00:00Z",
+                "2026-08-21T08:40:00Z", "2026-08-21T16:00:00Z", "0.000400000000");
         observation("binance", "BTCUSDT", "2026-08-21T09:00:00Z",
                 "2026-08-21T09:40:00.654321Z", "2026-08-21T16:00:00Z", "0.001234567890");
         // Must not leak through the decision cutoff even though it shares the cutoff's observed hour.
@@ -112,6 +118,16 @@ class PostgresXvfFundingSnapshotSourceIT {
         assertEquals(8, btc.fundingIntervalHours());
         assertEquals(IntervalSource.TARGET_STAMP_DELTA, btc.intervalSource());
         assertEquals(Freshness.FRESH, btc.freshness());
+
+        var btcHistory = snapshot.pendingHistory("binance", "BTCUSDT");
+        assertEquals(4, btcHistory.size());
+        assertEquals(Instant.parse("2026-08-21T06:00:00Z"),
+                btcHistory.getFirst().observedHour());
+        assertEquals(Instant.parse("2026-08-21T09:00:00Z"),
+                btcHistory.getLast().observedHour());
+        assertEquals(btc, btcHistory.getLast());
+        assertTrue(btcHistory.stream().noneMatch(observation ->
+                observation.observedAt().isAfter(cutoff)));
 
         PendingObservation stale = snapshot.pending("binance", "ETHUSDT").orElseThrow();
         assertEquals(Freshness.STALE, stale.freshness());
