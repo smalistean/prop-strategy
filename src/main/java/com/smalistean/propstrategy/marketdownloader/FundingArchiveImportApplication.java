@@ -47,11 +47,19 @@ public final class FundingArchiveImportApplication {
     private static final String ROOT = "https://data.binance.vision";
     private static final Pattern KEY = Pattern.compile("<Key>([^<]+)</Key>");
     private static final Pattern MONTH = Pattern.compile("-(\\d{4}-\\d{2})\\.zip$");
+    // Since V30 a print is unique per (symbol, funding_time); rate_type is a provenance label. This
+    // writer claims the label on every print it covers, because existingMonths() skips months that
+    // already contain ARCHIVE rows: a month first filled by the REST top-up would otherwise never be
+    // marked and would be re-downloaded on every run. The WHERE clause skips rewriting rows that are
+    // already claimed and agree, which is almost all of them on a re-run.
     private static final String UPSERT = """
             INSERT INTO binance_perp_funding_rate (symbol, funding_time, rate_type, funding_rate)
             VALUES (?, ?, 'ARCHIVE', ?)
-            ON CONFLICT (symbol, funding_time, rate_type)
-            DO UPDATE SET funding_rate = EXCLUDED.funding_rate, updated_at = NOW()
+            ON CONFLICT (symbol, funding_time)
+            DO UPDATE SET funding_rate = EXCLUDED.funding_rate, rate_type = 'ARCHIVE',
+                          updated_at = NOW()
+            WHERE binance_perp_funding_rate.funding_rate IS DISTINCT FROM EXCLUDED.funding_rate
+               OR binance_perp_funding_rate.rate_type <> 'ARCHIVE'
             """;
 
     private FundingArchiveImportApplication() {

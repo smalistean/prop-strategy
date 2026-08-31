@@ -2,69 +2,21 @@
 
 Snapshot from the venues directly, not from any run's log. Regenerate with `python3 scripts/xvf-position-snapshot.py`.
 
-**As of:** 2026-08-24T19:00:32Z  |  fees and funding cover each pair's whole life, from its own entry (oldest 2026-08-22 20:16 UTC, newest 2026-08-22 20:21 UTC)
+**As of:** 2026-08-31T05:35:11Z  |  fees and funding cover each pair's whole life, from its own entry (oldest 2026-08-30 19:15 UTC, newest 2026-08-30 19:15 UTC)
 
-**17 matched pairs, 34 legs, ~3,759 USD gross notional**
+**1 matched pairs, 2 legs, ~194 USD gross notional**
 
-**Unrealized -1.87 + funding +1.97 + fees -1.59 = net -1.49 USD**
+**Unrealized -0.05 + funding -0.88 + fees -0.04 = net -0.97 USD**
 
 ## Matched pairs
 
 | Base | Leg | Qty | Notional | Unrealized | Funding | Fees | Net |
 |---|---|---:|---:|---:|---:|---:|---:|
-| ACE | bybit ACEUSDT | -462.4000 | 101.15 | +11.169 | -2.479 | -0.112 | +8.578 |
-| ACE | hyperliquid ACE | 463.9100 | 101.41 | -11.273 | +2.868 | -0.017 | -8.422 |
-| ARIA | binance ARIAUSDT | 3727.0000 | 108.08 | -4.233 | -0.060 | -0.051 | -4.344 |
-| ARIA | bybit ARIAUSDT | -3731.0000 | 107.94 | +4.216 | +0.102 | -0.045 | +4.273 |
-| ARX | binance ARXUSDT | 909.0000 | 121.03 | +8.954 | -0.156 | -0.050 | +8.748 |
-| ARX | bybit ARXUSDT | -909.0000 | 120.90 | -8.908 | +0.392 | -0.045 | -8.561 |
-| CASHCAT | bybit CASHCATUSDT | 910.0000 | 170.82 | +59.171 | -0.481 | -0.123 | +58.568 |
-| CASHCAT | hyperliquid CASHCAT | -917.0000 | 173.46 | -61.292 | +0.810 | -0.017 | -60.499 |
-| COTI | binance COTIUSDT | 9512.0000 | 120.65 | +8.343 | +7.224 | -0.051 | +15.517 |
-| COTI | bybit COTIUSDT | -9412.0000 | 119.69 | -7.501 | -6.897 | -0.040 | -14.439 |
-| COW | binance COWUSDT | -1009.0000 | 118.36 | -6.155 | +0.065 | -0.051 | -6.140 |
-| COW | bybit COWUSDT | 1009.0000 | 118.49 | +6.104 | -0.069 | -0.040 | +5.995 |
-| HEMI | bybit HEMIUSDT | -11494.0000 | 91.24 | +21.095 | +0.059 | -0.124 | +21.031 |
-| HEMI | hyperliquid HEMI | 11499.0000 | 91.26 | -21.239 | -0.117 | -0.017 | -21.373 |
-| HOLO | binance HOLOUSDT | 1635.0000 | 112.21 | -0.089 | -0.060 | -0.051 | -0.199 |
-| HOLO | bybit HOLOUSDT | -1635.0000 | 112.19 | +0.033 | +0.059 | -0.040 | +0.052 |
-| HOME | binance HOMEUSDT | 18451.0000 | 116.39 | +4.022 | +1.753 | -0.051 | +5.724 |
-| HOME | bybit HOMEUSDT | -18430.0000 | 116.46 | -4.165 | -2.215 | -0.040 | -6.421 |
-| INX | binance INXUSDT | -16225.0000 | 106.31 | +5.907 | +0.073 | -0.050 | +5.930 |
-| INX | bybit INXUSDT | 16240.0000 | 106.42 | -6.025 | -0.061 | -0.040 | -6.127 |
-| KAITO | binance KAITOUSDT | 320.0000 | 108.58 | -3.712 | +0.277 | -0.051 | -3.485 |
-| KAITO | hyperliquid KAITO | -319.0000 | 108.33 | +3.783 | -0.032 | -0.017 | +3.734 |
-| MINA | binance MINAUSDT | -2014.0000 | 118.50 | -6.154 | +0.018 | -0.051 | -6.187 |
-| MINA | bybit MINAUSDT | 2014.6000 | 118.82 | +6.326 | +0.031 | -0.040 | +6.317 |
-| MOVE | binance MOVEUSDT | 13643.0000 | 110.75 | +2.016 | +2.817 | -0.049 | +4.785 |
-| MOVE | hyperliquid MOVE | -14029.0000 | 113.90 | -1.782 | -2.423 | -0.017 | -4.221 |
-| PEOPLE | binance PEOPLEUSDT | 10185.0000 | 101.00 | -11.705 | -0.064 | -0.051 | -11.820 |
-| PEOPLE | hyperliquid PEOPLE | -10157.0000 | 101.07 | +11.427 | +0.378 | -0.017 | +11.788 |
-| THE | binance THEUSDT | 1595.7000 | 113.47 | +1.374 | -0.066 | -0.050 | +1.258 |
-| THE | bybit THEUSDT | -1597.0000 | 113.21 | -1.278 | +0.062 | -0.040 | -1.256 |
-| XAI | bybit XAIUSDT | -6589.0000 | 49.30 | +1.421 | +0.020 | -0.051 | +1.390 |
-| XAI | hyperliquid XAI | 6599.9000 | 49.43 | -1.474 | -0.029 | -0.008 | -1.511 |
-| XNY | binance XNYUSDT | 15431.0000 | 109.26 | -3.482 | -0.114 | -0.047 | -3.643 |
-| XNY | bybit XNYUSDT | -15450.0000 | 109.25 | +3.229 | +0.279 | -0.045 | +3.463 |
+| ONG | binance ONGUSDT | 1018.0000 | 96.73 | -15.606 | +1.496 | -0.000 | -14.110 |
+| ONG | bybit ONGUSDT | -1014.0000 | 96.88 | +15.555 | -2.379 | -0.040 | +13.135 |
 
 ## Per-pair totals
 
 | Base | Unrealized | Funding | Fees | Net |
 |---|---:|---:|---:|---:|
-| CASHCAT | -2.121 | +0.329 | -0.140 | -1.931 |
-| HOME | -0.143 | -0.462 | -0.091 | -0.696 |
-| HEMI | -0.143 | -0.058 | -0.140 | -0.341 |
-| INX | -0.118 | +0.012 | -0.091 | -0.197 |
-| XNY | -0.253 | +0.165 | -0.092 | -0.179 |
-| HOLO | -0.056 | -0.000 | -0.091 | -0.147 |
-| COW | -0.050 | -0.003 | -0.091 | -0.145 |
-| XAI | -0.053 | -0.009 | -0.058 | -0.120 |
-| ARIA | -0.017 | +0.042 | -0.095 | -0.071 |
-| PEOPLE | -0.278 | +0.315 | -0.068 | -0.031 |
-| THE | +0.097 | -0.005 | -0.091 | +0.001 |
-| MINA | +0.172 | +0.049 | -0.091 | +0.130 |
-| ACE | -0.104 | +0.390 | -0.129 | +0.157 |
-| ARX | +0.046 | +0.235 | -0.095 | +0.186 |
-| KAITO | +0.071 | +0.245 | -0.067 | +0.249 |
-| MOVE | +0.235 | +0.395 | -0.066 | +0.564 |
-| COTI | +0.842 | +0.327 | -0.091 | +1.078 |
+| ONG | -0.051 | -0.884 | -0.040 | -0.975 |

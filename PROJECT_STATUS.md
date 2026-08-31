@@ -2,6 +2,21 @@
 
 Last updated: 2026-08-25
 
+## XVF narrow-v1 review consolidation and corrected calibration (2026-08-25)
+
+- Consolidated the Claude/Codex review exchange, corrections, final conclusion and forward criteria
+  into `XVF_NARROW_V1_REVIEW_DISCUSSION.md`; removed the four superseded standalone review documents.
+- Replaced the original pending-direction calibration with a production-aligned Binance-Bybit SQL:
+  seven-day settled-funding direction, per-observation intervals, normalized-symbol deduplication,
+  causal entry and horizon-specific no-reentry ledgers. It also reports a clearly labelled 1-minute
+  price/volume proxy because historical executable L1 and instrument-type snapshots do not exist.
+- The verified 24-hour funding-only ledger has 24 entries / 18 bases, +33.5 bp average net after the
+  22.6 bp fee model but an 18.0 bp median realized funding. ONG contributes +773.6 bp; removing it
+  leaves only +29.9 bp total / +1.4 bp per entry. The four-entry basis/volume proxy averages -82.3 bp
+  net. This is not promotion evidence: narrow-v1 remains frozen and dry, with no leverage.
+- Corrected the `XvfSignalEngine` javadoc inversion: realized funding is 43%/66% of the signal in the
+  referenced calibration, not the other way around. Runtime behavior is unchanged.
+
 ## LaunchAgent source files (2026-08-25)
 
 - Added repository plist files matching the three pre-existing loaded user LaunchAgents: daily XVF

@@ -88,8 +88,9 @@ public final class VenueFundingImportApplication {
             // between month-end and publication only the sixteen symbols that also carry `Regular`
             // rows stay current. A cross-venue signal then pairs 800 legs from other venues against
             // 16 from Binance and returns an empty book with no error - which is how this gap was
-            // found. Rows are written with rate_type 'REST'; perp_funding_all deduplicates per
-            // (symbol, funding_time) so overlap with the archive cannot double-count.
+            // found. New rows are labelled rate_type 'REST'; since V30 the table is unique per
+            // (symbol, funding_time), so overlap with the archive updates in place and cannot
+            // double-count.
             new Venue("binance", "binance_perp_funding_rate",
                 c -> jsonList(get(c, "https://fapi.binance.com/fapi/v1/premiumIndex"), "symbol")
                         .stream().filter(s -> s.endsWith("USDT") || s.endsWith("USDC")).toList(),
@@ -239,15 +240,21 @@ public final class VenueFundingImportApplication {
 
     private static int importSymbol(HttpClient client, DatabaseConfig database, Venue venue,
                                     String symbol, Instant floor) {
-        // Binance predates the venue tables and keys on (symbol, funding_time, rate_type) with no
-        // base column; the others share one shape. Branching here rather than reshaping the older
-        // table keeps every existing reader working.
+        // Binance predates the venue tables: it has no base column and carries rate_type, since V30
+        // a provenance label over a print unique per (symbol, funding_time). Branching here rather
+        // than reshaping the older table keeps every existing reader working. On conflict the
+        // existing label is kept - this importer pages back through years of history every run, and
+        // relabelling rows to 'REST' would unmark months the archive importer uses to skip
+        // re-downloads - and the WHERE clause skips rewriting rows whose rate already agrees, which
+        // is almost all of them.
         boolean binance = "binance".equals(venue.name());
         String upsert = binance
                 ? "INSERT INTO binance_perp_funding_rate (symbol, funding_time, rate_type, funding_rate)"
                   + " VALUES (?,?,'REST',?)"
-                  + " ON CONFLICT (symbol, funding_time, rate_type) DO UPDATE SET"
+                  + " ON CONFLICT (symbol, funding_time) DO UPDATE SET"
                   + " funding_rate = EXCLUDED.funding_rate, updated_at = now()"
+                  + " WHERE binance_perp_funding_rate.funding_rate"
+                  + " IS DISTINCT FROM EXCLUDED.funding_rate"
                 : "INSERT INTO " + venue.table()
                   + " (venue_symbol, base, funding_time, funding_rate) VALUES (?,?,?,?)"
                   + " ON CONFLICT (venue_symbol, funding_time) DO UPDATE SET"

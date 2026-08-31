@@ -13,14 +13,22 @@ import java.util.Optional;
 
 public final class PostgresFundingRateRepository {
 
+    // Since V30 a print is unique per (symbol, funding_time) and rate_type is a provenance label.
+    // On conflict the existing label is kept: this writer replays years of history every run, and
+    // relabelling rows the archive importer wrote would make FundingArchiveImportApplication
+    // re-download months it already holds. mark_price is only ever supplied by this writer, so it is
+    // filled in but never nulled out. The WHERE clause skips rewriting rows that already match.
     private static final String UPSERT_SQL = """
             INSERT INTO binance_perp_funding_rate (
                 symbol, funding_time, rate_type, funding_rate, mark_price
             ) VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT (symbol, funding_time, rate_type) DO UPDATE SET
+            ON CONFLICT (symbol, funding_time) DO UPDATE SET
                 funding_rate = EXCLUDED.funding_rate,
-                mark_price = EXCLUDED.mark_price,
+                mark_price = COALESCE(EXCLUDED.mark_price, binance_perp_funding_rate.mark_price),
                 updated_at = NOW()
+            WHERE binance_perp_funding_rate.funding_rate IS DISTINCT FROM EXCLUDED.funding_rate
+               OR (EXCLUDED.mark_price IS NOT NULL
+                   AND binance_perp_funding_rate.mark_price IS DISTINCT FROM EXCLUDED.mark_price)
             """;
 
     private final DatabaseConfig config;

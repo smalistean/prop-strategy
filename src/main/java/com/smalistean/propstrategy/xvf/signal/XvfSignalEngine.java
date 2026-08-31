@@ -261,9 +261,9 @@ public final class XvfSignalEngine {
      * it went on to actually realise over the following hold, with the forward window starting the
      * day after the signal (an earlier version shared day 1 between the two windows, letting a large
      * print count on both sides - see XvfConfig.STALE_SIGNAL_DISCOUNT's javadoc): a candidate on its
-     * FIRST eligible day reads 43% of realised for CEX-CEX, 66% for CEX-DEX; a candidate ALSO eligible
-     * the day before reads roughly 29-31%/43-56% of realised, flat across every later streak length
-     * tested. The gap between fresh and stale is real but smaller than first measured; the larger,
+     * FIRST eligible day realizes 43% of its signal for CEX-CEX, 66% for CEX-DEX; a candidate ALSO
+     * eligible the day before realizes roughly 29-31%/43-56% of its signal, flat across every later
+     * streak length tested. The gap between fresh and stale is real but smaller than first measured; the larger,
      * separate finding is that even a fresh signal over-reads its own forward realisation by more than
      * 2x, which this discount does not address at all.
      *
