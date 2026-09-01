@@ -27,3 +27,4 @@ dist/
 logs/
 *.log
 __pycache__/
+phase2_out/
