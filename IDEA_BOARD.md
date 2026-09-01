@@ -71,7 +71,12 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
   true reference; on a weekend a tokenized US-stock perp has neither, so the fade is paid for
   supplying the anchor nobody else can until Monday's open — and this predicts the measured
   boundaries, metals dying (Globex reopens Sunday) and E1's obscure names having no edge).
-- **Series through-line** (all six notes): every venue has a passive side that cannot refuse the
+  `USDT_ISSUER_POWERS_DD.md` (the asset our whole book is denominated in — prop account, tokenized
+  perps, both XVF legs: one key can freeze AND **destroy** balances, not merely freeze like USDC;
+  >=1,000 destructions all-time, 29 totalling $6.6M in the last ~8 weeks, largest $1.51M; a
+  switchable transfer fee (<=19bp) USDC has no equivalent of; all powers on ONE key vs USDC's four
+  separated roles; not ERC-20 compliant, Solidity 0.4.18).
+- **Series through-line** (all eight notes): every venue has a passive side that cannot refuse the
   flow — Uniswap LPs (0.05% fee), Aave liquidators (4.5–5%), HLP (liquidation edge), CEX insurance
   funds (→ADL), and us on the weekend fade (~147 bp). The edge is always in being paid to be that
   person; the payment scales with how badly the counterparty needs an exit and how little
