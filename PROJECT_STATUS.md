@@ -2,6 +2,21 @@
 
 Last updated: 2026-08-25
 
+## XVF narrow-v1 CLOSED — checkpoint re-run (2026-09-01 18:43 UTC)
+
+- Re-ran the calibration checkpoint after 8 days more shadow collection (130 hourly dry runs).
+  The 24h funding-only causal sample grew 23 -> **62 entries / 33 bases**, finally exceeding the
+  promotion bar (>=50 entries, >=20 bases) — and the edge went with it: average net after fees
+  **+33.5 bp -> -0.6 bp**, leave-best-base-out (ONG removed) **-1.4 bp -> -8.3 bp** (-459.2 bp total
+  across 55 entries). ONG alone contributes +422.7 bp; it was always the entire book.
+- **Pre-declared stop rule 4 fires** ("stop if either cohort is negative after removing its
+  best-contributing base"); Round 6 had already recorded the first negative reading. narrow-v1 is
+  closed, stays dry, never promoted. Longer horizons (96h/120h) look positive but are explicitly
+  NOT adopted — no leave-best-base-out, fewer entries, and switching horizons after the declared one
+  failed is horizon-shopping. Details and caveats in `XVF_NARROW_V1_REVIEW_DISCUSSION.md`.
+- Follow-up: retire or repurpose the `xvf-narrow-dry-run` LaunchAgent — it is now accumulating
+  evidence for a closed question. Baseline XVF is unaffected.
+
 ## XVF narrow-v1 review consolidation and corrected calibration (2026-08-25)
 
 - Consolidated the Claude/Codex review exchange, corrections, final conclusion and forward criteria

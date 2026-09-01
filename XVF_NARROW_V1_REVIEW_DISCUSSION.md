@@ -718,3 +718,58 @@ The decision is therefore:
 The four standalone review documents were removed after consolidation. This discussion is their final
 record. `scripts/analysis-narrow-forecast-calibration.sql` remains separate because it is executable
 and now contains the corrected repeatable analysis.
+
+---
+
+## Checkpoint re-run — 2026-09-01 18:42 UTC: **stop rule 4 fires, line closed**
+
+Re-ran `scripts/analysis-narrow-forecast-calibration.sql` (the repeatable checkpoint named in
+forward-plan item 2) after 8 days of additional hourly shadow collection (130 dry runs,
+2026-08-24 → 2026-09-01).
+
+### 24-hour funding_only ledger, at the deployed ~1h execution delay
+
+| | Review (2026-08-25) | Now (2026-09-01) |
+|---|---|---|
+| causal entries | 23 | **62** |
+| distinct bases | 17 | **33** |
+| average net after fees | **+33.5 bp** | **−0.6 bp** |
+| leave-best-base-out (ONG removed) | −1.4 bp | **−8.3 bp** (55 entries, 32 bases, total −459.2 bp) |
+
+**The sample finally exceeded the promotion bar's size thresholds (item 5: ≥50 entries, ≥20 bases)
+and the edge went to zero and then negative as it did.** ONG still *is* the book: it contributes
++422.7 bp of total net across 7 entries; remove it and the remaining 55 entries total −459.2 bp.
+With ONG included the whole 24h book is now slightly negative.
+
+### Verdict under the pre-declared stop rule
+
+Forward-plan **rule 4**: *"Stop this strategy line if either time cohort is negative after removing
+its best-contributing base."* Round 6 recorded the first reading at −1.4 bp (n=21) and stated that
+"a second negative reading ends the line under this rule." This is that reading: **−8.3 bp at
+n=55**, at a sample size that now clears item 5's bar. **narrow-v1 is closed.**
+
+Honest qualifications, so the kill is on the record accurately:
+
+- **The two readings are nested, not independent cohorts.** This is the same test on ~3× the data,
+  not a clean second cohort. The correct statement is therefore "the effect did not survive
+  tripling the sample; it moved from indistinguishable-from-zero to clearly negative," which is
+  what rule 4 was written to detect.
+- **Timing:** forward-plan item 3 suggested re-running after 30–60 days; this is day 8. The stop
+  condition in rule 4 is not gated on that interval, and the sample bar in item 5 is already
+  exceeded, so the early read is decisive rather than premature. Nothing would be gained by
+  running a strategy that is measured negative for another 50 days.
+- **Longer horizons look positive (96h +14.3 bp, 120h +16.2 bp) and are NOT being adopted.**
+  They carry fewer entries (34 and 30), have no leave-best-base-out reported, and yield only
+  3.6 / 3.2 bp per capital-day. Switching to the horizon that currently looks best, after the
+  pre-declared 24h horizon failed, is precisely the horizon-shopping this review's method exists
+  to prevent. If anyone wants the 96h policy it needs its own pre-registration and its own
+  leave-best-base-out, declared before looking.
+- **The V30 funding-dedupe did not confound this.** `perp_funding_all` already collapses Binance
+  duplicates (`GROUP BY symbol, funding_time` with `max(funding_rate)`), so both the old and new
+  readings were computed on dedupe-safe funding.
+
+### Consequence
+
+Stop the narrow-v1 line: it stays dry and unpromoted, and the hourly dry-run LaunchAgent should be
+retired or repurposed rather than left accumulating evidence for a closed question. Baseline XVF is
+untouched by this — narrow was built as its challenger and did not beat it.
