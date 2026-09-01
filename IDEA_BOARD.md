@@ -47,6 +47,9 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
 - Live collectors (quotes/depth/liquidations) and the hourly XVF narrow dry-run keep running.
 - On-chain contract due-diligence notes (learning + capital-safety): `VARIATIONAL_CONTRACT_DD.md`
   (semi-custodial, single-oracle withdrawals), `HYPERLIQUID_BRIDGE_DD.md` (our live venue's
-  Arbitrum bridge — 2/3 validator quorum + dispute window + emergency freeze; ~$329M pooled).
+  Arbitrum bridge — 2/3 validator quorum + dispute window + emergency freeze; ~$329M pooled),
+  `HYPERLIQUID_HLP_DD.md` (idea I83 answered: HLP is real ~6.7% carry, 12:1 gross gain/loss,
+  NET LONG crashes — made +$41M as liquidator in the Oct-2025 cascade, ~30% of all-time PnL;
+  true tail is idiosyncratic single-coin squeezes like JELLY, not market crashes).
 - Method rule this board encodes: the user generates, the loop falsifies — measured in a day,
   de-clustered before believed, killed in writing with a timestamp.
