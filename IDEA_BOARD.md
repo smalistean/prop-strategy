@@ -50,6 +50,10 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
   Arbitrum bridge — 2/3 validator quorum + dispute window + emergency freeze; ~$329M pooled),
   `HYPERLIQUID_HLP_DD.md` (idea I83 answered: HLP is real ~6.7% carry, 12:1 gross gain/loss,
   NET LONG crashes — made +$41M as liquidator in the Oct-2025 cascade, ~30% of all-time PnL;
-  true tail is idiosyncratic single-coin squeezes like JELLY, not market crashes).
+  true tail is idiosyncratic single-coin squeezes like JELLY, not market crashes),
+  `ETHENA_USDE_DD.md` (USDe = the XVF delta-neutral funding-carry trade tokenized at $B scale;
+  token has NO freeze but mint/redeem are permissioned MMs and backing sits off-chain at
+  CEXes/custodians; depeg triggers = negative funding + CEX counterparty failure — same risks
+  as our own XVF book; sUSDe cooldown up to 90d + seizure powers at staking layer; feeds I53).
 - Method rule this board encodes: the user generates, the loop falsifies — measured in a day,
   de-clustered before believed, killed in writing with a timestamp.
