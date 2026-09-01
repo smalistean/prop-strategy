@@ -59,6 +59,11 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
   permanently freeze any address — 23 freezes in ~11 days, actively used; one pauser key halts
   all $50.6B of transfers; upgradeable proxy means every rule is provisional. Systemic tail:
   blacklisting a VENUE address would immobilize everyone inside it — no venue-side protection
-  survives a frozen base asset; mitigation is settlement-asset/venue diversification).
+  survives a frozen base asset; mitigation is settlement-asset/venue diversification),
+  `AAVE_LIQUIDATION_DD.md` (the cascade mechanism in readable code: HF<1 from oracle prices
+  triggers it, close factor jumps 50%→100% below HF 0.95 so forced selling GROWS as the move
+  deepens, liquidator paid a 4.5–5% collateral bonus by the borrower. **New idea I92**: on-chain
+  liquidation levels are exactly computable (unlike CEX heatmap estimates) → liquidation-overhang
+  indicator; Tier-B, needs an indexer/subgraph pull we don't have yet).
 - Method rule this board encodes: the user generates, the loop falsifies — measured in a day,
   de-clustered before believed, killed in writing with a timestamp.

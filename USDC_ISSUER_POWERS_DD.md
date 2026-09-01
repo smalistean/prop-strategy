@@ -91,12 +91,27 @@ backing is far more fragile (a live CEX trade vs bank reserves). Trust-minimizat
 layer and robustness of backing are independent axes — a stablecoin can be strong on one and weak
 on the other, and both USDC and USDe are exactly that, in opposite directions.
 
-## Minor curiosity
+## Curiosity: USDC and EURC are literally the same contract
 
 The verified source's file paths leak a Circle developer's local checkout —
-`/Users/aloysius.chan/Repositories/circlefin/stablecoin-evm-private-eurc-mainnet-eth/…` — showing
-the USDC deployment was built from a private EURC repo. Harmless, mildly amusing, and a reminder
-that verified source carries build-environment metadata.
+`/Users/aloysius.chan/Repositories/circlefin/stablecoin-evm-private-eurc-mainnet-eth/…` (a private
+working copy of Circle's `stablecoin-evm` codebase, named for the **EURC** mainnet deployment).
+Chasing that down (verified 2026-09-01): **EURC** (`0x1aBaEA1f…C33c`, Circle's euro stablecoin,
+~€300M) is a `FiatTokenProxy` pointing at the **exact same implementation address**
+`0x43506849…02dd` as USDC. One deployed logic contract serves both tokens:
+
+| | USDC | EURC |
+|---|---|---|
+| implementation | `0x43506849…02dd` | **same** |
+| name / symbol | USD Coin / USDC | Euro Coin / EURC |
+| supply | $50.6B | €300.1M |
+| blacklister | `0x0a06be16…78f9` | `0x601c97ed…bd73` |
+
+Identity and roles differ because proxy storage lives in each proxy; the shared implementation
+supplies only behavior. Two consequences: **freeze powers are per-token** (a USDC blacklisting does
+not touch EURC, despite one enforcing contract), but **the logic is one shared surface** — a bug in
+`FiatTokenV2_2` is a bug in both at once. Upgrades remain per-proxy (separate admins), so they can
+diverge; they simply point at the same implementation today.
 
 ## Sources
 
