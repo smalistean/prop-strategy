@@ -64,6 +64,17 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
   triggers it, close factor jumps 50%→100% below HF 0.95 so forced selling GROWS as the move
   deepens, liquidator paid a 4.5–5% collateral bonus by the borrower. **New idea I92**: on-chain
   liquidation levels are exactly computable (unlike CEX heatmap estimates) → liquidation-overhang
-  indicator; Tier-B, needs an indexer/subgraph pull we don't have yet).
+  indicator; Tier-B, needs an indexer/subgraph pull we don't have yet),
+  `UNISWAP_V3_DD.md` (price formation from first principles: price IS pool state, no feed;
+  only truly immutable contract in the series — nobody can pause/upgrade/freeze it. **Explains
+  board #1 structurally**: price formation needs a quoting venue AND arbitrageurs able to reach a
+  true reference; on a weekend a tokenized US-stock perp has neither, so the fade is paid for
+  supplying the anchor nobody else can until Monday's open — and this predicts the measured
+  boundaries, metals dying (Globex reopens Sunday) and E1's obscure names having no edge).
+- **Series through-line** (all six notes): every venue has a passive side that cannot refuse the
+  flow — Uniswap LPs (0.05% fee), Aave liquidators (4.5–5%), HLP (liquidation edge), CEX insurance
+  funds (→ADL), and us on the weekend fade (~147 bp). The edge is always in being paid to be that
+  person; the payment scales with how badly the counterparty needs an exit and how little
+  competition exists to provide it.
 - Method rule this board encodes: the user generates, the loop falsifies — measured in a day,
   de-clustered before believed, killed in writing with a timestamp.
