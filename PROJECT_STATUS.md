@@ -14,8 +14,10 @@ Last updated: 2026-08-25
   closed, stays dry, never promoted. Longer horizons (96h/120h) look positive but are explicitly
   NOT adopted — no leave-best-base-out, fewer entries, and switching horizons after the declared one
   failed is horizon-shopping. Details and caveats in `XVF_NARROW_V1_REVIEW_DISCUSSION.md`.
-- Follow-up: retire or repurpose the `xvf-narrow-dry-run` LaunchAgent — it is now accumulating
-  evidence for a closed question. Baseline XVF is unaffected.
+- **Done 2026-09-01 18:47 UTC:** the `xvf-narrow-dry-run` LaunchAgent was unloaded and its plist removed from
+  `~/Library/LaunchAgents/`; the versioned copy in `launchd/` is unchanged so it can be reinstalled.
+  Remaining collectors (deribit-export, xvf-funding-export, book-ticker-collector, xvf-refresh)
+  verified still loaded. Baseline XVF is unaffected.
 
 ## XVF narrow-v1 review consolidation and corrected calibration (2026-08-25)
 

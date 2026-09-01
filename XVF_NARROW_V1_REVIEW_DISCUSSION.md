@@ -770,6 +770,11 @@ Honest qualifications, so the kill is on the record accurately:
 
 ### Consequence
 
-Stop the narrow-v1 line: it stays dry and unpromoted, and the hourly dry-run LaunchAgent should be
-retired or repurposed rather than left accumulating evidence for a closed question. Baseline XVF is
+Stop the narrow-v1 line: it stays dry and unpromoted. **The hourly dry-run LaunchAgent was
+unloaded and removed on 2026-09-01 18:47 UTC** (`com.smalistean.propstrategy.xvf-narrow-dry-run`), so it is no
+longer accumulating evidence for a closed question. Reversible: the plist is still versioned at
+`launchd/com.smalistean.propstrategy.xvf-narrow-dry-run.plist` (byte-identical to what was
+installed) — reinstall with `cp` into `~/Library/LaunchAgents/` plus
+`launchctl bootstrap gui/$UID <plist>`. The other four collectors (deribit-export,
+xvf-funding-export, book-ticker-collector, xvf-refresh) were verified untouched. Baseline XVF is
 untouched by this — narrow was built as its challenger and did not beat it.
