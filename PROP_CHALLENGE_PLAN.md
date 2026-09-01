@@ -160,7 +160,17 @@ Two things the first run already establishes about how to read Phase 2's output:
 - **The window edge effect is negligible in practice.** `barsBeforeFirstTrade` ran 5–72 bars out of
   17,280, so truncated strategy history at the start of a window delays almost nothing.
 
-### Phase 2 — Rank the eligible candidates honestly (2–3 days)
+### Phase 2 — Rank the eligible candidates honestly — **DONE 2026-09-01 18:09 UTC: GATE NOT CLEARED**
+
+Executed per `PHASE2_PREREGISTRATION.md` (design frozen before running). Ten candidates evaluated
+over two non-overlapping cohorts against their own matched random controls; `liquidity-sweep-reversal`
+NOT EVALUATED (zero trades on 15m and 5m — config too restrictive, not evidence about the idea).
+**No candidate beat its control in both cohorts; across all 27 runs exactly one passing attempt was
+produced anywhere** (structural-channel cohort B, 5.7% vs its control's 7.5%). Per §2.5 the answer is
+stop. Structural finding: high-frequency candidates (94–383 trades/attempt) breach max-loss (order-flow
+100%, donchian 68–74%); low-frequency ones (2–27) never reach the target in 180 days. On BTC 15m/5m at
+this cost model the middle is empty — the same cost identity that closed Gerchik.
+
 
 #### 2.1 The candidate set is 13, not 24
 

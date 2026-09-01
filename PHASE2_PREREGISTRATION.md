@@ -81,3 +81,76 @@ fade is the entire portfolio.
 ---
 
 ## Results (appended after execution)
+
+**Executed 2026-09-01 17:50–18:09 UTC** via `scripts/phase2-run.sh` (22 runs) plus 5 re-runs on the
+5m engine for candidates that require it. Raw output in `phase2_out/` (gitignored).
+
+### The table
+
+`P(pass)` = strategy vs best-of-5 matched random controls, per cohort.
+
+| Candidate | Cohort A | Cohort B | trades/attempt | Verdict |
+|---|---|---|---|---|
+| donchian-breakout | 0.0 / **5.7** | 0.0 / **5.7** | 225–312 | fails both |
+| volatility-compression-breakout | 0.0 / 0.0 | 0.0 / 0.0 | 77 | fails both |
+| rsi-atr-mean-reversion | 0.0 / 0.0 | 0.0 / 0.0 | 5 | fails both |
+| structural-channel | 0.0 / **11.3** | **5.7** / **7.5** | 27–41 | fails both (closest) |
+| three-level-range | 0.0 / 0.0 | 0.0 / 0.0 | 67 | fails both |
+| intraday-flat-mean-reversion | 0.0 / 0.0 | 0.0 / 0.0 | 242 | fails both |
+| passive-maker-mean-reversion | 0.0 / 0.0 | 0.0 / 0.0 | 383 | fails both |
+| volume-profile-level | 0.0 / **1.9** | 0.0 / **1.9** | 162 | fails both |
+| multi-timeframe-flat-long *(5m)* | 0.0 / 0.0 | 0.0 / 0.0 | **2** | inactive — never resolves |
+| order-flow-exhaustion *(5m)* | 0.0 / 0.0 | 0.0 / 0.0 | 94 | **100% FAILED_MAX_LOSS** |
+| liquidity-sweep-reversal | — | — | **0** | **NOT EVALUATED** (0 trades on 15m *and* 5m) |
+
+### Gate verdict: **no candidate clears. Phase 2 stops** (rule 1, §2.5)
+
+**Across all 27 runs, exactly one produced a single passing attempt** — structural-channel in
+cohort B at 5.7%, and its own random control scored 7.5% in the same window. Every other candidate
+passed **zero** attempts in **both** cohorts. Nothing reaches rule 2 (leave-best-period-out), which
+applies only to survivors; there are none.
+
+Two honest qualifications:
+
+- **For 14 of 27 runs the comparison was degenerate (0.0% vs 0.0%)** — neither strategy nor control
+  ever passed, so those cells carry no discriminating power on their own. The informative fact is
+  the aggregate: **not one strategy passed a challenge attempt anywhere**, while controls
+  occasionally did (1.9–11.3%).
+- **`liquidity-sweep-reversal` is genuinely NOT EVALUATED** (rule 3): zero trades on both the 15m
+  and 5m engines — its v1 config (`minimumRewardRisk=3.0` with tight sweep/volume tolerances) is
+  too restrictive to fire. That is a configuration fact, not evidence about the idea. It remains
+  open for a properly-paired run; nothing here counts against it.
+
+### The structural finding (more useful than the ranking)
+
+The failures split cleanly by trade frequency, and **both halves fail for opposite reasons**:
+
+- **High-frequency candidates** (passive-maker 383, donchian 225–312, intraday 242, volume-profile
+  162, order-flow 94 trades/attempt) fail by **blowing the max-loss limit** — donchian 68–74% of
+  attempts, order-flow **100%**. Their median worst drawdown is ~5,004 against a 5,000 limit: they
+  do not lose gradually, they run straight into the wall. This is the `ema-pullback` result from
+  Phase 1 generalised (there, 2,507 of 5,024 total loss was fees).
+- **Low-frequency candidates** (multi-timeframe 2, rsi-atr 5, structural-channel 27 trades/attempt)
+  fail by **never resolving** — they cannot reach +4,000 within a 180-day window.
+
+So on BTC 15m/5m with this cost model, the middle is empty: trade often enough to reach the target
+and costs plus variance hit the drawdown limit first; trade rarely enough to survive and the target
+is unreachable in the window. That is a statement about the **instrument and cost structure**, not
+about eleven individual ideas — and it is the same identity that killed Gerchik (a ~0.43×ATR stop
+against ~13 bp round-trip cost).
+
+### Consequences
+
+1. **Phase 2 closes with "no second leg."** Per §2.5 the honest action is to stop, not to widen the
+   search. Five strategy families have now been measured against a stated bar and all five failed:
+   Apollo, Gerchik, XVF (real but too thin), ema-pullback, and this set of ten.
+2. **The weekend fade is the entire portfolio** for the challenge account, as measured. It trades
+   ~2×/month, which the plan already accommodates (unlimited time, minimum trading days satisfied).
+3. **What would legitimately reopen this:** a candidate class whose economics are not
+   cost-dominated — i.e. lower trade frequency with a larger per-trade edge, which is exactly the
+   fade's shape (≈2 trades/month, ~147 bp/event). Note this is a *description of what would have to
+   be true*, not a suggestion to go fishing for one; any new candidate needs its own
+   pre-registration.
+4. **Not done and deliberately not done:** the 0.1%/0.5% risk sweep (§2.4). It is reported only for
+   a candidate that already cleared the gate; running it now to see whether some sizing rescues a
+   loser would be exactly the selection the two-cohort rule exists to prevent.
