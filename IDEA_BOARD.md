@@ -54,6 +54,11 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
   `ETHENA_USDE_DD.md` (USDe = the XVF delta-neutral funding-carry trade tokenized at $B scale;
   token has NO freeze but mint/redeem are permissioned MMs and backing sits off-chain at
   CEXes/custodians; depeg triggers = negative funding + CEX counterparty failure — same risks
-  as our own XVF book; sUSDe cooldown up to 90d + seizure powers at staking layer; feeds I53).
+  as our own XVF book; sUSDe cooldown up to 90d + seizure powers at staking layer; feeds I53),
+  `USDC_ISSUER_POWERS_DD.md` (the collateral under the whole stack: one blacklister key can
+  permanently freeze any address — 23 freezes in ~11 days, actively used; one pauser key halts
+  all $50.6B of transfers; upgradeable proxy means every rule is provisional. Systemic tail:
+  blacklisting a VENUE address would immobilize everyone inside it — no venue-side protection
+  survives a frozen base asset; mitigation is settlement-asset/venue diversification).
 - Method rule this board encodes: the user generates, the loop falsifies — measured in a day,
   de-clustered before believed, killed in writing with a timestamp.
