@@ -76,7 +76,15 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
   >=1,000 destructions all-time, 29 totalling $6.6M in the last ~8 weeks, largest $1.51M; a
   switchable transfer fee (<=19bp) USDC has no equivalent of; all powers on ONE key vs USDC's four
   separated roles; not ERC-20 compliant, Solidity 0.4.18).
-- **Series through-line** (all eight notes): every venue has a passive side that cannot refuse the
+  `CURVE_STABLESWAP_DD.md` (Vyper, no proxy; the venue where a stablecoin depeg shows up first.
+  StableSwap at A=4000 is FLAT until it is vertical: computed from live state, a $1M USDT->USDC
+  swap costs 2.6bp at today's 53% USDT share, 36bp at 80%, **285bp at 90%, 1,977bp at 95%**.
+  Therefore **price is a lagging depeg indicator and pool COMPOSITION is the leading one** — a
+  cheap monitor for I53, one balances(i) call per pool, no indexer. Admin is the series' middle
+  case: A-ramp rate-limited, fee on a 3-day timelock, kill switch permanently EXPIRED (deadline
+  was deploy+2 months, 2020), no freeze/seize/upgrade. Footnote: admin_fee is at MAX, so 3pool LPs
+  earn ZERO from swap fees today).
+- **Series through-line** (all nine notes): every venue has a passive side that cannot refuse the
   flow — Uniswap LPs (0.05% fee), Aave liquidators (4.5–5%), HLP (liquidation edge), CEX insurance
   funds (→ADL), and us on the weekend fade (~147 bp). The edge is always in being paid to be that
   person; the payment scales with how badly the counterparty needs an exit and how little
