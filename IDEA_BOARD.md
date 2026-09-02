@@ -103,6 +103,8 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
   A1/A2): 24 pools discovered via a frozen admission rule, all balances on-chain, per-coin TVL-weighted
   aggregate excess. First reading: level 1 from FRAX/USDe, which the aggregate attributes to FRAX
   (+0.28) not USDe (−0.27). Leading indicator for the I53 dossier; predictive value NOT measured.
+  **A3 (2026-09-02):** sUSDe measured separately as pool-implied price vs redemption NAV
+  (`curve_wrapper_nav_discount` V32) — first reading +19.6 bp premium on DOLA/sUSDe $50M, level 0.
 - **Series through-line** (all eleven notes): every venue has a passive side that cannot refuse the
   flow — Uniswap LPs (0.05% fee), Aave liquidators (4.5–5%), HLP (liquidation edge), CEX insurance
   funds (→ADL), and us on the weekend fade (~147 bp). The edge is always in being paid to be that

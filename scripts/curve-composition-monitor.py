@@ -1,24 +1,22 @@
 #!/usr/bin/env python3
-"""Curve stablecoin-pool composition monitor.
+"""Curve stablecoin-pool monitor: composition (leading depeg indicator) + wrapper NAV discount.
 
-Discovers the admitted pools (Curve API, cached), reads every pool's composition and marginal price
-impact from ITS OWN on-chain state, aggregates per tracked coin, stores one row per
-(observation, pool, coin) in PostgreSQL (`curve_pool_composition`, migration V31) and writes
-CURVE_COMPOSITION_MONITOR.md with the alert level.
+Discovers admitted pools (Curve API, cached), reads every pool's state from ITS OWN on-chain
+contract, aggregates composition per tracked coin, measures yield-bearing wrappers (sUSDe) against
+their redemption NAV, stores rows in PostgreSQL (`curve_pool_composition` V31,
+`curve_wrapper_nav_discount` V32) and writes CURVE_COMPOSITION_MONITOR.md with the alert level.
 
-Design, discovery rule, aggregate definition and thresholds are frozen in
-CURVE_MONITOR_PREREGISTRATION.md (amendments A1, A2). Actions per level: STABLECOIN_DEPEG_DOSSIER.md.
+Design, discovery rules, metric definitions and thresholds are frozen in
+CURVE_MONITOR_PREREGISTRATION.md (amendments A1-A3). Actions per level: STABLECOIN_DEPEG_DOSSIER.md.
 Read-only: eth_call requests plus one Curve-API GET; no keys, no orders.
 
 Usage: python3 scripts/curve-composition-monitor.py   (DB_USER/DB_NAME/DB_PASSWORD from .env)
 """
-import csv
 import datetime
 import json
 import os
 import subprocess
 import sys
-import tempfile
 import time
 import urllib.request
 
@@ -35,23 +33,24 @@ RPCS = [os.environ["ETH_RPC"]] if os.environ.get("ETH_RPC") else [
 RPC = RPCS[0]
 
 TRACKED = ("USDT", "USDC", "USDe")
-# Pinned so the monitor never goes blind if discovery fails: (name, address).
-PINNED = [
+WRAPPERS = ("sUSDe",)                    # ERC-4626 wrappers measured against redemption NAV (A3)
+PINNED = [                               # never go blind if discovery fails
     ("3pool",     "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"),
     ("FRAX/USDe", "0x5dc1BF6f1e983C0b21EfB003c105133736fA0743"),
 ]
-# Discovery admission (pre-registration A2)
+# Discovery admission (A2/A3)
 MIN_POOL_TVL = 1_000_000
-PRICE_LO, PRICE_HI = 0.85, 1.03      # asymmetric: rich = yield-bearing/non-USD (out); cheap = depegging (kept)
-# Alerting (pre-registration, unchanged by A1/A2)
-EXC_L1, EXC_L2, EXC_L3 = 0.32, 0.42, 0.52      # excess = share - 1/N, single pool AND aggregate
-IMP_L1, IMP_L2, IMP_L3 = 30.0, 100.0, 300.0    # bp, adverse
-D7_L1 = 10.0                                   # pp rise in a coin's share over 7 days
-MIN_TVL_FOR_LEVEL = 10_000_000                 # thinner pools are informational only
+PRICE_LO, PRICE_HI = 0.85, 1.03          # asymmetric: rich = yield-bearing/non-USD (out); cheap = depegging (kept)
+# Alerting (original pre-registration, unchanged)
+EXC_L1, EXC_L2, EXC_L3 = 0.32, 0.42, 0.52        # excess = share - 1/N, single pool AND aggregate
+IMP_L1, IMP_L2, IMP_L3 = 30.0, 100.0, 300.0      # bp, adverse
+D7_L1 = 10.0                                     # pp rise in a coin's share over 7 days
+NAV_L1, NAV_L2, NAV_L3 = -50.0, -200.0, -500.0   # bp discount to NAV (A3)
+MIN_TVL_FOR_LEVEL = 10_000_000                   # thinner pools are informational only
 # Measurement
-PROBE_FRACTION, PROBE_FLOOR = 0.001, 1_000.0   # near-marginal get_dy probe
-SEL = {"balances": "0x4903b0d1", "A": "0xf446c1d0",
-       "get_dy_i128": "0x5e0d443f", "get_dy_u256": "0x556d6e9f"}
+PROBE_FRACTION, PROBE_FLOOR = 0.001, 1_000.0     # near-marginal probe
+SEL = {"balances": "0x4903b0d1", "A": "0xf446c1d0", "stored_rates": "0xfd0684b1",
+       "get_dy_i128": "0x5e0d443f", "get_dy_u256": "0x556d6e9f", "convertToAssets": "0x07a2d13a"}
 MIN_CALL_INTERVAL = 0.35
 _next_call_at = 0.0
 _HDRS = {"Content-Type": "application/json",
@@ -102,19 +101,30 @@ def as_int(hexstr):
     return int(hexstr, 16) if hexstr and hexstr != "0x" else None
 
 
+def dyn_uint_array(hexstr):
+    """Decode an ABI dynamic uint256[] return (offset, length, elements)."""
+    if not hexstr or len(hexstr) < 130:
+        return None
+    r = hexstr[2:]
+    off = int(r[0:64], 16) * 2
+    n = int(r[off:off + 64], 16)
+    return [int(r[off + 64 + i * 64: off + 128 + i * 64], 16) for i in range(n)]
+
+
 # ------------------------------------------------------------------------------------- discovery --
 
-def discover():
-    """Admitted pools per pre-registration A2, from the Curve API with a local cache fallback.
+def _in_band(c):
+    p = float(c.get("usdPrice") or 0)
+    return PRICE_LO <= p <= PRICE_HI
 
-    Returns a list of dicts: name, address, coins=[{symbol, address, decimals, usdPrice}].
-    """
-    pools = None
+
+def discover():
+    """Admitted composition pools and wrapper pools per A2/A3, from the Curve API with cache fallback."""
+    comp, wrap, source = [], [], "api"
     try:
         req = urllib.request.Request(CURVE_API, headers={"User-Agent": _HDRS["User-Agent"]})
         with urllib.request.urlopen(req, timeout=40) as r:
             raw = json.load(r).get("data", {}).get("poolData", [])
-        pools = []
         for p in raw:
             coins = p.get("coins") or []
             if p.get("isMetaPool") or p.get("isBroken") or not coins:
@@ -124,34 +134,35 @@ def discover():
             if float(p.get("usdTotal") or 0) < MIN_POOL_TVL:
                 continue
             syms = [c.get("symbol", "") for c in coins]
-            if not any(s in TRACKED for s in syms):
+            entry = {"name": "/".join(syms), "address": p["address"],
+                     "coins": [{"symbol": c["symbol"], "address": c["address"], "decimals": int(c["decimals"]),
+                                "usdPrice": float(c.get("usdPrice") or 0)} for c in coins]}
+            wrappers_here = [s for s in syms if s in WRAPPERS]
+            if wrappers_here:
+                # A3: exactly one wrapper, every other coin a nominal-$1 stable in band
+                others = [c for c in coins if c.get("symbol") not in WRAPPERS]
+                if len(wrappers_here) == 1 and others and all(_in_band(c) for c in others):
+                    wrap.append(entry)
                 continue
-            prices = [float(c.get("usdPrice") or 0) for c in coins]
-            if not all(PRICE_LO <= x <= PRICE_HI for x in prices):
-                continue
-            pools.append({"name": "/".join(syms), "address": p["address"],
-                          "coins": [{"symbol": c["symbol"], "address": c["address"],
-                                     "decimals": int(c["decimals"]), "usdPrice": float(c.get("usdPrice") or 0)}
-                                    for c in coins]})
+            if any(s in TRACKED for s in syms) and all(_in_band(c) for c in coins):
+                comp.append(entry)
         os.makedirs(os.path.dirname(UNIVERSE_CACHE), exist_ok=True)
         with open(UNIVERSE_CACHE, "w") as f:
-            json.dump({"fetched_at": datetime.datetime.now(datetime.UTC).isoformat(), "pools": pools}, f, indent=1)
-        source = "api"
+            json.dump({"fetched_at": datetime.datetime.now(datetime.UTC).isoformat(),
+                       "pools": comp, "wrapper_pools": wrap}, f, indent=1)
     except Exception as e:  # noqa: BLE001 - discovery is best-effort; cache and pins keep us running
         print(f"discovery via API failed ({e}); using cache/pinned", file=sys.stderr)
         if os.path.exists(UNIVERSE_CACHE):
             with open(UNIVERSE_CACHE) as f:
-                pools = json.load(f).get("pools", [])
-            source = "cache"
+                d = json.load(f)
+            comp, wrap, source = d.get("pools", []), d.get("wrapper_pools", []), "cache"
         else:
-            pools = []
             source = "pinned-only"
-    # pinned pools always present (coin metadata filled from the API entry when available)
-    have = {p["address"].lower() for p in pools}
+    have = {p["address"].lower() for p in comp}
     for name, addr in PINNED:
         if addr.lower() not in have:
-            pools.append({"name": name, "address": addr, "coins": None})
-    return pools, source
+            comp.append({"name": name, "address": addr, "coins": None})
+    return comp, wrap, source
 
 
 def coin_meta_on_chain(addr):
@@ -179,21 +190,48 @@ def coin_meta_on_chain(addr):
 
 def read_pool(pool):
     coins = pool["coins"] or coin_meta_on_chain(pool["address"])
-    bals = []
-    for i, c in enumerate(coins):
-        bals.append((as_int(call(pool["address"], SEL["balances"] + word(i))) or 0) / 10 ** c["decimals"])
+    bals = [(as_int(call(pool["address"], SEL["balances"] + word(i))) or 0) / 10 ** c["decimals"]
+            for i, c in enumerate(coins)]
     amp = as_int(call(pool["address"], SEL["A"]))
     return coins, bals, amp
 
 
+def get_dy(addr, i, j, dx_units):
+    for sel in ("get_dy_i128", "get_dy_u256"):
+        v = as_int(call(addr, SEL[sel] + word(i) + word(j) + word(dx_units)))
+        if v:
+            return v
+    return None
+
+
 def price_impact_bp(addr, i, j, dec_in, dec_out, bal_in):
     probe = max(PROBE_FLOOR, bal_in * PROBE_FRACTION)
-    dx = int(probe * 10 ** dec_in)
-    for sel in ("get_dy_i128", "get_dy_u256"):
-        v = as_int(call(addr, SEL[sel] + word(i) + word(j) + word(dx)))
-        if v:
-            return (v / 10 ** dec_out / probe - 1) * 10000
-    return None
+    v = get_dy(addr, i, j, int(probe * 10 ** dec_in))
+    return None if v is None else (v / 10 ** dec_out / probe - 1) * 10000
+
+
+def measure_wrapper_pool(pool):
+    """A3: wrapper pool-implied price vs redemption NAV. Returns a dict or None."""
+    coins, bals, _ = read_pool(pool)
+    wi = next((k for k, c in enumerate(coins) if c["symbol"] in WRAPPERS), None)
+    if wi is None or len(coins) < 2:
+        return None
+    ci = next(k for k in range(len(coins)) if k != wi)      # the (first) $1 counter-asset
+    w, c = coins[wi], coins[ci]
+    nav = (as_int(call(w["address"], SEL["convertToAssets"] + word(10 ** 18))) or 0) / 1e18
+    if nav <= 0:
+        return None
+    probe = max(PROBE_FLOOR, bals[wi] * PROBE_FRACTION)
+    v = get_dy(pool["address"], wi, ci, int(probe * 10 ** w["decimals"]))
+    if v is None:
+        return None
+    implied = v / 10 ** c["decimals"] / probe
+    rates = dyn_uint_array(call(pool["address"], SEL["stored_rates"]))
+    stored = rates[wi] / 1e18 if rates and len(rates) > wi else None
+    tvl = sum(b * (nav if k == wi else 1.0) for k, b in enumerate(bals))
+    return {"pool": pool["address"], "pool_name": pool["name"], "wrapper": w["symbol"], "wrapper_addr": w["address"],
+            "counter": c["symbol"], "nav": nav, "implied": implied,
+            "discount_bp": (implied / nav - 1) * 10000, "stored_rate": stored, "tvl": tvl}
 
 
 def level(excess, impact_bp):
@@ -211,15 +249,18 @@ def agg_level(excess):
     return 3 if excess >= EXC_L3 else 2 if excess >= EXC_L2 else 1 if excess >= EXC_L1 else 0
 
 
+def nav_level(discount_bp):
+    return 3 if discount_bp <= NAV_L3 else 2 if discount_bp <= NAV_L2 else 1 if discount_bp <= NAV_L1 else 0
+
+
 # ------------------------------------------------------------------------------------ postgres ---
 
-def psql(sql, args=()):
+def psql(sql):
     env = os.environ.copy()
     if env.get("DB_PASSWORD"):
         env["PGPASSWORD"] = env["DB_PASSWORD"]
     cmd = ["psql", "-X", "-v", "ON_ERROR_STOP=1", "-At", "-F", "|",
-           "-U", env.get("DB_USER") or "prop_strategy_app", "-d", env.get("DB_NAME") or "prop_strategy",
-           *args]
+           "-U", env.get("DB_USER") or "prop_strategy_app", "-d", env.get("DB_NAME") or "prop_strategy"]
     return subprocess.run(cmd, input=sql, text=True, capture_output=True, env=env)
 
 
@@ -240,22 +281,35 @@ def q(s):
     return "'" + str(s).replace("'", "''") + "'"
 
 
-def store(rows):
+def nz(v, fmt):
+    return "NULL" if v is None else fmt % v
+
+
+def store_composition(rows):
     if not rows:
-        return "no rows"
-    vals = []
-    for r in rows:
-        vals.append("(%s,%s,%s,%s,%s,%d,%.6f,%.6f,%.6f,%s,%.2f,%s,%s)" % (
-            q(r["ts"]), q(r["pool"]), q(r["pool_name"]), q(r["coin"]), q(r["coin_addr"]), r["n"],
-            r["balance"], r["share"], r["excess"],
-            "NULL" if r["impact"] is None else "%.4f" % r["impact"],
-            r["tvl"], "NULL" if r["a"] is None else str(int(r["a"])),
-            "NULL" if r["api_price"] is None else "%.6f" % r["api_price"]))
-    sql = ("INSERT INTO curve_pool_composition (observed_at, pool_address, pool_name, coin_symbol, "
-           "coin_address, n_coins, balance, share, excess, marginal_impact_bp, pool_tvl_usd, pool_a, "
-           "api_usd_price) VALUES " + ",".join(vals) + " ON CONFLICT DO NOTHING;")
+        return "no composition rows"
+    vals = ["(%s,%s,%s,%s,%s,%d,%.6f,%.6f,%.6f,%s,%.2f,%s,%s)" % (
+        q(r["ts"]), q(r["pool"]), q(r["pool_name"]), q(r["coin"]), q(r["coin_addr"]), r["n"],
+        r["balance"], r["share"], r["excess"], nz(r["impact"], "%.4f"), r["tvl"],
+        "NULL" if r["a"] is None else str(int(r["a"])), nz(r["api_price"], "%.6f")) for r in rows]
+    sql = ("INSERT INTO curve_pool_composition (observed_at, pool_address, pool_name, coin_symbol, coin_address, "
+           "n_coins, balance, share, excess, marginal_impact_bp, pool_tvl_usd, pool_a, api_usd_price) VALUES "
+           + ",".join(vals) + " ON CONFLICT DO NOTHING;")
     r = psql(sql)
-    return f"stored {len(rows)} rows" if r.returncode == 0 else f"PG WRITE FAILED: {r.stderr.strip()[:200]}"
+    return f"stored {len(rows)} composition rows" if r.returncode == 0 else f"PG WRITE FAILED: {r.stderr.strip()[:200]}"
+
+
+def store_wrappers(ts, ws):
+    if not ws:
+        return "no wrapper rows"
+    vals = ["(%s,%s,%s,%s,%s,%s,%.10f,%.10f,%.4f,%s,%.2f)" % (
+        q(ts), q(w["pool"]), q(w["pool_name"]), q(w["wrapper"]), q(w["wrapper_addr"]), q(w["counter"]),
+        w["nav"], w["implied"], w["discount_bp"], nz(w["stored_rate"], "%.10f"), w["tvl"]) for w in ws]
+    sql = ("INSERT INTO curve_wrapper_nav_discount (observed_at, pool_address, pool_name, wrapper_symbol, "
+           "wrapper_address, counter_symbol, nav, pool_implied_price, nav_discount_bp, pool_stored_rate, pool_tvl_usd) "
+           "VALUES " + ",".join(vals) + " ON CONFLICT DO NOTHING;")
+    r = psql(sql)
+    return f"stored {len(ws)} wrapper rows" if r.returncode == 0 else f"PG WRAPPER WRITE FAILED: {r.stderr.strip()[:200]}"
 
 
 # ------------------------------------------------------------------------------------------ main --
@@ -263,15 +317,15 @@ def store(rows):
 def main():
     now = datetime.datetime.now(datetime.UTC)
     ts = now.isoformat()
-    pools, source = discover()
+    comp_pools, wrap_pools, source = discover()
     prev = shares_7d_ago()
     rows, pool_reports = [], []
     agg_num = {c: 0.0 for c in TRACKED}
     agg_den = {c: 0.0 for c in TRACKED}
-    deepest = {c: (0.0, None, None) for c in TRACKED}   # tvl, pool name, impact
+    deepest = {c: (0.0, None, None) for c in TRACKED}
     overall = 0
 
-    for pool in pools:
+    for pool in comp_pools:
         try:
             coins, bals, amp = read_pool(pool)
         except Exception as e:  # noqa: BLE001 - one bad pool must not kill the run
@@ -296,8 +350,8 @@ def main():
             pool_lv = max(pool_lv, lv)
             lines.append((c["symbol"], bals[i], share, excess, imp, d7, lv))
             rows.append({"ts": ts, "pool": pool["address"], "pool_name": pool["name"], "coin": c["symbol"],
-                         "coin_addr": c["address"], "n": n, "balance": bals[i], "share": share,
-                         "excess": excess, "impact": imp, "tvl": total, "a": amp, "api_price": c.get("usdPrice")})
+                         "coin_addr": c["address"], "n": n, "balance": bals[i], "share": share, "excess": excess,
+                         "impact": imp, "tvl": total, "a": amp, "api_price": c.get("usdPrice")})
             if c["symbol"] in TRACKED:
                 agg_num[c["symbol"]] += total * excess
                 agg_den[c["symbol"]] += total
@@ -316,7 +370,24 @@ def main():
             overall = max(overall, lv)
             aggregates.append((coin, agg_den[coin], ex, deepest[coin][1], deepest[coin][2], lv))
 
-    stored = store(rows)
+    wrappers = []
+    for pool in wrap_pools:
+        try:
+            m = measure_wrapper_pool(pool)
+        except Exception as e:  # noqa: BLE001
+            print(f"wrapper pool {pool['name']} failed: {e}", file=sys.stderr)
+            continue
+        if not m:
+            continue
+        lv = nav_level(m["discount_bp"])
+        m["level"] = lv
+        m["thin"] = m["tvl"] < MIN_TVL_FOR_LEVEL
+        if not m["thin"]:
+            overall = max(overall, lv)
+        wrappers.append(m)
+
+    stored = store_composition(rows)
+    stored_w = store_wrappers(ts, wrappers)
 
     verdict = {0: "NORMAL - no action",
                1: "LEVEL 1 WATCH - re-read the dossier, journal it, no position change",
@@ -324,10 +395,12 @@ def main():
                3: "LEVEL 3 ACT - flatten own-capital positions in that asset and withdraw"}[overall]
 
     md = ["# Curve composition monitor", "",
-          "Composition read from each pool's own on-chain state; pools discovered per",
-          "`CURVE_MONITOR_PREREGISTRATION.md` A2; actions in `STABLECOIN_DEPEG_DOSSIER.md`.",
-          "Stored in PostgreSQL `curve_pool_composition`. Regenerate with `bash scripts/curve-monitor.sh`.", "",
-          f"**As of:** {now:%Y-%m-%dT%H:%M:%SZ}  ·  pools admitted: {len(pool_reports)} (discovery: {source})  ·  {stored}", "",
+          "Composition and wrapper NAV read from each pool's own on-chain state; pools discovered per",
+          "`CURVE_MONITOR_PREREGISTRATION.md` (A2, A3); actions in `STABLECOIN_DEPEG_DOSSIER.md`.",
+          "Stored in PostgreSQL `curve_pool_composition` / `curve_wrapper_nav_discount`.",
+          "Regenerate with `bash scripts/curve-monitor.sh`.", "",
+          f"**As of:** {now:%Y-%m-%dT%H:%M:%SZ}  ·  composition pools: {len(pool_reports)}, wrapper pools: {len(wrappers)} "
+          f"(discovery: {source})  ·  {stored}; {stored_w}", "",
           f"## Overall: {verdict}", "",
           "## Per-coin aggregate (TVL-weighted excess across every admitted pool holding the coin)", "",
           "| Coin | Pools TVL | Aggregate excess | Deepest pool | its marginal impact | Level |",
@@ -337,7 +410,19 @@ def main():
                   f"{'n/a' if dimp is None else f'{dimp:+.1f} bp'} | {lv} |")
     md += ["", "Aggregate excess isolates the coin itself: a coin under real redemption pressure is",
            "over-weighted in *every* pool it sits in; a single skewed pool is about the other coin.", "",
-           "## Pools (deepest first)", ""]
+           "## Wrapper NAV discount (Ethena redemption/cooldown stress — A3, separate from composition)", ""]
+    if wrappers:
+        md += ["| Pool | Wrapper | NAV (redeems for) | Pool-implied price | Discount to NAV | TVL | Level |",
+               "|---|---|---:|---:|---:|---:|---:|"]
+        for w in sorted(wrappers, key=lambda x: -x["tvl"]):
+            note = " _(thin, informational)_" if w["thin"] else ""
+            md.append(f"| {w['pool_name']} | {w['wrapper']} | {w['nav']:.4f} {w['counter']}≈USDe | {w['implied']:.4f} "
+                      f"{w['counter']} | **{w['discount_bp']:+.1f} bp** | ${w['tvl']:,.0f} | {w['level']}{note} |")
+        md += ["", "Negative = holders paying to exit ahead of the up-to-90-day cooldown. This is a liquidity/",
+               "duration signal about the wrapper, not a USDe depeg — which is why it is kept apart.", ""]
+    else:
+        md += ["_No wrapper pool admitted this run._", ""]
+    md += ["## Pools (deepest first)", ""]
     for name, addr, amp, tvl, lines, err, lv, thin in sorted(pool_reports, key=lambda r: -r[3]):
         note = f"  ·  _below ${MIN_TVL_FOR_LEVEL/1e6:,.0f}M TVL — informational, cannot raise the overall level_" if thin else ""
         md += [f"### {name}  (`{addr}`)", ""]
@@ -360,7 +445,7 @@ def main():
            "it. A persistent level (3pool has sat near 53% USDT for years) is not a warning; **change is.**"]
     with open(OUT, "w") as f:
         f.write("\n".join(md) + "\n")
-    print(f"level {overall}; {len(pool_reports)} pools; {stored}; wrote {OUT}")
+    print(f"level {overall}; {len(pool_reports)} composition pools; {len(wrappers)} wrapper pools; {stored}; {stored_w}; wrote {OUT}")
     return 0
 
 

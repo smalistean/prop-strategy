@@ -20,6 +20,12 @@ Last updated: 2026-08-25
   `CURVE_MONITOR_PREREGISTRATION.md` A1/A2 (a $1M probe larger than two pools had faked −7,700 bp
   alarms; a $10M TVL gate; pool selection). None touched the frozen thresholds. Still true and
   stated everywhere: composition-precedes-depeg is reasoned from the curve, **not measured**.
+- **A3 wrapper NAV discount added (2026-09-02 09:12 UTC, V32 `curve_wrapper_nav_discount`):** sUSDe is
+  kept OUT of the USDe composition aggregate (1 sUSDe = 1.2461 USDe and rising; the pool's rate oracle
+  already NAV-scales it; a skew conflates peg doubt with people paying to skip the 90-day cooldown) and
+  instead measured on its own: pool-implied price vs `convertToAssets` NAV. First reading DOLA/sUSDe
+  ($50M): implied 1.2486 vs NAV 1.2461 = **+19.6 bp premium**, level 0; the pool's `stored_rates`
+  (1.2461) matches the vault NAV, confirming the mechanism. Thresholds −50/−200/−500 bp pre-registered.
 
 ## XVF narrow-v1 CLOSED — checkpoint re-run (2026-09-01 18:43 UTC)
 

@@ -150,3 +150,54 @@ Rows go to PostgreSQL table `curve_pool_composition` (migration V31), one row pe
 - The 1.03 ceiling will drop any $1 coin that trades ≥3% *rich* — rare for a real stablecoin, and a
   coin trading rich is not a depeg risk to us, so this is accepted.
 - The API's `usdPrice` is used only as an admission filter, never as the measurement.
+
+---
+
+## Amendment A3 — wrapper NAV discount as a separate metric (2026-09-02 09:05 UTC, declared before any reading)
+
+### What it measures and why it is separate
+sUSDe (Ethena's ERC-4626 staked share) is deliberately **excluded from the USDe composition
+aggregate**: 1 sUSDe = 1.2461 USDe and rising, the pools that hold it run a rate oracle
+(`stored_rates` = [1, NAV]) so their invariant is already NAV-scaled, and — decisive — a skew in an
+sUSDe pool conflates two different stresses: doubt about the USDe peg, and people paying to skip the
+up-to-90-day cooldown while USDe sits at $1. Folding it into composition would blur exactly the
+distinction the dossier needs.
+
+The same pool yields a **different** signal that is worth having on its own: the pool-implied price
+of the wrapper versus what it redeems for.
+
+`nav_discount_bp(P) = (implied_P / NAV − 1) × 10^4`, where `NAV = wrapper.convertToAssets(1e18)`
+and `implied_P` = the pool's own `get_dy` for a near-marginal probe (0.1% of the wrapper balance,
+floor 1,000 tokens) of wrapper → counter-asset, per unit. Negative = the wrapper trades **below**
+redemption value = holders paying to exit ahead of the cooldown = Ethena redemption/cooldown stress.
+
+### Admission (frozen)
+Pools from the same Curve API pull where one coin's symbol is a configured wrapper (initially only
+`sUSDe`), **every other coin** is a nominal-$1 stable inside the same asymmetric 0.85–1.03 band, no
+metapool / LP coins, `usdTotal ≥ $1M`. The counter-asset must be ~$1 so that "counter per sUSDe" is
+comparable to "USDe per sUSDe". Pools whose counter is itself yield-bearing (sDAI/sUSDe,
+scrvUSD/sUSDe) are therefore out.
+
+### Thresholds (frozen — design choices, not measured optima)
+sUSDe has traded within a few tenths of a percent of NAV in normal conditions (+0.196% today).
+
+| Level | nav_discount | Meaning |
+|---|---|---|
+| 0 | > −50 bp | normal (premium or negligible discount) |
+| 1 watch | ≤ **−50 bp** | holders paying ≥0.5% to skip the cooldown |
+| 2 de-risk | ≤ **−200 bp** | sustained redemption pressure |
+| 3 act | ≤ **−500 bp** | redemption panic; treat as the dossier's level 3 for USDe |
+
+Same $10M TVL gate as composition: thinner wrapper pools are informational only. Overall level =
+max over composition pools, per-coin aggregates, and admitted wrapper pools.
+
+### Storage
+`curve_wrapper_nav_discount` (migration V32), one row per (observation, pool). Named generically so
+other wrappers (e.g. sDAI vs DAI) can be added later under the same rule.
+
+### Limits stated in advance
+- The counter-asset's own peg contaminates the reading: DOLA at 0.9978 makes sUSDe look ~22 bp
+  *richer* than it is. At the 50 bp threshold this is tolerable; it is why the first threshold is not
+  smaller.
+- A discount to NAV is a **liquidity/duration** signal about the wrapper. It is Ethena-specific
+  stress, not a USDe depeg — which is exactly why it is reported separately.
