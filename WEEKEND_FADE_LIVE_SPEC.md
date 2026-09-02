@@ -108,3 +108,19 @@ JPM, QCOM, TSM, PAYP, SNDK, AAOI, AXTI, NOK.
 ## Journal
 
 (append per weekend: date UTC · triggered · skipped+rule · sizes · entry/exit fills · net)
+
+### Weekend 2026-08-28 → entry 2026-08-30 20:00 UTC → exit 2026-08-31 15:00 UTC — **no trigger, no trade**
+
+- **Live:** AXTI read −0.90% at 14:00 UTC and −0.17% at 18:34 UTC on Sunday; at the 20:00 UTC decision
+  the user observed the trigger gone. **Confirmed from the pinned bars** (Binance 1h closes at Fri 19:00 /
+  Sun 19:00 / Mon 14:00 open-time bars): AXTI −11.9 bp at the official entry bar; **no name ≤ −50 bp**
+  (worst: AAOI −33.8, JPM −29.9, EWJ −18.8). Green crypto weekend (BTC ≈ +2%); 21 of 24 names were UP
+  into the entry bar (HOOD +309, MSTR +301, CRCL +263).
+- **Control-cut record (unconditional, all 24 names held entry→exit):** mean **−36.5 bp**, median −42.6 bp.
+  Buying "everything" would have lost; the trigger correctly sat out. This weekend enters the ledger as a
+  no-event observation only.
+- **Not a missed trade:** AXTI printed +471 bp entry→exit, but the pre-registered rule reads the 20:00 UTC
+  bar, not the afternoon; the 14:00 reading was a preview. One weekend proves nothing about the entry
+  time in either direction — it is exactly why the time is frozen instead of eyeballed.
+- Own-capital book unchanged (ONG narrow pair only). Recorded 2026-09-02 09:20 UTC.
+
