@@ -201,3 +201,31 @@ other wrappers (e.g. sDAI vs DAI) can be added later under the same rule.
   smaller.
 - A discount to NAV is a **liquidity/duration** signal about the wrapper. It is Ethena-specific
   stress, not a USDe depeg — which is exactly why it is reported separately.
+
+## Amendment A4 — 2026-09-02 13:35 UTC: admission requires a live par-redemption path; FRAX pools removed
+
+**What triggered it.** Each of the three readings so far raised LEVEL 1 from the same source:
+FRAX/USDe at 77/23 and FRAX/USDC at 90/10, FRAX priced 0.9914 by the API. `FRAX_LEGACY_FRXUSD_DD.md`
+read the token: legacy FRAX has no issuer redemption (FraxPoolV3 holds zero collateral, the v1 pool
+is paused, the 94.5% "collateral ratio" is AMO self-accounting), the 1:1 migration to frxUSD ended
+with FIP-430 (2025-04-21) and the Fraxtal bridge pair no longer maps to it, and the only exit is the
+secondary market — at −87 to −91 bp with every pool 77–94% FRAX. That is a structural discount, not
+redemption pressure, and it would hold the overall level at 1 indefinitely while saying nothing
+about USDT, USDC or USDe.
+
+**Rule change (post-hoc, disclosed).** A coin is admissible only if it has a live par path: issuer
+redemption open at least to whitelisted parties, or a permissionless mint/redeem module. The price
+band cannot catch this case — 0.9914 is inside 0.85–1.03 by design, so that a depegging coin stays in
+scope. Implementation: `EXCLUDED_COINS = {"FRAX": …}` in the script, checked before the band; any
+pool containing an excluded coin leaves both the composition and the wrapper universe. FRAX/USDe is
+no longer pinned. Adding a coin to the list requires a DD note naming the missing path.
+
+**Consequence disclosed: USDe composition coverage drops to zero.** FRAX/USDe ($34M) was the only
+USDe pool above the $1M admission; the next largest are USDT/USDe ($0.9M) and USDe/USDC ($0.5M). The
+report now prints a coverage-gap line for any tracked coin with no admitted pool. USDe stress is
+watched through A3 (sUSDe discount to NAV) and the API price band until a USDe pool ≥ $1M appears.
+The $10M level gate is not lowered for it — that would reintroduce the thin-pool noise A1 exists for.
+
+**Effect on the readings so far.** The three LEVEL 1 readings (2026-09-01 – 2026-09-02) are
+reclassified as structural-FRAX, not stablecoin stress; they stay in the table as recorded. The USDT
+(+0.13) and USDC (−0.04) aggregates never depended on a FRAX pool above the level gate.

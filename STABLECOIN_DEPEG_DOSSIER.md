@@ -4,7 +4,7 @@
 **What this is:** the I53 deliverable — reserve/redemption facts for the three stablecoins we
 touch, plus a written trigger checklist, so that during a wobble we act from a prepared page
 instead of researching under pressure. Substance comes from the contract reads
-(`USDC_ISSUER_POWERS_DD.md`, `USDT_ISSUER_POWERS_DD.md`, `ETHENA_USDE_DD.md`,
+(`USDC_ISSUER_POWERS_DD.md`, `USDT_ISSUER_POWERS_DD.md`, `ETHENA_USDE_DD.md`, `FRAX_LEGACY_FRXUSD_DD.md`,
 `CURVE_STABLESWAP_DD.md`); this document is the operational assembly.
 **Not a backtest.** No thresholds here are measured optima — they are design choices anchored to
 the Curve curve's geometry, and they are labelled as such.
@@ -127,12 +127,16 @@ otherwise hold.
 `curve_pool_composition` (migration V31; `curve_coin_aggregate` view), and writes
 `CURVE_COMPOSITION_MONITOR.md` with the alert level per §4. Pools are discovered from the Curve API
 under a frozen admission rule (nominal-$1 coins only, asymmetric 0.85–1.03 price band so a
-depegging coin stays in scope, no metapools, ≥$1M, 3pool and FRAX/USDe pinned) and every balance is
+depegging coin stays in scope, no metapools, ≥$1M, 3pool pinned, and — A4 — no coin without a live
+par-redemption path) and every balance is
 read on-chain. The per-coin **aggregate excess** (TVL-weighted across all admitted pools) is what
 answers the question a single pool cannot: first reading showed FRAX/USDe at 77/23 — the aggregate
 resolved it as FRAX weakness (+0.28 across two pools) with USDe on the scarce side (−0.27).
+Reading the token (`FRAX_LEGACY_FRXUSD_DD.md`) then showed that weakness is structural — legacy FRAX
+has no redemption path and its 1:1 migration ended — so FRAX pools were removed (A4); USDe now has no
+admitted composition pool on Curve Ethereum and rests on the sUSDe NAV metric (A3).
 Design and every post-hoc correction are disclosed in `CURVE_MONITOR_PREREGISTRATION.md`
-(amendments A1, A2). Still true: composition-precedes-depeg is reasoned, not measured.
+(amendments A1–A4). Still true: composition-precedes-depeg is reasoned, not measured.
 
 ## Sources
 

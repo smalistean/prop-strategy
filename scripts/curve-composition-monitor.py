@@ -34,10 +34,12 @@ RPC = RPCS[0]
 
 TRACKED = ("USDT", "USDC", "USDe")
 WRAPPERS = ("sUSDe",)                    # ERC-4626 wrappers measured against redemption NAV (A3)
+EXCLUDED_COINS = {                        # A4: no live par-redemption path -> not a $1 asset; needs a DD note to add
+    "FRAX": "legacy FRAX: no issuer redemption, 1:1 migration ended (FIP-430) - FRAX_LEGACY_FRXUSD_DD.md",
+}
 PINNED = [                               # never go blind if discovery fails
     ("3pool",     "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"),
-    ("FRAX/USDe", "0x5dc1BF6f1e983C0b21EfB003c105133736fA0743"),
-]
+]                                        # FRAX/USDe un-pinned by A4
 # Discovery admission (A2/A3)
 MIN_POOL_TVL = 1_000_000
 PRICE_LO, PRICE_HI = 0.85, 1.03          # asymmetric: rich = yield-bearing/non-USD (out); cheap = depegging (kept)
@@ -134,6 +136,8 @@ def discover():
             if float(p.get("usdTotal") or 0) < MIN_POOL_TVL:
                 continue
             syms = [c.get("symbol", "") for c in coins]
+            if any(s in EXCLUDED_COINS for s in syms):   # A4
+                continue
             entry = {"name": "/".join(syms), "address": p["address"],
                      "coins": [{"symbol": c["symbol"], "address": c["address"], "decimals": int(c["decimals"]),
                                 "usdPrice": float(c.get("usdPrice") or 0)} for c in coins]}
@@ -370,6 +374,8 @@ def main():
             overall = max(overall, lv)
             aggregates.append((coin, agg_den[coin], ex, deepest[coin][1], deepest[coin][2], lv))
 
+    uncovered = [c for c in TRACKED if agg_den[c] <= 0]   # A4: say so instead of going quiet
+
     wrappers = []
     for pool in wrap_pools:
         try:
@@ -396,12 +402,15 @@ def main():
 
     md = ["# Curve composition monitor", "",
           "Composition and wrapper NAV read from each pool's own on-chain state; pools discovered per",
-          "`CURVE_MONITOR_PREREGISTRATION.md` (A2, A3); actions in `STABLECOIN_DEPEG_DOSSIER.md`.",
+          "`CURVE_MONITOR_PREREGISTRATION.md` (A2, A3, A4); actions in `STABLECOIN_DEPEG_DOSSIER.md`.",
           "Stored in PostgreSQL `curve_pool_composition` / `curve_wrapper_nav_discount`.",
           "Regenerate with `bash scripts/curve-monitor.sh`.", "",
           f"**As of:** {now:%Y-%m-%dT%H:%M:%SZ}  ·  composition pools: {len(pool_reports)}, wrapper pools: {len(wrappers)} "
           f"(discovery: {source})  ·  {stored}; {stored_w}", "",
           f"## Overall: {verdict}", "",
+          *([f"**Coverage gap (A4):** no admitted composition pool holds {', '.join(uncovered)} - every pool with it "
+             f"is below the ${MIN_POOL_TVL/1e6:,.0f}M admission or contains an excluded coin ({', '.join(EXCLUDED_COINS)}). "
+             f"Monitored through the wrapper NAV metric and the API price band only.", ""] if uncovered else []),
           "## Per-coin aggregate (TVL-weighted excess across every admitted pool holding the coin)", "",
           "| Coin | Pools TVL | Aggregate excess | Deepest pool | its marginal impact | Level |",
           "|---|---:|---:|---|---:|---:|"]

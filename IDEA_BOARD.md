@@ -105,6 +105,9 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
   (+0.28) not USDe (−0.27). Leading indicator for the I53 dossier; predictive value NOT measured.
   **A3 (2026-09-02):** sUSDe measured separately as pool-implied price vs redemption NAV
   (`curve_wrapper_nav_discount` V32) — first reading +19.6 bp premium on DOLA/sUSDe $50M, level 0.
+  **A4 (2026-09-02):** FRAX pools removed — legacy FRAX has no par path, migration ended
+  (`FRAX_LEGACY_FRXUSD_DD.md`); the standing LEVEL 1 was structural. USDe composition coverage now
+  nil on Curve Ethereum, disclosed; USDe rests on the sUSDe NAV metric.
 - **Series through-line** (all eleven notes): every venue has a passive side that cannot refuse the
   flow — Uniswap LPs (0.05% fee), Aave liquidators (4.5–5%), HLP (liquidation edge), CEX insurance
   funds (→ADL), and us on the weekend fade (~147 bp). The edge is always in being paid to be that

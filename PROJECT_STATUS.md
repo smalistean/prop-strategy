@@ -20,12 +20,20 @@ Last updated: 2026-08-25
   `CURVE_MONITOR_PREREGISTRATION.md` A1/A2 (a $1M probe larger than two pools had faked −7,700 bp
   alarms; a $10M TVL gate; pool selection). None touched the frozen thresholds. Still true and
   stated everywhere: composition-precedes-depeg is reasoned from the curve, **not measured**.
-- **A3 wrapper NAV discount added (2026-09-02 09:12 UTC, V32 `curve_wrapper_nav_discount`):** sUSDe is
+- **A3 wrapper NAV discount added (2026-09-02 06:12 UTC, V32 `curve_wrapper_nav_discount`):** sUSDe is
   kept OUT of the USDe composition aggregate (1 sUSDe = 1.2461 USDe and rising; the pool's rate oracle
   already NAV-scales it; a skew conflates peg doubt with people paying to skip the 90-day cooldown) and
   instead measured on its own: pool-implied price vs `convertToAssets` NAV. First reading DOLA/sUSDe
   ($50M): implied 1.2486 vs NAV 1.2461 = **+19.6 bp premium**, level 0; the pool's `stored_rates`
   (1.2461) matches the vault NAV, confirming the mechanism. Thresholds −50/−200/−500 bp pre-registered.
+- **A4 (2026-09-02 13:35 UTC): FRAX pools removed; admission now requires a live par-redemption path.**
+  `FRAX_LEGACY_FRXUSD_DD.md` (12th contract read, the first driven by a monitor signal): legacy FRAX has
+  no issuer redemption (FraxPoolV3 holds zero collateral; the 94.5% CR is AMO self-accounting), the 1:1
+  upgrade to frxUSD ended with FIP-430 and the Fraxtal bridge pair no longer maps to it; every FRAX pool
+  is 77–94% FRAX at −87…−91 bp = structural discount, not stress. frxUSD itself: six custodian minters,
+  ≈$56M on-chain vs 97.9M supply, public par redemption = the USDC window holding $18; owner multisig can
+  freeze, pause and burn any balance, untimelocked. Disclosed cost: USDe composition coverage is now nil
+  (FRAX/USDe was the only USDe pool ≥ $1M); USDe rests on A3.
 
 ## XVF narrow-v1 CLOSED — checkpoint re-run (2026-09-01 18:43 UTC)
 

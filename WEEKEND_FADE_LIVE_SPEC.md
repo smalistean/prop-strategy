@@ -122,5 +122,5 @@ JPM, QCOM, TSM, PAYP, SNDK, AAOI, AXTI, NOK.
 - **Not a missed trade:** AXTI printed +471 bp entry→exit, but the pre-registered rule reads the 20:00 UTC
   bar, not the afternoon; the 14:00 reading was a preview. One weekend proves nothing about the entry
   time in either direction — it is exactly why the time is frozen instead of eyeballed.
-- Own-capital book unchanged (ONG narrow pair only). Recorded 2026-09-02 09:20 UTC.
+- Own-capital book unchanged (ONG narrow pair only). Recorded 2026-09-02 06:20 UTC.
 
