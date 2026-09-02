@@ -91,7 +91,14 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
   — minAnswer=1, maxAnswer=2^176-1, non-binding by ~42 orders of magnitude. Residual risks: the
   proxy pointer is swappable with no on-chain constraint, deviation/heartbeat are off-chain and
   unauditable, and consumers must police staleness themselves).
-- **Series through-line** (all ten notes): every venue has a passive side that cannot refuse the
+  `GMX_POOL_COUNTERPARTY_DD.md` (the HLP comparison in readable Solidity: `_reduceCollateral`
+  pays trader profit OUT of the LP pool and takes losses INTO it, so GM/GLP holders are
+  mechanically short trader PnL with no ability to quote, skew or hedge. Key distinction —
+  **being the counterparty and being the liquidator are different businesses**: HLP performs
+  liquidations and so profits from crashes, GMX's pool merely mirrors trader positioning and pays
+  a flat $5 liquidation fee OUT to an external caller. V1 is retired (isLeverageEnabled=0); live
+  V2 ETH/USD pool ~$60.9M vs HLP's $188.6M).
+- **Series through-line** (all eleven notes): every venue has a passive side that cannot refuse the
   flow — Uniswap LPs (0.05% fee), Aave liquidators (4.5–5%), HLP (liquidation edge), CEX insurance
   funds (→ADL), and us on the weekend fade (~147 bp). The edge is always in being paid to be that
   person; the payment scales with how badly the counterparty needs an exit and how little
