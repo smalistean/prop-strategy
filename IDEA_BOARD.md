@@ -84,7 +84,14 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
   case: A-ramp rate-limited, fee on a 3-day timelock, kill switch permanently EXPIRED (deadline
   was deploy+2 months, 2020), no freeze/seize/upgrade. Footnote: admin_fee is at MAX, so 3pool LPs
   earn ZERO from swap fees today).
-- **Series through-line** (all nine notes): every venue has a passive side that cannot refuse the
+  `CHAINLINK_ORACLE_DD.md` (closes the Aave loop: the liquidation trigger is a 31-node off-chain
+  median posted DISCRETELY through a swappable proxy — the discreteness is why cascades cluster,
+  many positions crossing HF<1 on the same oracle write. Key finding: the LUNA/Venus failure mode
+  (feed freezes at a bound because out-of-range reports REVERT rather than clamp) is disarmed here
+  — minAnswer=1, maxAnswer=2^176-1, non-binding by ~42 orders of magnitude. Residual risks: the
+  proxy pointer is swappable with no on-chain constraint, deviation/heartbeat are off-chain and
+  unauditable, and consumers must police staleness themselves).
+- **Series through-line** (all ten notes): every venue has a passive side that cannot refuse the
   flow — Uniswap LPs (0.05% fee), Aave liquidators (4.5–5%), HLP (liquidation edge), CEX insurance
   funds (→ADL), and us on the weekend fade (~147 bp). The edge is always in being paid to be that
   person; the payment scales with how badly the counterparty needs an exit and how little
