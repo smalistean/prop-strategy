@@ -96,3 +96,57 @@ driven by the *impact* rule, not the composition rule, and its direction indicat
 at a discount to USDe** — i.e. weakness in FRAX, an asset we do not hold. Whether 77/23 is chronic
 for this pool is unknown until history accumulates, which is exactly why level 1 means "look and
 journal", not "act".
+
+---
+
+## Amendment A2 — pool discovery, per-coin aggregation, PostgreSQL storage (2026-09-02 06:20 UTC, declared before any aggregate reading)
+
+### Why aggregate
+The first FRAX/USDe reading (77% FRAX / 23% USDe, ~85 bp) is ambiguous by construction: a two-coin
+pool cannot say whether FRAX is weak or USDe is strong. Only looking at USDe **across all the pools it
+sits in, against many different counter-assets,** isolates USDe itself. A coin under genuine
+redemption pressure is over-weighted everywhere at once; a single skewed pool is about the other coin.
+
+### Discovery rule (frozen)
+Pools are discovered from the Curve public API (`api.curve.finance/api/getPools/all/ethereum`) and
+admitted only if **all** of:
+- Ethereum mainnet, `isMetaPool = false`, `isBroken = false`, no coin `isBasePoolLpToken` — plain
+  coin-vs-coin pools only, so "share" has one clear meaning;
+- `usdTotal ≥ $1,000,000` — below this a pool is dust and only costs RPC calls (weighting already
+  makes dust irrelevant);
+- contains at least one **tracked coin** (USDT, USDC, USDe);
+- **every** coin's API `usdPrice` lies in **[0.85, 1.03]**. The band is deliberately asymmetric:
+  anything trading *rich* (>1.03) is yield-bearing or non-USD (sUSDe 1.25, sDAI, EURS 1.19, WBTC) and
+  would make composition unreadable, so it is excluded; anything trading *cheap* stays in scope
+  down to 0.85, because a coin depegging is exactly when we must not lose sight of its pools.
+Two pools are **pinned** regardless of the API (3pool and FRAX/USDe) so the monitor never goes blind.
+The API is used **only for discovery and static coin metadata** (symbol, decimals, address);
+every balance, A and price impact is read **on-chain** as before. The last good pool list is cached
+locally; if the API is unavailable the cache is used, and if there is no cache the pinned pools are.
+The discovered universe is itself recorded every run (distinct pools per `observed_at`), so any
+drift in what is being monitored is auditable after the fact.
+
+### Aggregate metric (frozen)
+For each tracked coin X, across every admitted pool P containing X:
+
+`aggregate_excess(X) = Σ_P TVL_P × excess_{P,X} / Σ_P TVL_P`, where `excess_{P,X} = share_{P,X} − 1/N_P`.
+
+Zero means balanced everywhere; positive means X is being sold into pools on average. It is
+TVL-weighted by construction (3pool's $160M dominates USDT/USDC, as it should). **The same excess
+thresholds apply to the aggregate as to a single pool: 0.32 / 0.42 / 0.52.** Price impact is not
+aggregated (curves do not add); the deepest admitted pool's marginal impact is reported per coin.
+
+### Overall level (frozen)
+`max(per-pool level for pools ≥ $10M TVL, per-coin aggregate level)`. Thin pools still cannot raise
+the overall level on their own, but they do contribute their (small) weight to the aggregates.
+
+### Storage
+Rows go to PostgreSQL table `curve_pool_composition` (migration V31), one row per
+(observed_at, pool, coin), matching how every other time series in this repository is kept. The
+7-day-delta trigger reads from that table. The CSV from the first version is retired.
+
+### Honest limits added by this amendment
+- The Curve API is now a discovery dependency (mitigated by the cache and the pinned pools).
+- The 1.03 ceiling will drop any $1 coin that trades ≥3% *rich* — rare for a real stablecoin, and a
+  coin trading rich is not a depeg risk to us, so this is accepted.
+- The API's `usdPrice` is used only as an admission filter, never as the measurement.

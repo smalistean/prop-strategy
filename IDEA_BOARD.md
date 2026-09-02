@@ -98,6 +98,11 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
   liquidations and so profits from crashes, GMX's pool merely mirrors trader positioning and pays
   a flat $5 liquidation fee OUT to an external caller. V1 is retired (isLeverageEnabled=0); live
   V2 ETH/USD pool ~$60.9M vs HLP's $188.6M).
+- **Curve composition monitor BUILT 2026-09-02** (`scripts/curve-monitor.sh`, daily LaunchAgent, PG
+  table `curve_pool_composition` V31 + `curve_coin_aggregate` view; `CURVE_MONITOR_PREREGISTRATION.md`
+  A1/A2): 24 pools discovered via a frozen admission rule, all balances on-chain, per-coin TVL-weighted
+  aggregate excess. First reading: level 1 from FRAX/USDe, which the aggregate attributes to FRAX
+  (+0.28) not USDe (−0.27). Leading indicator for the I53 dossier; predictive value NOT measured.
 - **Series through-line** (all eleven notes): every venue has a passive side that cannot refuse the
   flow — Uniswap LPs (0.05% fee), Aave liquidators (4.5–5%), HLP (liquidation edge), CEX insurance
   funds (→ADL), and us on the weekend fade (~147 bp). The edge is always in being paid to be that

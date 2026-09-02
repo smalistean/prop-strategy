@@ -2,6 +2,25 @@
 
 Last updated: 2026-08-25
 
+## Curve composition monitor built — leading depeg indicator for the I53 dossier (2026-09-02 05:40 UTC)
+
+- `scripts/curve-monitor.sh` (read-only; eth_call + one Curve-API GET) runs daily via LaunchAgent
+  `com.smalistean.propstrategy.curve-monitor` (09:15 local) and stores one row per
+  (observation, pool, coin) in **`curve_pool_composition` (migration V31)**, with a
+  `curve_coin_aggregate` view for the TVL-weighted per-coin excess. Added `MigrateApplication` so
+  migrations can be applied deliberately instead of by whichever hourly importer runs next.
+- Pools are **discovered** from the Curve API under a frozen admission rule (nominal-$1 coins, an
+  asymmetric 0.85–1.03 price band so a depegging coin stays in scope while yield-bearing/non-USD
+  coins are excluded, no metapools, >= $1M, 3pool + FRAX/USDe pinned); 24 pools admitted on the
+  first run. Every balance, A and marginal impact is read on-chain; the API supplies only metadata.
+- **Aggregation was the point:** a two-coin pool cannot say which side is weak. First reading put
+  FRAX/USDe at 77/23 (level 1); the per-coin aggregate attributed it to FRAX (+0.28 across two
+  pools) with USDe on the scarce side (−0.27). USDT +0.13, USDC −0.04 — normal.
+- Three post-hoc corrections to the first version are disclosed in
+  `CURVE_MONITOR_PREREGISTRATION.md` A1/A2 (a $1M probe larger than two pools had faked −7,700 bp
+  alarms; a $10M TVL gate; pool selection). None touched the frozen thresholds. Still true and
+  stated everywhere: composition-precedes-depeg is reasoned from the curve, **not measured**.
+
 ## XVF narrow-v1 CLOSED — checkpoint re-run (2026-09-01 18:43 UTC)
 
 - Re-ran the calibration checkpoint after 8 days more shadow collection (130 hourly dry runs).

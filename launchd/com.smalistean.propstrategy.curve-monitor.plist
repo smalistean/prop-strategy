@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.smalistean.propstrategy.curve-monitor</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/stas/workspace/other/prop-strategy/scripts/curve-monitor.sh</string>
+    </array>
+    <!-- Daily at 09:15 local (~06:15 UTC): composition is a days-scale leading indicator, so
+         one reading a day is the right cadence; the 7-day-delta trigger needs a week of rows. -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>15</integer></dict>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>WorkingDirectory</key>
+    <string>/Users/stas/workspace/other/prop-strategy</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/Users/stas/workspace/other/prop-strategy/logs/curve-monitor-launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/stas/workspace/other/prop-strategy/logs/curve-monitor-launchd.err.log</string>
+</dict>
+</plist>

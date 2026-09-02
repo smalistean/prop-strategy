@@ -120,13 +120,19 @@ otherwise hold.
 - Reserve facts are from issuer disclosure and contract code, not audit.
 - Nothing here is a prediction that any of these three will depeg.
 
-## 7. Cheap follow-on, if we want it
+## 7. The composition monitor — built (2026-09-02)
 
-A composition monitor: one `balances(i)` call per major pool (3pool, USDe/USDC, crvUSD), logged
-daily, alerting on the level-1/2/3 lines above. No indexer, no archive node — a handful of
-`eth_call`s. It would turn section 4 from a page we must remember to read into something that pages
-us. **Not built; noted as a candidate.** If built, its alert definition should be pre-registered
-before being judged against any outcome.
+`bash scripts/curve-monitor.sh` — read-only, runs daily via LaunchAgent
+`com.smalistean.propstrategy.curve-monitor` (09:15 local), stores every reading in PostgreSQL
+`curve_pool_composition` (migration V31; `curve_coin_aggregate` view), and writes
+`CURVE_COMPOSITION_MONITOR.md` with the alert level per §4. Pools are discovered from the Curve API
+under a frozen admission rule (nominal-$1 coins only, asymmetric 0.85–1.03 price band so a
+depegging coin stays in scope, no metapools, ≥$1M, 3pool and FRAX/USDe pinned) and every balance is
+read on-chain. The per-coin **aggregate excess** (TVL-weighted across all admitted pools) is what
+answers the question a single pool cannot: first reading showed FRAX/USDe at 77/23 — the aggregate
+resolved it as FRAX weakness (+0.28 across two pools) with USDe on the scarce side (−0.27).
+Design and every post-hoc correction are disclosed in `CURVE_MONITOR_PREREGISTRATION.md`
+(amendments A1, A2). Still true: composition-precedes-depeg is reasoned, not measured.
 
 ## Sources
 
