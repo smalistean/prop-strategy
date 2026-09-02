@@ -1,11 +1,11 @@
 # Curve composition monitor
 
 Composition and wrapper NAV read from each pool's own on-chain state; pools discovered per
-`CURVE_MONITOR_PREREGISTRATION.md` (A2-A5); actions in `STABLECOIN_DEPEG_DOSSIER.md`.
+`CURVE_MONITOR_PREREGISTRATION.md` (A2-A6); actions in `STABLECOIN_DEPEG_DOSSIER.md`.
 Stored in PostgreSQL `curve_pool_composition` / `curve_wrapper_nav_discount` / `curve_pegkeeper_state`.
 Regenerate with `bash scripts/curve-monitor.sh`.
 
-**As of:** 2026-09-02T14:17:42Z  ·  composition pools: 21, wrapper pools: 1 (discovery: api)  ·  stored 43 composition rows; stored 1 wrapper rows; stored 5 pegkeeper rows
+**As of:** 2026-09-02T14:46:24Z  ·  composition pools: 21, wrapper pools: 1 (discovery: api)  ·  stored 43 composition rows; stored 1 wrapper rows (A6 corrected 1); stored 5 pegkeeper rows
 
 ## Overall: NORMAL - no action
 
@@ -15,8 +15,8 @@ Regenerate with `bash scripts/curve-monitor.sh`.
 
 | Coin | Pools TVL | Aggregate excess | Deepest pool | its marginal impact | Level |
 |---|---:|---:|---|---:|---:|
-| USDT | $233,247,630 | +0.156 | DAI/USDC/USDT | -4.5 bp | 0 |
-| USDC | $383,540,208 | -0.048 | DAI/USDC/USDT | +2.3 bp | 0 |
+| USDT | $233,251,788 | +0.158 | DAI/USDC/USDT | -4.5 bp | 0 |
+| USDC | $383,544,591 | -0.048 | DAI/USDC/USDT | +2.5 bp | 0 |
 
 Aggregate excess isolates the coin itself: a coin under real redemption pressure is
 over-weighted in *every* pool it sits in; a single skewed pool is about the other coin.
@@ -25,10 +25,19 @@ over-weighted in *every* pool it sits in; a single skewed pool is about the othe
 
 | Pool | Wrapper | NAV (redeems for) | Pool-implied price | Discount to NAV | TVL | Level |
 |---|---|---:|---:|---:|---:|---:|
-| DOLA/sUSDe | sUSDe | 1.2462 DOLA≈USDe | 1.2486 DOLA | **+19.6 bp** | $49,978,703 | 0 |
+| DOLA/sUSDe | sUSDe | 1.2462 DOLA≈USDe | 1.2486 DOLA | **+19.6 bp** | $49,978,738 | 0 |
 
 Negative = holders paying to exit ahead of the up-to-90-day cooldown. This is a liquidity/
 duration signal about the wrapper, not a USDe depeg — which is why it is kept apart.
+
+### Counter-asset correction (A6 - the wrapper reading restated in dollars)
+
+| Pool | Counter | Counter in $ (route) | Counter share in its pool | Raw discount | Discount in $ | Par capacity (PSM) | Reliable |
+|---|---|---:|---:|---:|---:|---:|---|
+| DOLA/sUSDe | DOLA | 0.99723 (-27.7 bp via sUSDS) | 78.0% | +19.6 bp | **-8.2 bp** | $0 | yes |
+
+The level uses the dollar-restated discount: a counter-asset with no working par path (DOLA) enters the
+sUSDe reading one for one (`DOLA_INVERSE_DD.md`). Par capacity = USDS actually redeemable from the DOLA PSM.
 
 ## crvUSD PegKeepers (A5 - the contract that rebalances the crvUSD pools we read)
 
@@ -36,11 +45,11 @@ Aggregate crvUSD price **0.99989** -> PegKeepers may only WITHDRAW (a counter-co
 
 | Pool | Counter | Counter share | TVL | PK debt | Ceiling | PK LP share | Oracle price | Gap vs other PK pools | Provide allowed | Level |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| USDC/crvUSD | USDC | 34.6% | $13,697,649 | 0 | 135,000,000 | 0.0% | 0.99963 | -11.6 bp | 0 | 0 |
-| USDT/crvUSD | USDT | 48.6% | $54,360,949 | 42,163,143 | 135,000,000 | 77.6% | 0.99997 | -8.2 bp | 0 | 0 |
-| PYUSD/crvUSD _(thin)_ | PYUSD | 34.3% | $1,088,541 | 0 | 45,000,000 | 0.0% | 0.99961 | -11.8 bp | 0 | 0 |
-| frxUSD/crvUSD | frxUSD | 42.2% | $14,795,184 | 0 | 9,000,000 | 0.0% | 0.99984 | -9.5 bp | 0 | 0 |
-| GHO/crvUSD _(thin)_ | GHO | 73.2% | $1,328,633 | 0 | 0 | 0.0% | 1.00079 | +8.2 bp | 0 | 0 |
+| USDC/crvUSD | USDC | 33.6% | $13,697,715 | 0 | 135,000,000 | 0.0% | 0.99960 | -11.8 bp | 0 | 0 |
+| USDT/crvUSD | USDT | 48.6% | $54,360,951 | 42,163,143 | 135,000,000 | 77.6% | 0.99997 | -8.1 bp | 0 | 0 |
+| PYUSD/crvUSD _(thin)_ | PYUSD | 33.6% | $1,088,544 | 0 | 45,000,000 | 0.0% | 0.99960 | -11.8 bp | 0 | 0 |
+| frxUSD/crvUSD | frxUSD | 43.1% | $14,795,179 | 0 | 9,000,000 | 0.0% | 0.99985 | -9.3 bp | 0 | 0 |
+| GHO/crvUSD _(thin)_ | GHO | 73.8% | $1,328,639 | 0 | 0 | 0.0% | 1.00078 | +8.1 bp | 0 | 0 |
 
 Gap = this pool's crvUSD oracle price minus the highest of the other PegKeeper pools; the Regulator blocks
 `provide` above +3 bp (its `worst_price_threshold`) - Curve's own 'this pool's stablecoin is being sold' test.
@@ -50,13 +59,13 @@ Levels (tracked counter-coins only, pools >= $10M): 1 at >= +3 bp with the pool 
 
 ### DAI/USDC/USDT  (`0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7`)
 
-A = 4000  ·  TVL ~$160,335,478  ·  pool level: **0**
+A = 4000  ·  TVL ~$160,335,672  ·  pool level: **0**
 
 | Coin | Balance | Share | Excess | marginal impact | 7d share change | Level |
 |---|---:|---:|---:|---:|---:|---:|
-| DAI | 37,409,429 | 23.3% | -10.0% | -2.4 bp | — | 0 |
-| USDC | 31,933,403 | 19.9% | -13.4% | +2.3 bp | — | 0 |
-| USDT | 90,992,647 | 56.8% | +23.4% | -4.5 bp | — | 0 |
+| DAI | 37,409,429 | 23.3% | -10.0% | -2.5 bp | — | 0 |
+| USDC | 31,433,598 | 19.6% | -13.7% | +2.5 bp | — | 0 |
+| USDT | 91,492,646 | 57.1% | +23.7% | -4.5 bp | — | 0 |
 
 ### USDC/RLUSD  (`0xD001aE433f254283FeCE51d4ACcE8c53263aa186`)
 
@@ -69,30 +78,30 @@ A = 2000  ·  TVL ~$65,724,270  ·  pool level: **0**
 
 ### USDT/crvUSD  (`0x390f3595bCa2Df7d23783dFd126427CCeb997BF4`)
 
-A = 2000  ·  TVL ~$54,360,949  ·  pool level: **0**
+A = 2000  ·  TVL ~$54,360,951  ·  pool level: **0**
 
 | Coin | Balance | Share | Excess | marginal impact | 7d share change | Level |
 |---|---:|---:|---:|---:|---:|---:|
-| USDT | 26,420,550 | 48.6% | -1.4% | -0.7 bp | — | 0 |
-| crvUSD | 27,940,400 | 51.4% | +1.4% | -1.3 bp | — | 0 |
+| USDT | 26,404,485 | 48.6% | -1.4% | -0.7 bp | — | 0 |
+| crvUSD | 27,956,465 | 51.4% | +1.4% | -1.3 bp | — | 0 |
 
 ### PYUSD/USDC  (`0x383E6b4437b59fff47B619CBA855CA29342A8559`)
 
-A = 5000  ·  TVL ~$39,744,278  ·  pool level: **0**
+A = 5000  ·  TVL ~$39,744,308  ·  pool level: **0**
 
 | Coin | Balance | Share | Excess | marginal impact | 7d share change | Level |
 |---|---:|---:|---:|---:|---:|---:|
-| PYUSD | 17,796,380 | 44.8% | -5.2% | -0.6 bp | — | 0 |
-| USDC | 21,947,898 | 55.2% | +5.2% | -1.4 bp | — | 0 |
+| PYUSD | 17,390,904 | 43.8% | -6.2% | -0.5 bp | — | 0 |
+| USDC | 22,353,405 | 56.2% | +6.2% | -1.5 bp | — | 0 |
 
 ### USDG/USDC  (`0xc061caa073f3d95F80f8e5428d32D2d76F5e1622`)
 
-A = 3000  ·  TVL ~$30,485,850  ·  pool level: **0**
+A = 3000  ·  TVL ~$30,485,969  ·  pool level: **0**
 
 | Coin | Balance | Share | Excess | marginal impact | 7d share change | Level |
 |---|---:|---:|---:|---:|---:|---:|
-| USDG | 9,910,598 | 32.5% | -17.5% | +1.9 bp | — | 0 |
-| USDC | 20,575,253 | 67.5% | +17.5% | -4.2 bp | — | 0 |
+| USDG | 9,707,542 | 31.8% | -18.2% | +2.1 bp | — | 0 |
+| USDC | 20,778,427 | 68.2% | +18.2% | -4.4 bp | — | 0 |
 
 ### USDC/USDtb  (`0xC2921134073151490193AC7369313c8e0b08e1E7`)
 
@@ -105,12 +114,12 @@ A = 800  ·  TVL ~$20,075,232  ·  pool level: **0**
 
 ### USDC/crvUSD  (`0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E`)
 
-A = 2000  ·  TVL ~$13,697,649  ·  pool level: **0**
+A = 2000  ·  TVL ~$13,697,715  ·  pool level: **0**
 
 | Coin | Balance | Share | Excess | marginal impact | 7d share change | Level |
 |---|---:|---:|---:|---:|---:|---:|
-| USDC | 4,736,847 | 34.6% | -15.4% | +2.8 bp | — | 0 |
-| crvUSD | 8,960,803 | 65.4% | +15.4% | -4.8 bp | — | 0 |
+| USDC | 4,607,515 | 33.6% | -16.4% | +3.1 bp | — | 0 |
+| crvUSD | 9,090,200 | 66.4% | +16.4% | -5.1 bp | — | 0 |
 
 ### USAT/USDT  (`0x0Bdb2c3AF83EE1d3196FA64d3162e54624B5f6b0`)
 
@@ -136,8 +145,8 @@ A = 300  ·  TVL ~$9,116,835  ·  pool level: **0**  ·  _below $10M TVL — inf
 
 | Coin | Balance | Share | Excess | marginal impact | 7d share change | Level |
 |---|---:|---:|---:|---:|---:|---:|
-| BOLD | 4,101,857 | 45.0% | -5.0% | +2.7 bp | — | 0 |
-| USDC | 5,014,978 | 55.0% | +5.0% | -10.8 bp | — | 0 |
+| BOLD | 4,101,483 | 45.0% | -5.0% | +2.7 bp | — | 0 |
+| USDC | 5,015,352 | 55.0% | +5.0% | -10.8 bp | — | 0 |
 
 ### USDC/fxUSD  (`0x5018BE882DccE5E3F2f3B0913AE2096B9b3fB61f`)
 
@@ -145,17 +154,17 @@ A = 1200  ·  TVL ~$8,800,852  ·  pool level: **0**  ·  _below $10M TVL — in
 
 | Coin | Balance | Share | Excess | marginal impact | 7d share change | Level |
 |---|---:|---:|---:|---:|---:|---:|
-| USDC | 3,776,646 | 42.9% | -7.1% | +1.4 bp | — | 0 |
-| fxUSD | 5,024,206 | 57.1% | +7.1% | -3.5 bp | — | 0 |
+| USDC | 3,778,785 | 42.9% | -7.1% | +1.4 bp | — | 0 |
+| fxUSD | 5,022,067 | 57.1% | +7.1% | -3.5 bp | — | 0 |
 
 ### USDC/USDT  (`0x4f493B7dE8aAC7d55F71853688b1F7C8F0243C85`)
 
-A = 10000  ·  TVL ~$5,787,631  ·  pool level: **0**  ·  _below $10M TVL — informational, cannot raise the overall level_
+A = 10000  ·  TVL ~$5,791,594  ·  pool level: **0**  ·  _below $10M TVL — informational, cannot raise the overall level_
 
 | Coin | Balance | Share | Excess | marginal impact | 7d share change | Level |
 |---|---:|---:|---:|---:|---:|---:|
-| USDC | 1,088,830 | 18.8% | -31.2% | +3.2 bp | — | 0 |
-| USDT | 4,698,801 | 81.2% | +31.2% | -3.5 bp | — | 0 |
+| USDC | 1,107,959 | 19.1% | -30.9% | +3.1 bp | — | 0 |
+| USDT | 4,683,634 | 80.9% | +30.9% | -3.4 bp | — | 0 |
 
 ### trUSD/USDC  (`0xb723a224c9ACF3891B20437B4d55dd45600F5FA3`)
 
@@ -163,8 +172,8 @@ A = 1000  ·  TVL ~$5,156,141  ·  pool level: **0**  ·  _below $10M TVL — in
 
 | Coin | Balance | Share | Excess | marginal impact | 7d share change | Level |
 |---|---:|---:|---:|---:|---:|---:|
-| trUSD | 2,730,048 | 52.9% | +2.9% | -2.2 bp | — | 0 |
-| USDC | 2,426,093 | 47.1% | -2.9% | +0.2 bp | — | 0 |
+| trUSD | 2,730,447 | 53.0% | +3.0% | -2.2 bp | — | 0 |
+| USDC | 2,425,694 | 47.0% | -3.0% | +0.2 bp | — | 0 |
 
 ### apxUSD/USDC  (`0x6F63deEDc9870D6c16FC644C6654748352cdc87c`)
 
@@ -177,12 +186,12 @@ A = 100  ·  TVL ~$4,778,871  ·  pool level: **0**  ·  _below $10M TVL — inf
 
 ### USDC/USDf  (`0x72310DAAed61321b02B08A547150c07522c6a976`)
 
-A = 1000  ·  TVL ~$3,151,805  ·  pool level: **0**  ·  _below $10M TVL — informational, cannot raise the overall level_
+A = 1000  ·  TVL ~$3,151,820  ·  pool level: **0**  ·  _below $10M TVL — informational, cannot raise the overall level_
 
 | Coin | Balance | Share | Excess | marginal impact | 7d share change | Level |
 |---|---:|---:|---:|---:|---:|---:|
-| USDC | 700,983 | 22.2% | -27.8% | +19.1 bp | — | 0 |
-| USDf | 2,450,823 | 77.8% | +27.8% | -27.2 bp | — | 0 |
+| USDC | 695,351 | 22.1% | -27.9% | +19.5 bp | — | 0 |
+| USDf | 2,456,468 | 77.9% | +27.9% | -27.6 bp | — | 0 |
 
 ### FIDD/USDC  (`0xE47E8Ced9D94AA43C922627782E29b41a93202AF`)
 
@@ -213,12 +222,12 @@ A = 3000  ·  TVL ~$1,750,468  ·  pool level: **0**  ·  _below $10M TVL — in
 
 ### USDC/USG  (`0x97BA10115da528c113462EDE9C20D7adc806D93f`)
 
-A = 325  ·  TVL ~$1,584,484  ·  pool level: **0**  ·  _below $10M TVL — informational, cannot raise the overall level_
+A = 325  ·  TVL ~$1,584,482  ·  pool level: **0**  ·  _below $10M TVL — informational, cannot raise the overall level_
 
 | Coin | Balance | Share | Excess | marginal impact | 7d share change | Level |
 |---|---:|---:|---:|---:|---:|---:|
-| USDC | 442,118 | 27.9% | -22.1% | +36.9 bp | — | 1 |
-| USG | 1,142,366 | 72.1% | +22.1% | -46.6 bp | — | 1 |
+| USDC | 442,746 | 27.9% | -22.1% | +36.7 bp | — | 1 |
+| USG | 1,141,736 | 72.1% | +22.1% | -46.5 bp | — | 1 |
 
 ### OUSD/USDC  (`0x6d18E1a7faeB1F0467A77C0d293872ab685426dc`)
 
@@ -226,8 +235,8 @@ A = 1500  ·  TVL ~$1,097,566  ·  pool level: **0**  ·  _below $10M TVL — in
 
 | Coin | Balance | Share | Excess | marginal impact | 7d share change | Level |
 |---|---:|---:|---:|---:|---:|---:|
-| OUSD | 675,124 | 61.5% | +11.5% | -4.5 bp | — | 0 |
-| USDC | 422,443 | 38.5% | -11.5% | +2.4 bp | — | 0 |
+| OUSD | 674,776 | 61.5% | +11.5% | -4.5 bp | — | 0 |
+| USDC | 422,790 | 38.5% | -11.5% | +2.3 bp | — | 0 |
 
 ### USDQ/USDT  (`0x5a8C7623FEe10542614e492c670a67e3DfE922F8`)
 
@@ -235,8 +244,8 @@ A = 20000  ·  TVL ~$1,001,055  ·  pool level: **0**  ·  _below $10M TVL — i
 
 | Coin | Balance | Share | Excess | marginal impact | 7d share change | Level |
 |---|---:|---:|---:|---:|---:|---:|
-| USDQ | 803,979 | 80.3% | +30.3% | -1.5 bp | — | 0 |
-| USDT | 197,076 | 19.7% | -30.3% | +1.5 bp | — | 0 |
+| USDQ | 804,215 | 80.3% | +30.3% | -1.5 bp | — | 0 |
+| USDT | 196,839 | 19.7% | -30.3% | +1.5 bp | — | 0 |
 
 ---
 

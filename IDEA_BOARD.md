@@ -111,6 +111,8 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
   **A5 (2026-09-02):** crvUSD PegKeeper state + the Regulator's 3 bp relative-gap test stored and alerted
   (`CRVUSD_PEGKEEPER_DD.md`): the USDT PegKeeper owns 77.6% of USDT/crvUSD and moved its share ~15 pp in
   three days last week with no USDT moving — PegKeeper-pool readings are damped while it may provide.
+  **A6 (2026-09-02):** sUSDe NAV reading restated in dollars (`DOLA_INVERSE_DD.md`): DOLA at −28 bp with an
+  empty PSM flipped the raw +19.6 bp premium into a −8.2 bp discount; counter health line + unreliable flag.
 - **Series through-line** (all eleven notes): every venue has a passive side that cannot refuse the
   flow — Uniswap LPs (0.05% fee), Aave liquidators (4.5–5%), HLP (liquidation edge), CEX insurance
   funds (→ADL), and us on the weekend fade (~147 bp). The edge is always in being paid to be that

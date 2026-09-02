@@ -41,6 +41,12 @@ Last updated: 2026-08-25
   Share readings in PegKeeper pools are damped while `provide_allowed > 0`; the Regulator refuses to absorb a
   pool whose crvUSD price exceeds the other PegKeeper pools by 3 bp — Curve's own depeg detector, now stored and
   alerted on (3/30/100 bp). Today: gaps −8…−12 bp, aggregate 0.99989 → withdraw-only, level 0.
+- **A6 (2026-09-02 14:46 UTC): wrapper reading restated in dollars (V34 columns); DOLA health line.** `DOLA_INVERSE_DD.md`
+  (14th read): DOLA trades −22…−28 bp, both DOLA pools 78% DOLA, the documented USDS PSM is deployed but empty
+  (zero reserves, its Fed not a minter, no swap ever), 97% of FiRM's 54.9M borrowed DOLA is collateralised by
+  DOLA-sUSDe / DOLA-sUSDS LP (leverage loop), $3.4M 2022 bad debt still being repaid. The raw A3 reading
+  (+19.6 bp sUSDe premium) becomes **−8.2 bp** priced through DOLA→sUSDS×NAV; the level now uses the dollar
+  number, and a counter >100 bp off par flags the reading unreliable. DOLA kept as the A4 exception, written down.
 
 ## XVF narrow-v1 CLOSED — checkpoint re-run (2026-09-01 18:43 UTC)
 

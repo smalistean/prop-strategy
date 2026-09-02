@@ -54,6 +54,13 @@ PEGKEEPER_REGULATOR = "0x36a04CAffc681fa179558B2Aaba30395CDdd855f"
 CRVUSD_FACTORY = "0xC9332fdCB1C491Dcc683bAe86Fe3cb70360738BC"
 CRVUSD = "0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E"
 GAP_L1, GAP_L2, GAP_L3 = 3.0, 30.0, 100.0        # L1 = Regulator worst_price_threshold, with the pool counter-heavy
+# A6: a wrapper pool's counter-asset without a par path (DOLA) is priced in dollars through a wrapper that has one
+COUNTER_USD_ROUTE = {
+    "DOLA": {"pool": "0x8b83c4aA949254895507D09365229BC3a8c7f710", "via": "0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD", "via_symbol": "sUSDS"},
+}
+COUNTER_PAR = {"DOLA": {"psm": "0x4dfd662622d766304cb539e66f893c4defa19398", "vault": "0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD"}}
+WRAPPER_ROWS = []
+COUNTER_UNRELIABLE_BP = 100.0                    # |counter - $1| beyond this: wrapper reading flagged, cannot raise the level
 SEL5 = {"peg_keepers": "0xf6235138", "aggregator": "0x245a7bfc", "price": "0xa035b1fe", "debt": "0x0dca59c1", "debt_ceiling": "0x602b62d4", "balanceOf": "0x70a08231", "totalSupply": "0x18160ddd", "price_oracle": "0x86fc88d3", "price_oracle_i": "0x68727653", "provide_allowed": "0x4476d2bb", "withdraw_allowed": "0x990ca2b0", "coins": "0xc6610657", "balances": "0x4903b0d1", "symbol": "0x95d89b41", "decimals": "0x313ce567"}
 # Measurement
 PROBE_FRACTION, PROBE_FLOOR = 0.001, 1_000.0     # near-marginal probe
@@ -442,7 +449,72 @@ def pegkeeper_section(rows):
 
 def _insert_pegkeeper_section(md, rows):
     i = next((k for k, s in enumerate(md) if str(s).startswith("## Pools")), len(md))
-    return md[:i] + pegkeeper_section(rows) + md[i:]
+    return md[:i] + a6_section(WRAPPER_ROWS) + pegkeeper_section(rows) + md[i:]
+
+
+# ---- A6: counter-asset correction for wrapper pools --------------------------------------------
+def counter_correction(m):
+    """Restate a wrapper reading in dollars through the counter-asset's own dollar price (A6)."""
+    out = {"counter_usd": None, "discount_usd_bp": None, "counter_share": None, "par_capacity_usd": None, "unreliable": False}
+    route = COUNTER_USD_ROUTE.get(m["counter"])
+    if not route:
+        return out
+    try:
+        coins, bals, _ = read_pool({"address": route["pool"], "name": f"{m['counter']}/{route['via_symbol']}", "coins": None})
+        ci = next(k for k, c in enumerate(coins) if c["symbol"] == m["counter"])
+        vi = next(k for k, c in enumerate(coins) if c["address"].lower() == route["via"].lower())
+        via_nav = (as_int(call(route["via"], SEL["convertToAssets"] + word(10 ** 18))) or 0) / 1e18
+        probe = max(PROBE_FLOOR, bals[ci] * PROBE_FRACTION)
+        v = get_dy(route["pool"], ci, vi, int(probe * 10 ** coins[ci]["decimals"]))
+        if v is None or via_nav <= 0:
+            return out
+        counter_usd = v / 10 ** coins[vi]["decimals"] / probe * via_nav
+        out["counter_usd"] = counter_usd
+        out["counter_share"] = bals[ci] / sum(bals) if sum(bals) else None
+        out["discount_usd_bp"] = (m["implied"] * counter_usd / m["nav"] - 1) * 10000
+        out["unreliable"] = abs(counter_usd - 1) * 10000 > COUNTER_UNRELIABLE_BP
+        par = COUNTER_PAR.get(m["counter"])
+        if par:
+            sh = as_int(call(par["vault"], SEL5["balanceOf"] + par["psm"][2:].lower().rjust(64, "0"))) or 0
+            out["par_capacity_usd"] = ((as_int(call(par["vault"], SEL["convertToAssets"] + word(sh))) or 0) / 1e18) if sh else 0.0
+    except Exception as e:  # noqa: BLE001
+        print(f"A6 counter correction for {m['counter']} failed: {e}", file=sys.stderr)
+    return out
+
+
+def store_counter_correction(ts, ws):
+    n = 0
+    for w in ws:
+        if w.get("counter_usd") is None:
+            continue
+        f = lambda v: "NULL" if v is None else "%.6f" % v  # noqa: E731
+        sql = (f"UPDATE curve_wrapper_nav_discount SET counter_usd_price={f(w['counter_usd'])}, nav_discount_usd_bp={f(w['discount_usd_bp'])}, "
+               f"counter_par_capacity_usd={f(w['par_capacity_usd'])}, counter_unreliable={'true' if w['unreliable'] else 'false'} "
+               f"WHERE observed_at='{ts}' AND pool_address='{w['pool']}'")
+        try:
+            subprocess.run(["psql", "-X", "-U", "prop_strategy_app", "-d", "prop_strategy", "-qAtc", sql], check=True, capture_output=True)
+            n += 1
+        except Exception as e:  # noqa: BLE001
+            return f"A6 store FAILED: {e}"
+    return f"A6 corrected {n}"
+
+
+def a6_section(ws):
+    rows = [w for w in ws if w.get("counter_usd") is not None]
+    if not rows:
+        return []
+    md = ["### Counter-asset correction (A6 - the wrapper reading restated in dollars)", "",
+          "| Pool | Counter | Counter in $ (route) | Counter share in its pool | Raw discount | Discount in $ | Par capacity (PSM) | Reliable |",
+          "|---|---|---:|---:|---:|---:|---:|---|"]
+    for w in rows:
+        via = COUNTER_USD_ROUTE[w["counter"]]["via_symbol"]
+        rel = "NO - counter >100 bp off par; level not raised" if w["unreliable"] else "yes"
+        md.append(f"| {w['pool_name']} | {w['counter']} | {w['counter_usd']:.5f} ({(w['counter_usd']-1)*1e4:+.1f} bp via {via}) | "
+                  f"{'n/a' if w['counter_share'] is None else f'{w['counter_share']*100:.1f}%'} | {w['discount_bp']:+.1f} bp | **{w['discount_usd_bp']:+.1f} bp** | "
+                  f"{'n/a' if w['par_capacity_usd'] is None else f'${w['par_capacity_usd']:,.0f}'} | {rel} |")
+    md += ["", "The level uses the dollar-restated discount: a counter-asset with no working par path (DOLA) enters the",
+           "sUSDe reading one for one (`DOLA_INVERSE_DD.md`). Par capacity = USDS actually redeemable from the DOLA PSM.", ""]
+    return md
 
 
 def main():
@@ -512,7 +584,8 @@ def main():
             continue
         if not m:
             continue
-        lv = nav_level(m["discount_bp"])
+        m.update(counter_correction(m))                                   # A6
+        lv = 0 if m["unreliable"] else nav_level(m["discount_usd_bp"] if m["discount_usd_bp"] is not None else m["discount_bp"])
         m["level"] = lv
         m["thin"] = m["tvl"] < MIN_TVL_FOR_LEVEL
         if not m["thin"]:
@@ -531,6 +604,7 @@ def main():
     stored = store_composition(rows)
     stored_w = store_wrappers(ts, wrappers)
     stored_pk = store_pegkeepers(ts, pegkeepers)
+    stored_w6 = store_counter_correction(ts, wrappers)
 
     verdict = {0: "NORMAL - no action",
                1: "LEVEL 1 WATCH - re-read the dossier, journal it, no position change",
@@ -539,11 +613,11 @@ def main():
 
     md = ["# Curve composition monitor", "",
           "Composition and wrapper NAV read from each pool's own on-chain state; pools discovered per",
-          "`CURVE_MONITOR_PREREGISTRATION.md` (A2-A5); actions in `STABLECOIN_DEPEG_DOSSIER.md`.",
+          "`CURVE_MONITOR_PREREGISTRATION.md` (A2-A6); actions in `STABLECOIN_DEPEG_DOSSIER.md`.",
           "Stored in PostgreSQL `curve_pool_composition` / `curve_wrapper_nav_discount` / `curve_pegkeeper_state`.",
           "Regenerate with `bash scripts/curve-monitor.sh`.", "",
           f"**As of:** {now:%Y-%m-%dT%H:%M:%SZ}  ·  composition pools: {len(pool_reports)}, wrapper pools: {len(wrappers)} "
-          f"(discovery: {source})  ·  {stored}; {stored_w}; {stored_pk}", "",
+          f"(discovery: {source})  ·  {stored}; {stored_w} ({stored_w6}); {stored_pk}", "",
           f"## Overall: {verdict}", "",
           *([f"**Coverage gap (A4):** no admitted composition pool holds {', '.join(uncovered)} - every pool with it "
              f"is below the ${MIN_POOL_TVL/1e6:,.0f}M admission or contains an excluded coin ({', '.join(EXCLUDED_COINS)}). "
@@ -589,6 +663,8 @@ def main():
            "premium. Check which side is over-weighted before acting on any pool-level alert.", "",
            "Composition leads price: the StableSwap curve is flat to ~80% imbalance and vertical beyond",
            "it. A persistent level (3pool has sat near 53% USDT for years) is not a warning; **change is.**"]
+    global WRAPPER_ROWS
+    WRAPPER_ROWS = wrappers
     md = _insert_pegkeeper_section(md, pegkeepers)
     with open(OUT, "w") as f:
         f.write("\n".join(md) + "\n")

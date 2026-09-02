@@ -263,3 +263,34 @@ decommissioned GHO/crvUSD pool (ceiling 0, $1.3M), which sets the "max of others
 false-negative risk if it drifts rich, a false-positive risk if it drifts cheap; it is reported, not
 filtered, so that the number equals what the Regulator sees. The 3 bp threshold is Curve's, chosen for
 gating not alerting; whether it leads composition is not measured — the table exists so it can be.
+
+## Amendment A6 — 2026-09-02 14:46 UTC: the wrapper reading restated in dollars; counter-asset health
+
+**What triggered it.** The only admitted wrapper pool, DOLA/sUSDe, quotes sUSDe in DOLA.
+`DOLA_INVERSE_DD.md` read the counter-asset: DOLA trades 22–28 bp under a dollar, both of its pools are
+78% DOLA, its documented redemption path (the USDS PSM) is deployed but has zero reserves, a Fed that is
+not a minter and no swap ever, and 97% of the DOLA borrowed on FiRM is collateralised by DOLA-sUSDe /
+DOLA-sUSDS LP. Today that turns a −8 bp sUSDe discount into a +19.6 bp premium in the raw reading; in an
+sUSDe stress the loop liquidations would push DOLA to a premium and make the raw reading *overstate* the
+sUSDe discount. The sign of the error depends on the regime, so the counter must be priced out.
+
+**Rule (post-hoc for the route, pre-registered for the thresholds).**
+- `counter_usd` = the counter's near-marginal price in a wrapper with a known NAV and a live par path,
+  times that wrapper's `convertToAssets` (DOLA → sUSDS × NAV; USDS converts 1:1 to DAI at Sky and DAI
+  redeems through the PSM). `nav_discount_usd_bp = (implied × counter_usd / NAV − 1) × 1e4`.
+- The level uses `nav_discount_usd_bp` with the unchanged A3 thresholds (−50 / −200 / −500 bp).
+- **Unreliable flag:** if |counter_usd − 1| > **100 bp**, the wrapper reading is flagged and cannot
+  raise the level — at that point the event is the counter-asset's, and it is reported as such.
+- **Counter health line, reported every run:** counter in dollars, its share in its own pool, and the
+  PSM's actual USDS reserves (par capacity). Stored in V34 columns on `curve_wrapper_nav_discount`.
+- **A4 exception, written down:** A4 removes coins with no live par path. DOLA stays as a counter only in
+  this corrected and flagged form, because DOLA/sUSDe is the sole ≥$10M sUSDe pool on Curve Ethereum;
+  the day a USDC/USDT-countered sUSDe pool clears the gate, DOLA/sUSDe leaves.
+
+**Readings at the time of writing.** Raw +19.6 bp; DOLA 0.99723 USD via sUSDS (−27.7 bp); corrected
+**−8.2 bp**; par capacity $0; reliable; level 0.
+
+**Limits stated in advance.** The correction depends on sUSDS's NAV and the DOLA/sUSDS pool ($6.5M, also
+78% DOLA); if that pool thins below $1M the route fails and the raw reading is shown unflagged with a
+note. DOLA and sUSDe are coupled through FiRM leverage, so even the corrected number moves with DOLA
+liquidations — it is a better number, not an independent one.
