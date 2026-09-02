@@ -34,6 +34,13 @@ Last updated: 2026-08-25
   ≈$56M on-chain vs 97.9M supply, public par redemption = the USDC window holding $18; owner multisig can
   freeze, pause and burn any balance, untimelocked. Disclosed cost: USDe composition coverage is now nil
   (FRAX/USDe was the only USDe pool ≥ $1M); USDe rests on A3.
+- **A5 (2026-09-02 14:17 UTC): crvUSD PegKeeper state stored (V33 `curve_pegkeeper_state`), Regulator gap test as trigger.**
+  `CRVUSD_PEGKEEPER_DD.md` (13th read): the USDT PegKeeper owns 77.6% of USDT/crvUSD, sat at exactly 25% of its
+  135M ceiling for six weeks (cooperative cap (α+β·Σ√r)² confirmed to the dollar), rose to 73M in the Aug 19–24
+  crvUSD demand burst and pulled 26.7M crvUSD out on Aug 26–28 — a ~15 pp USDT-share move with no USDT moving.
+  Share readings in PegKeeper pools are damped while `provide_allowed > 0`; the Regulator refuses to absorb a
+  pool whose crvUSD price exceeds the other PegKeeper pools by 3 bp — Curve's own depeg detector, now stored and
+  alerted on (3/30/100 bp). Today: gaps −8…−12 bp, aggregate 0.99989 → withdraw-only, level 0.
 
 ## XVF narrow-v1 CLOSED — checkpoint re-run (2026-09-01 18:43 UTC)
 

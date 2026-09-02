@@ -108,6 +108,9 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
   **A4 (2026-09-02):** FRAX pools removed — legacy FRAX has no par path, migration ended
   (`FRAX_LEGACY_FRXUSD_DD.md`); the standing LEVEL 1 was structural. USDe composition coverage now
   nil on Curve Ethereum, disclosed; USDe rests on the sUSDe NAV metric.
+  **A5 (2026-09-02):** crvUSD PegKeeper state + the Regulator's 3 bp relative-gap test stored and alerted
+  (`CRVUSD_PEGKEEPER_DD.md`): the USDT PegKeeper owns 77.6% of USDT/crvUSD and moved its share ~15 pp in
+  three days last week with no USDT moving — PegKeeper-pool readings are damped while it may provide.
 - **Series through-line** (all eleven notes): every venue has a passive side that cannot refuse the
   flow — Uniswap LPs (0.05% fee), Aave liquidators (4.5–5%), HLP (liquidation edge), CEX insurance
   funds (→ADL), and us on the weekend fade (~147 bp). The edge is always in being paid to be that

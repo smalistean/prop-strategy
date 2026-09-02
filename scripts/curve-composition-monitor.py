@@ -49,6 +49,12 @@ IMP_L1, IMP_L2, IMP_L3 = 30.0, 100.0, 300.0      # bp, adverse
 D7_L1 = 10.0                                     # pp rise in a coin's share over 7 days
 NAV_L1, NAV_L2, NAV_L3 = -50.0, -200.0, -500.0   # bp discount to NAV (A3)
 MIN_TVL_FOR_LEVEL = 10_000_000                   # thinner pools are informational only
+# A5: crvUSD PegKeepers - the Regulator's own contrary-coin test, relative gap in bp above the highest other PK pool
+PEGKEEPER_REGULATOR = "0x36a04CAffc681fa179558B2Aaba30395CDdd855f"
+CRVUSD_FACTORY = "0xC9332fdCB1C491Dcc683bAe86Fe3cb70360738BC"
+CRVUSD = "0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E"
+GAP_L1, GAP_L2, GAP_L3 = 3.0, 30.0, 100.0        # L1 = Regulator worst_price_threshold, with the pool counter-heavy
+SEL5 = {"peg_keepers": "0xf6235138", "aggregator": "0x245a7bfc", "price": "0xa035b1fe", "debt": "0x0dca59c1", "debt_ceiling": "0x602b62d4", "balanceOf": "0x70a08231", "totalSupply": "0x18160ddd", "price_oracle": "0x86fc88d3", "price_oracle_i": "0x68727653", "provide_allowed": "0x4476d2bb", "withdraw_allowed": "0x990ca2b0", "coins": "0xc6610657", "balances": "0x4903b0d1", "symbol": "0x95d89b41", "decimals": "0x313ce567"}
 # Measurement
 PROBE_FRACTION, PROBE_FLOOR = 0.001, 1_000.0     # near-marginal probe
 SEL = {"balances": "0x4903b0d1", "A": "0xf446c1d0", "stored_rates": "0xfd0684b1",
@@ -318,6 +324,127 @@ def store_wrappers(ts, ws):
 
 # ------------------------------------------------------------------------------------------ main --
 
+# ---- A5: crvUSD PegKeepers ---------------------------------------------------------------------
+def _h_addr(h): return ("0x" + h[-40:]) if h and len(h) >= 42 else None
+def _h_int(h): return int(h, 16) if h and h != "0x" else None
+def _e_u(n): return format(n, "064x")
+def _e_a(a): return a[2:].lower().rjust(64, "0")
+def _h_str(h):
+    try:
+        b = bytes.fromhex(h[2:]); off = int.from_bytes(b[:32], "big"); ln = int.from_bytes(b[off:off + 32], "big")
+        return b[off + 32:off + 32 + ln].decode(errors="replace")
+    except Exception:  # noqa: BLE001
+        return "?"
+def _c(to, data):
+    try:
+        return call(to, data)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def read_pegkeepers():
+    """One row per PegKeeper registered in the Regulator: debt, capacity, LP share, the relative-gap test."""
+    agg = _h_addr(_c(PEGKEEPER_REGULATOR, SEL5["aggregator"]))
+    agg_price = _h_int(_c(agg, SEL5["price"])) if agg else None
+    agg_price = agg_price / 1e18 if agg_price else None
+    infos = []
+    for i in range(20):
+        r = _c(PEGKEEPER_REGULATOR, SEL5["peg_keepers"] + _e_u(i))
+        if not r or r == "0x":
+            break
+        b = bytes.fromhex(r[2:])
+        infos.append({"pk": "0x" + b[12:32].hex(), "pool": "0x" + b[44:64].hex(),
+                      "inverse": int.from_bytes(b[64:96], "big"), "index": int.from_bytes(b[96:128], "big") if len(b) >= 128 else 0})
+    rows = []
+    for info in infos:
+        pk, pool = info["pk"], info["pool"]
+        coins = []
+        for j in range(2):
+            ca = _h_addr(_c(pool, SEL5["coins"] + _e_u(j)))
+            if not ca:
+                break
+            sym = _h_str(_c(ca, SEL5["symbol"]) or "0x"); dec = _h_int(_c(ca, SEL5["decimals"])) or 18
+            bal = (_h_int(_c(pool, SEL5["balances"] + _e_u(j))) or 0) / 10 ** dec
+            coins.append((ca.lower(), sym, bal))
+        if len(coins) != 2:
+            continue
+        ci = next((k for k, c in enumerate(coins) if c[0] == CRVUSD.lower()), None)
+        if ci is None:
+            continue
+        counter = coins[1 - ci]; tvl = coins[0][2] + coins[1][2]
+        po = _h_int(_c(pool, SEL5["price_oracle_i"] + _e_u(0)) if info["index"] else _c(pool, SEL5["price_oracle"]))
+        price = (po / 1e18) if po else None
+        if price and info["inverse"]:
+            price = 1 / price
+        debt = (_h_int(_c(pk, SEL5["debt"])) or 0) / 1e18
+        ceiling = (_h_int(_c(CRVUSD_FACTORY, SEL5["debt_ceiling"] + _e_a(pk))) or 0) / 1e18
+        idle = (_h_int(_c(CRVUSD, SEL5["balanceOf"] + _e_a(pk))) or 0) / 1e18
+        lp = _h_int(_c(pool, SEL5["balanceOf"] + _e_a(pk))) or 0; lps = _h_int(_c(pool, SEL5["totalSupply"])) or 0
+        pa = _h_int(_c(PEGKEEPER_REGULATOR, SEL5["provide_allowed"] + _e_a(pk)))
+        wa = _h_int(_c(PEGKEEPER_REGULATOR, SEL5["withdraw_allowed"] + _e_a(pk)))
+        def _allowed(v):
+            return None if v is None else (float("inf") if v > 10 ** 40 else v / 1e18)
+        rows.append({"pk": pk, "pool": pool, "name": f"{coins[0][1]}/{coins[1][1]}", "counter": counter[1],
+                     "counter_share": (counter[2] / tvl) if tvl else 0.0, "tvl": tvl, "debt": debt, "ceiling": ceiling,
+                     "idle": idle, "lp_share": (lp / lps) if lps else None, "price": price,
+                     "provide": _allowed(pa), "withdraw": _allowed(wa), "agg": agg_price})
+    for r in rows:
+        others = [o["price"] for o in rows if o is not r and o["price"]]
+        r["gap_bp"] = ((r["price"] - max(others)) * 1e4) if (r["price"] and others) else None
+        lv = 0
+        if r["gap_bp"] is not None and r["counter"] in TRACKED:
+            if r["gap_bp"] >= GAP_L3: lv = 3
+            elif r["gap_bp"] >= GAP_L2: lv = 2
+            elif r["gap_bp"] >= GAP_L1 and r["counter_share"] > 0.5: lv = 1
+        r["thin"] = r["tvl"] < MIN_TVL_FOR_LEVEL
+        r["level"] = lv
+    return rows
+
+
+def store_pegkeepers(ts, rows):
+    if not rows:
+        return "stored 0 pegkeeper rows"
+    def f(v, fmt="%.6f"):
+        return "NULL" if v is None or v == float("inf") else (fmt % v)
+    vals = ", ".join(
+        f"('{ts}', '{r['pk']}', '{r['pool']}', '{r['name']}', '{r['counter']}', {f(r['counter_share'])}, {f(r['tvl'], '%.2f')}, "
+        f"{f(r['debt'])}, {f(r['ceiling'])}, {f(r['idle'])}, {f(r['lp_share'])}, {f(r['price'], '%.12f')}, {f(r['gap_bp'], '%.4f')}, "
+        f"{f(r['provide'])}, {f(r['withdraw'])}, {f(r['agg'], '%.12f')}, {r['level']})" for r in rows)
+    sql = ("INSERT INTO curve_pegkeeper_state (observed_at, peg_keeper, pool_address, pool_name, counter_symbol, counter_share, "
+           "pool_tvl_usd, debt, debt_ceiling, idle_crvusd, lp_share, oracle_price, gap_bp, provide_allowed, withdraw_allowed, "
+           f"aggregate_price, alert_level) VALUES {vals} ON CONFLICT DO NOTHING")
+    try:
+        subprocess.run(["psql", "-X", "-U", "prop_strategy_app", "-d", "prop_strategy", "-qAtc", sql], check=True, capture_output=True)
+        return f"stored {len(rows)} pegkeeper rows"
+    except Exception as e:  # noqa: BLE001
+        return f"pegkeeper store FAILED: {e}"
+
+
+def pegkeeper_section(rows):
+    if not rows:
+        return ["## crvUSD PegKeepers (A5)", "", "_read failed_", ""]
+    agg = rows[0]["agg"]
+    md = ["## crvUSD PegKeepers (A5 - the contract that rebalances the crvUSD pools we read)", "",
+          f"Aggregate crvUSD price **{agg:.5f}** -> PegKeepers may {'PROVIDE (a counter-coin inflow into these pools is damped)' if agg and agg >= 1 else 'only WITHDRAW (a counter-coin inflow is NOT damped; the share reading is free)'}.", "",
+          "| Pool | Counter | Counter share | TVL | PK debt | Ceiling | PK LP share | Oracle price | Gap vs other PK pools | Provide allowed | Level |",
+          "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    for r in rows:
+        note = " _(thin)_" if r["thin"] else ""
+        pa = "n/a" if r["provide"] is None else ("unlimited" if r["provide"] == float("inf") else f"{r['provide']:,.0f}")
+        md.append(f"| {r['name']}{note} | {r['counter']} | {r['counter_share']*100:.1f}% | ${r['tvl']:,.0f} | {r['debt']:,.0f} | {r['ceiling']:,.0f} | "
+                  f"{'n/a' if r['lp_share'] is None else f'{r['lp_share']*100:.1f}%'} | {'n/a' if r['price'] is None else f'{r['price']:.5f}'} | "
+                  f"{'n/a' if r['gap_bp'] is None else f'{r['gap_bp']:+.1f} bp'} | {pa} | {r['level']} |")
+    md += ["", f"Gap = this pool's crvUSD oracle price minus the highest of the other PegKeeper pools; the Regulator blocks",
+           f"`provide` above +{GAP_L1:.0f} bp (its `worst_price_threshold`) - Curve's own 'this pool's stablecoin is being sold' test.",
+           f"Levels (tracked counter-coins only, pools >= ${MIN_TVL_FOR_LEVEL/1e6:,.0f}M): 1 at >= +{GAP_L1:.0f} bp with the pool counter-heavy, 2 at >= +{GAP_L2:.0f} bp, 3 at >= +{GAP_L3:.0f} bp.", ""]
+    return md
+
+
+def _insert_pegkeeper_section(md, rows):
+    i = next((k for k, s in enumerate(md) if str(s).startswith("## Pools")), len(md))
+    return md[:i] + pegkeeper_section(rows) + md[i:]
+
+
 def main():
     now = datetime.datetime.now(datetime.UTC)
     ts = now.isoformat()
@@ -392,8 +519,18 @@ def main():
             overall = max(overall, lv)
         wrappers.append(m)
 
+    pegkeepers = []
+    try:
+        pegkeepers = read_pegkeepers()
+    except Exception as e:  # noqa: BLE001
+        print(f"pegkeeper read failed: {e}", file=sys.stderr)
+    for r in pegkeepers:
+        if not r["thin"]:
+            overall = max(overall, r["level"])
+
     stored = store_composition(rows)
     stored_w = store_wrappers(ts, wrappers)
+    stored_pk = store_pegkeepers(ts, pegkeepers)
 
     verdict = {0: "NORMAL - no action",
                1: "LEVEL 1 WATCH - re-read the dossier, journal it, no position change",
@@ -402,11 +539,11 @@ def main():
 
     md = ["# Curve composition monitor", "",
           "Composition and wrapper NAV read from each pool's own on-chain state; pools discovered per",
-          "`CURVE_MONITOR_PREREGISTRATION.md` (A2, A3, A4); actions in `STABLECOIN_DEPEG_DOSSIER.md`.",
-          "Stored in PostgreSQL `curve_pool_composition` / `curve_wrapper_nav_discount`.",
+          "`CURVE_MONITOR_PREREGISTRATION.md` (A2-A5); actions in `STABLECOIN_DEPEG_DOSSIER.md`.",
+          "Stored in PostgreSQL `curve_pool_composition` / `curve_wrapper_nav_discount` / `curve_pegkeeper_state`.",
           "Regenerate with `bash scripts/curve-monitor.sh`.", "",
           f"**As of:** {now:%Y-%m-%dT%H:%M:%SZ}  ·  composition pools: {len(pool_reports)}, wrapper pools: {len(wrappers)} "
-          f"(discovery: {source})  ·  {stored}; {stored_w}", "",
+          f"(discovery: {source})  ·  {stored}; {stored_w}; {stored_pk}", "",
           f"## Overall: {verdict}", "",
           *([f"**Coverage gap (A4):** no admitted composition pool holds {', '.join(uncovered)} - every pool with it "
              f"is below the ${MIN_POOL_TVL/1e6:,.0f}M admission or contains an excluded coin ({', '.join(EXCLUDED_COINS)}). "
@@ -452,6 +589,7 @@ def main():
            "premium. Check which side is over-weighted before acting on any pool-level alert.", "",
            "Composition leads price: the StableSwap curve is flat to ~80% imbalance and vertical beyond",
            "it. A persistent level (3pool has sat near 53% USDT for years) is not a warning; **change is.**"]
+    md = _insert_pegkeeper_section(md, pegkeepers)
     with open(OUT, "w") as f:
         f.write("\n".join(md) + "\n")
     print(f"level {overall}; {len(pool_reports)} composition pools; {len(wrappers)} wrapper pools; {stored}; {stored_w}; wrote {OUT}")

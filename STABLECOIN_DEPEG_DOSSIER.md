@@ -4,7 +4,7 @@
 **What this is:** the I53 deliverable — reserve/redemption facts for the three stablecoins we
 touch, plus a written trigger checklist, so that during a wobble we act from a prepared page
 instead of researching under pressure. Substance comes from the contract reads
-(`USDC_ISSUER_POWERS_DD.md`, `USDT_ISSUER_POWERS_DD.md`, `ETHENA_USDE_DD.md`, `FRAX_LEGACY_FRXUSD_DD.md`,
+(`USDC_ISSUER_POWERS_DD.md`, `USDT_ISSUER_POWERS_DD.md`, `ETHENA_USDE_DD.md`, `FRAX_LEGACY_FRXUSD_DD.md`, `CRVUSD_PEGKEEPER_DD.md`,
 `CURVE_STABLESWAP_DD.md`); this document is the operational assembly.
 **Not a backtest.** No thresholds here are measured optima — they are design choices anchored to
 the Curve curve's geometry, and they are labelled as such.
@@ -135,8 +135,11 @@ resolved it as FRAX weakness (+0.28 across two pools) with USDe on the scarce si
 Reading the token (`FRAX_LEGACY_FRXUSD_DD.md`) then showed that weakness is structural — legacy FRAX
 has no redemption path and its 1:1 migration ended — so FRAX pools were removed (A4); USDe now has no
 admitted composition pool on Curve Ethereum and rests on the sUSDe NAV metric (A3).
-Design and every post-hoc correction are disclosed in `CURVE_MONITOR_PREREGISTRATION.md`
-(amendments A1–A4). Still true: composition-precedes-depeg is reasoned, not measured.
+Two admitted pools (USDC/crvUSD, USDT/crvUSD) are rebalanced by crvUSD PegKeepers
+(`CRVUSD_PEGKEEPER_DD.md`): their share reading is damped whenever the PegKeeper may provide, and the
+Regulator's own block test — this pool's crvUSD price > every other PegKeeper pool + 3 bp — is stored and
+alerted on as A5 (`curve_pegkeeper_state`). Design and every post-hoc correction are disclosed in
+`CURVE_MONITOR_PREREGISTRATION.md` (amendments A1–A5). Still true: composition-precedes-depeg is reasoned, not measured.
 
 ## Sources
 

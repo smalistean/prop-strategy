@@ -229,3 +229,37 @@ The $10M level gate is not lowered for it — that would reintroduce the thin-po
 **Effect on the readings so far.** The three LEVEL 1 readings (2026-09-01 – 2026-09-02) are
 reclassified as structural-FRAX, not stablecoin stress; they stay in the table as recorded. The USDT
 (+0.13) and USDC (−0.04) aggregates never depended on a FRAX pool above the level gate.
+
+## Amendment A5 — 2026-09-02 14:17 UTC: crvUSD PegKeeper state, and the Regulator's relative-gap test as a trigger
+
+**What triggered it.** Two admitted pools, USDC/crvUSD ($13.7M) and USDT/crvUSD ($54M), have a
+PegKeeper — a Curve-owned contract that adds crvUSD one-sided when the counter-stable is heavy and
+removes it when crvUSD is heavy, one fifth of the imbalance per profitable call. `CRVUSD_PEGKEEPER_DD.md`
+read the code and the event history: the USDT PegKeeper owns 77.6% of that pool's LP, held exactly
+25% of its ceiling for six weeks (the Regulator's cooperative cap), rose to 73M in the Aug 19–24 crvUSD
+demand burst, and pulled 26.7M crvUSD out on Aug 26–28 — a ~15 pp rise in the USDT share with no USDT
+moving. The share reading in a PegKeeper pool is therefore the PegKeeper's, not the market's, whenever
+the PegKeeper may act.
+
+**Rule (pre-registered before any stored reading).** The Regulator refuses to provide crvUSD into a
+pool whose crvUSD oracle price exceeds every other PegKeeper pool's by more than `worst_price_threshold`
+= 3 bp — the signature of that pool's counter-coin being sold — and whenever the aggregate crvUSD price
+is below $1. A5 stores that state per PegKeeper (`curve_pegkeeper_state`, V33: debt, ceiling, idle
+crvUSD, LP share, oracle price, gap to the highest other pool, provide/withdraw allowance, aggregate
+price) and alerts on the gap for tracked counter-coins in pools ≥ $10M:
+
+| Level | gap_bp (this pool − max of the other PegKeeper pools) |
+|---|---|
+| 1 watch | ≥ **+3 bp** with the pool counter-heavy (share > 50%) — the Regulator's own block condition, live |
+| 2 de-risk | ≥ **+30 bp** |
+| 3 act | ≥ **+100 bp** |
+
+Same ladder as the composition impact thresholds. The report also states, per run, whether PegKeepers
+may currently provide (counter-coin inflows into these pools damped) or only withdraw (reading free).
+Readings today: gaps −8 to −12 bp on the tracked pools, aggregate 0.99989 → withdraw-only mode; level 0.
+
+**Limits stated in advance.** The gap is measured against a set that currently includes the
+decommissioned GHO/crvUSD pool (ceiling 0, $1.3M), which sets the "max of others" today — a
+false-negative risk if it drifts rich, a false-positive risk if it drifts cheap; it is reported, not
+filtered, so that the number equals what the Regulator sees. The 3 bp threshold is Curve's, chosen for
+gating not alerting; whether it leads composition is not measured — the table exists so it can be.
