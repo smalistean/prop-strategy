@@ -44,7 +44,10 @@ Statuses: **measuring** (has numbers, sample growing) · **next** (picked for me
 
 - Stop-run/OI-flush effect: real 2023→2025, measured zero in summer 2026 (n=133). Regime monitor
   runs monthly; if it returns, the frozen query catches it. `STOP_RUN_EVENT_STUDY.md`.
-- Live collectors (quotes/depth/liquidations) and the hourly XVF narrow dry-run keep running.
+- Live collectors (quotes/depth/liquidations) keep running. XVF: narrow-v1 closed 2026-09-01 18:43 UTC;
+  the own-capital book is flat since 2026-09-09 18:44 UTC (last pair ONG closed, whole-life −4.73 USD,
+  `PROJECT_STATUS.md`). The user is consolidating own-account capital (≈ $5.1k) from Hyperliquid and
+  Bybit onto Binance for the weekend fade; not yet moved as of 2026-09-09 18:53 UTC.
 - On-chain contract due-diligence notes (learning + capital-safety): `VARIATIONAL_CONTRACT_DD.md`
   (semi-custodial, single-oracle withdrawals), `HYPERLIQUID_BRIDGE_DD.md` (our live venue's
   Arbitrum bridge — 2/3 validator quorum + dispute window + emergency freeze; ~$329M pooled),

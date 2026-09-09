@@ -1,6 +1,43 @@
 # Project Status
 
-Last updated: 2026-08-25
+Last updated: 2026-09-09
+
+## XVF own-capital book closed — last pair (ONG) flattened; HL and Bybit capital to be consolidated on Binance (2026-09-09 18:44 UTC)
+
+- The user ran `XvfExecutionApplication -DxvfMode=closepair -DxvfCloseBases=ONG -DxvfDryRun=false`
+  at ≈18:43 UTC. The maker leg rested on Bybit (BUY 1014 ONGUSDT) and filled 18:44:15.200 UTC @ 0.09345
+  (fee 0.0341 USDT); the hedge crossed on Binance (SELL 1018 ONGUSDT) 18:44:17.745 UTC @ 0.09315 in seven
+  fills (fee 0.0000576 BNB). Both venues flat at 18:46:31 UTC (`XVF_LIVE_BOOK.md` regenerated: 0 pairs).
+- **Whole life of the pair, 2026-08-30 19:15 → 2026-09-09 18:44 UTC (long Binance 1018 @ 0.11035 /
+  short Bybit 1014 @ 0.11088, $224.8 gross at entry):** price +0.16 (Binance −17.51, Bybit +17.67),
+  funding **−4.72** (the Binance long received +25.78 over 239 hourly settlements; the Bybit short paid
+  −30.50 over 204), fees −0.17 (0.0001296 BNB ≈ $0.10 + 0.0746 USDT) → **net −4.73 USD, −2.1% of gross
+  notional in 10 days**. Both venues printed negative funding for most of the hold and Bybit's was the
+  more negative, so the short leg paid more than the long leg received — the `XVF_LIVE_FINDINGS.md` §14
+  pattern, on the pair the narrow-v1 checkpoint had identified as the whole book's edge. Read from
+  `/fapi/v1/income` and Bybit `/v5/account/transaction-log`, not from any run log. Bybit's `closedPnl`
+  field (−12.90) includes the position's funding; its `TRADE` cash change (+17.64) is the price leg.
+- **Venue change seen in the log:** Bybit ONGUSDT funding settled hourly until 2026-09-07 20:00 UTC and
+  4-hourly from then (00/04/08/12/16/20 UTC). Any stamp-cadence assumption of Bybit ONG = 1h is stale.
+  Not acted on: the book is flat.
+- A `closepair` dry run cannot preview what it would close — every gateway's `positions()` returns empty
+  in dry-run mode by design, so it prints "nothing open" whatever is held. The read-only signed
+  `scripts/xvf-position-snapshot.py` is the pre-flight check before a live close.
+- **Decision (user, 2026-09-09 ≈18:45 UTC): XVF stays closed; own-account capital on Hyperliquid and
+  Bybit moves to Binance.** Nothing measured here needs capital on either venue now: narrow-v1 closed
+  2026-09-01, the baseline book is flat, and as fade venues Bybit lists 12 of 26 fade names (tracking
+  +3.9 bp) while the multi-venue aggregate was worth ≈ nothing at $10k (`GATE_SECOND_VENUE_STUDY.md`
+  addendum); Hyperliquid HIP-3 lists 8 names, tracking unmeasured. Balances read 2026-09-09 18:48 UTC
+  (signed, read-only): Binance USDⓈ-M futures 1,814.32 USDT + 0.0142 BNB, Binance spot 3.95 USDT;
+  Bybit UTA 1,774.10 USDT; Hyperliquid spot 1,486.81 USDC, perp 0 — **≈ $5,079 across the three
+  venues. The transfer has NOT been made as of 2026-09-09 18:53 UTC; it is the user's action, not the tooling's.**
+- **Consequence for Plan S:** its dollar schedule assumed $10k own capital. At ≈ $5.1k the same rules
+  give a 75% basket ≈ $3,800 and a 20% per-name cap ≈ $1,000; 3x isolated, ramp and stops unchanged.
+  Plan S is still not filed in the live spec. With the ONG leg gone, the Binance futures wallet holds
+  only USDT and fee BNB, so the fade legs no longer share margin with an XVF leg.
+- Collectors unaffected: `xvf-funding-export`, `book-ticker-collector`, `xvf-refresh` (carries the
+  fade's daily kline refresh), `deribit-export` and `curve-monitor` use public endpoints only. The Bybit
+  and Hyperliquid keys stay for `WeekendFadeMonitorApplication`'s cross-venue price reads.
 
 ## Curve composition monitor built — leading depeg indicator for the I53 dossier (2026-09-02 05:40 UTC)
 
@@ -47,6 +84,19 @@ Last updated: 2026-08-25
   DOLA-sUSDe / DOLA-sUSDS LP (leverage loop), $3.4M 2022 bad debt still being repaid. The raw A3 reading
   (+19.6 bp sUSDe premium) becomes **−8.2 bp** priced through DOLA→sUSDS×NAV; the level now uses the dollar
   number, and a counter >100 bp off par flags the reading unreliable. DOLA kept as the A4 exception, written down.
+
+- **Weekend fade ledger restated (2026-09-08 09:15 UTC, prereg A6):** an independent API recomputation (launched to
+  verify the run-up test, A5) found `binance_perp_kline` stops at 2026-07-31 for 19 of 27 fade names, so the
+  published study silently lacked 9 August events. Complete ledger: **+143.9 bp, n=20, t=1.86** (all-27),
+  **+167.6, t=2.11** (excl. private) vs +147.5/+175.5, n=17 as published. Conclusion unchanged. Run-up
+  hypothesis (skip names that spiked into Friday) rejected: ran-up names faded better (+204 vs +118 bp).
+  **Fixed 2026-09-08 09:20 UTC:** August backfilled from archives, September over REST via the new
+  `PerpKlineRefreshApplication` (now a daily step in `xvf-refresh.sh`); the study SQL re-run from PostgreSQL
+  reproduces +143.9 bp / n=20 / t=1.86 exactly.
+
+- **Gate.io second-venue study (2026-09-09, `GATE_SECOND_VENUE_STUDY.md`):** pre-declared rule; Gate tracks Binance
+  (corr 0.98, 90% same trigger) but fails the liquidity floor on exactly the names it was wanted for (PAYP $122,
+  JPM $1,215, EWJ $2,216 median decision bar); worth +$1.9/weekend at Plan S. Not adopted.
 
 ## XVF narrow-v1 CLOSED — checkpoint re-run (2026-09-01 18:43 UTC)
 
