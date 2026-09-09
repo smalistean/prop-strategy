@@ -75,6 +75,14 @@ say "candles: hyperliquid"
 "$JAVA" -cp "$CP" com.smalistean.propstrategy.marketdownloader.HyperliquidCandleImportApplication \
     >>"$LOG" 2>&1 || say "!! hyperliquid candle import failed"
 
+# Binance 1h klines for the weekend-fade universe. Nothing else keeps these current: the archive
+# importer only ever has completed months, which is how the fade study lost three August 2026
+# weekends for 19 names (WEEKEND_FADE_FUNDING_PREREGISTRATION.md, A6). Walks forward from each
+# symbol's latest stored bar, so a daily run is one page per symbol.
+say "klines: binance fade universe"
+"$JAVA" -cp "$CP" com.smalistean.propstrategy.marketdownloader.PerpKlineRefreshApplication \
+    >>"$LOG" 2>&1 || say "!! binance kline refresh failed"
+
 # Verify the guard would pass. A refresh that "succeeded" while leaving a venue thin is exactly the
 # failure this script exists to prevent, so it is checked rather than assumed.
 say "verifying freshness"

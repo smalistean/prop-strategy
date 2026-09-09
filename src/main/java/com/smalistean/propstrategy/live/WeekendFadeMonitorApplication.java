@@ -100,7 +100,7 @@ public final class WeekendFadeMonitorApplication {
         boolean useHl = !skip.contains("hl");
         boolean triggersOnly = Boolean.parseBoolean(System.getProperty("triggersOnly", "false"));
 
-        Instant anchor = lastFridayUsClose();
+        Instant anchor = lastUsClose();
         HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
 
         Map<String, Listing> universe = discoverUniverse(http, useBybit, useHl);
@@ -206,10 +206,21 @@ public final class WeekendFadeMonitorApplication {
         StringBuilder out = new StringBuilder();
         out.append("WEEKEND FADE MONITOR   now ").append(stamp.format(now.atZone(ZoneOffset.UTC)))
            .append('\n');
+        Instant entry = nextEntry(anchor);
+        Instant exit = nextExit(anchor);
+        DateTimeFormatter dow = DateTimeFormatter.ofPattern("EEE", Locale.US);
         out.append("anchor (US close)      ").append(stamp.format(anchor.atZone(ZoneOffset.UTC)))
-           .append("   entry Sun 20:00 UTC").append(countdown(now, nextSundayEntry(anchor)))
-           .append("   exit Mon 11:00 New York").append(countdown(now, nextMondayExit(anchor)))
+           .append("   entry ").append(dow.format(entry.atZone(ZoneOffset.UTC))).append(" 20:00 UTC")
+           .append(countdown(now, entry))
+           .append("   exit ").append(dow.format(exit.atZone(NEW_YORK))).append(" 11:00 New York")
+           .append(countdown(now, exit))
            .append('\n');
+        List<LocalDate> closures = closuresBeforeNextSession(anchor);
+        if (!closures.isEmpty()) {
+            out.append("US market holiday      ").append(closures)
+               .append(" - next session ").append(nextUsSession(anchor))
+               .append("; decision bar and exit shift with it (same trade, same hold)\n");
+        }
         out.append(String.format("crypto mood since anchor:  BTC %s   ETH %s%n%n",
                 pct(btcPct), pct(ethPct)));
 
@@ -238,7 +249,8 @@ public final class WeekendFadeMonitorApplication {
         out.append('\n');
         if (triggered == 0) {
             out.append("no measured name at or below ").append(TRIGGER_PCT)
-               .append("% - no challenge trade this weekend unless that changes by Sunday 20:00 UTC.\n");
+               .append("% - no challenge trade this weekend unless that changes by ")
+               .append(dow.format(entry.atZone(ZoneOffset.UTC))).append(" 20:00 UTC.\n");
         } else {
             double perName = Math.min(perNameUsd, basketUsd / triggered);
             out.append(String.format(
@@ -277,25 +289,70 @@ public final class WeekendFadeMonitorApplication {
 
     // --- time ----------------------------------------------------------------------------------
 
-    /** Friday 16:00 New York of the current/most recent trading week, as an instant. */
-    private static Instant lastFridayUsClose() {
+    /**
+     * NYSE full closures. Timing is defined relative to the next US regular session, not to weekday
+     * names (user decision 2026-09-06): on a holiday weekend the decision bar and exit shift a day.
+     * Verify against the published NYSE calendar every January.
+     */
+    private static final Set<LocalDate> US_FULL_CLOSURES = Set.of(
+            LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 19), LocalDate.of(2026, 2, 16), LocalDate.of(2026, 4, 3),
+            LocalDate.of(2026, 5, 25), LocalDate.of(2026, 6, 19), LocalDate.of(2026, 7, 3), LocalDate.of(2026, 9, 7),
+            LocalDate.of(2026, 11, 26), LocalDate.of(2026, 12, 25),
+            LocalDate.of(2027, 1, 1), LocalDate.of(2027, 1, 18), LocalDate.of(2027, 2, 15), LocalDate.of(2027, 3, 26),
+            LocalDate.of(2027, 5, 31), LocalDate.of(2027, 6, 18), LocalDate.of(2027, 7, 5), LocalDate.of(2027, 9, 6),
+            LocalDate.of(2027, 11, 25), LocalDate.of(2027, 12, 24));
+    /** 13:00 New York closes; the anchor is that day's actual close. */
+    private static final Set<LocalDate> US_EARLY_CLOSES = Set.of(
+            LocalDate.of(2026, 11, 27), LocalDate.of(2026, 12, 24), LocalDate.of(2027, 11, 26));
+
+    private static boolean isUsTradingDay(LocalDate d) {
+        return d.getDayOfWeek() != DayOfWeek.SATURDAY && d.getDayOfWeek() != DayOfWeek.SUNDAY
+                && !US_FULL_CLOSURES.contains(d);
+    }
+
+    private static ZonedDateTime usClose(LocalDate d) {
+        return ZonedDateTime.of(d, US_EARLY_CLOSES.contains(d) ? LocalTime.of(13, 0) : LocalTime.of(16, 0), NEW_YORK);
+    }
+
+    /** The most recent US regular-session close that has already happened, as an instant. */
+    private static Instant lastUsClose() {
         ZonedDateTime nowNy = ZonedDateTime.now(NEW_YORK);
-        LocalDate friday = nowNy.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.FRIDAY));
-        ZonedDateTime close = ZonedDateTime.of(friday, LocalTime.of(16, 0), NEW_YORK);
-        if (close.isAfter(nowNy)) {
-            close = close.minusWeeks(1);
+        LocalDate d = nowNy.toLocalDate();
+        while (!isUsTradingDay(d) || usClose(d).isAfter(nowNy)) {
+            d = d.minusDays(1);
         }
-        return close.toInstant();
+        return usClose(d).toInstant();
     }
 
-    private static Instant nextSundayEntry(Instant anchor) {
-        LocalDate friday = anchor.atZone(NEW_YORK).toLocalDate();
-        return ZonedDateTime.of(friday.plusDays(2), LocalTime.of(20, 0), ZoneOffset.UTC).toInstant();
+    /** First US trading day after the anchor's session. */
+    private static LocalDate nextUsSession(Instant anchor) {
+        LocalDate d = anchor.atZone(NEW_YORK).toLocalDate().plusDays(1);
+        while (!isUsTradingDay(d)) {
+            d = d.plusDays(1);
+        }
+        return d;
     }
 
-    private static Instant nextMondayExit(Instant anchor) {
-        LocalDate friday = anchor.atZone(NEW_YORK).toLocalDate();
-        return ZonedDateTime.of(friday.plusDays(3), LocalTime.of(11, 0), NEW_YORK).toInstant();
+    /** 20:00 UTC on the calendar day before the next US session (Sunday on an ordinary weekend). */
+    private static Instant nextEntry(Instant anchor) {
+        return ZonedDateTime.of(nextUsSession(anchor).minusDays(1), LocalTime.of(20, 0), ZoneOffset.UTC).toInstant();
+    }
+
+    /** 11:00 New York on the next US session (Monday on an ordinary weekend). */
+    private static Instant nextExit(Instant anchor) {
+        return ZonedDateTime.of(nextUsSession(anchor), LocalTime.of(11, 0), NEW_YORK).toInstant();
+    }
+
+    /** Full closures strictly between the anchor's day and the next session, for the header note. */
+    private static List<LocalDate> closuresBeforeNextSession(Instant anchor) {
+        List<LocalDate> out = new ArrayList<>();
+        LocalDate d = anchor.atZone(NEW_YORK).toLocalDate().plusDays(1);
+        LocalDate next = nextUsSession(anchor);
+        while (d.isBefore(next)) {
+            if (US_FULL_CLOSURES.contains(d)) out.add(d);
+            d = d.plusDays(1);
+        }
+        return out;
     }
 
     private static String countdown(Instant now, Instant at) {
