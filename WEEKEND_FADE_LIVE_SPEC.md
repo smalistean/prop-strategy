@@ -32,6 +32,17 @@ no other venue in the monitor lists it, so its cross-venue check is Binance mark
   and the crypto-underlying BITO are excluded mechanically on top of that. If the prop
   platform adds new symbols, they do NOT join this universe without a pre-registered
   measurement first.
+- **New listings (prereg A7, 2026-09-09 20:29 UTC):** every Binance EQUITY perp is now collected daily from its
+  listing date. A characteristic-based shortcut (weekend BTC co-movement, ≥ 3 weekends) was declared,
+  tested and withdrawn the same day after adversarial review: inside this universe the low-co-movement
+  names earned the most (+208 vs +76 bp), so the feature ranks nothing. Newcomers join only as a pooled
+  cohort measured on the frozen definition. **Superseded 2026-09-12 07:51 UTC by prereg A8:** cohort N1 (20 names) is a
+  group-sequential test — looks at 6, 9 and 12 usable weekends, boundaries t ≥ 2.55 / 2.08 / 1.80, both an
+  equal-weight and an event-weighted +100 bp economic bar, futility if the 90% upper bound falls below +100 bp,
+  backstop 2027-04-30. Same false-positive rate as the single February test it replaces; window opens
+  2026-09-18, first look expected around 2026-11-20. An admitted cohort could only trade the **own-capital
+  book** (no N1 name is on the prop platform's 36-symbol list) and **a crossing authorises nothing until a
+  dollar size is filed**. Nothing enters this universe before then. Standing rules: `IDEA_TESTING_PROTOCOL.md`.
 
 ## The rule (frozen — no discretion at execution time)
 

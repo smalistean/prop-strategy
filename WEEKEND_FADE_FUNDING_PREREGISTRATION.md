@@ -375,6 +375,153 @@ table reproduces the restated headline exactly: n=20 weekends, 94 events, +143.9
 SD 346.6, t=1.86, worst −427.9** — the same numbers the API union gave, so the database is again the
 source of record.
 
+## Amendment A7 — 2026-09-09 20:05 UTC: admitting new listings without a half-year of history (declared before any newcomer outcome is computed)
+
+**Why now.** Binance classified 156 EQUITY perps on 2026-09-09 against ~140 at E1; 25 were listed after
+E1's data cut (KO, RDDT on 2026-08-06; GDX, NET, VST, SHOP, LYTE on 08-17; SKUU, SKDD, RAM, DJT, MRNA on
+08-25; TEM, MRK, IONQ, MARA, PDD on 08-28; NVDL, TSLL, DDOG, TEAM, MDB, ZS, GTLB on 09-02; GPRO on 09-03).
+None is on the prop watchlist as posted 2026-08-25 (`PROP_CHALLENGE_RULES.md`), so by the live spec's
+definition none belongs to the universe today. `PerpKlineRefreshApplication` now discovers every EQUITY
+perp from `exchangeInfo` on each daily run and collects it from its own listing date, so the bars exist
+from here on; BTC/ETH 1h bars are kept current on the same schedule (they had stopped on 2026-08-11).
+
+**The problem stated honestly.** No name in the universe was ever admitted on its own outcomes: the 24
+came from the watchlist, and the edge is a pooled property (94 events over 27 names is ~3.5 events per
+name; no single name is significant). Demanding a half-year of per-name history from a newcomer would be
+a stricter standard than any incumbent met, and per-name outcome selection at n≈3 is noise-fitting.
+E1 (2026-08-30) is the constraint: the broad universe has no edge (+23 bp, t=0.22 against +241 for the
+measured names on the same weekends), so "structurally similar" is not enough either. What E1's own
+reading implies is a *characteristic*: the fade lives in crypto-adjacent, high-attention names that
+crypto traders push around while the underlying is closed. That characteristic is observable from hourly
+bars, and it accrues 48 observations per weekend per name rather than one.
+
+**Features (declared; per symbol per weekend; all from `binance_perp_kline` 1h, fixed UTC windows):**
+weekend bars = open_time Fri 20:00 → Sun 19:00 inclusive (48 bars); weekday bars = open_time Mon 00:00 →
+Fri 19:00 of the same week (116 bars). Per-symbol value = median over its weekends; ≥ 3 weekends required.
+- **F1 `wk_btc_corr`** — Pearson correlation of the perp's 47 hourly weekend log returns with BTCUSDT's.
+- **F2 `wk_vol_ratio`** — mean hourly quote volume over weekend bars ÷ mean over the week's weekday bars.
+- **F3 `wk_move_ratio`** — SD of hourly weekend log returns ÷ SD of the week's weekday hourly log returns.
+
+**Tests (declared, run in this order; sample = weekends from 2026-04-03 to 2026-08-28, the pre-listed
+holiday weekends excluded as in the frozen SQL, plus 2026-09-04 (Labor Day) by the same pre-listed rule):**
+- **T1 separation:** feature distributions for the 25 measured names vs the E1 names with ≥ 3 weekends;
+  report medians and the rank-sum AUC (P[random measured name > random E1 name]). Pass: AUC ≥ 0.75.
+- **T2 within-E1 prediction (the test that matters):** E1 names split into terciles by each feature;
+  the frozen event definition run per tercile; weekend-de-clustered mean net and t per tercile. Pass: top
+  tercile mean net > 0 and exceeds the bottom tercile by ≥ 50 bp/event. Three features → Holm-corrected
+  for the t of the top-minus-bottom difference; a feature must pass T1 and T2.
+- **T3 newcomers:** F1–F3 for the 25 post-E1 listings over the weekends they have. **No outcome is
+  computed for any newcomer in this amendment**, and the SQL that would do so is not run on them.
+- **Kill rule declared now:** if no feature passes T1 and T2, the characteristic route is dead; newcomers
+  then join only after ≥ 20 weekends of their own bars via a fresh pre-registered measurement.
+
+**Admission rule for a newcomer (operational only if a feature passes):**
+1. *Mechanical eligibility:* `underlyingType=EQUITY`; exchange-listed underlying (PREMARKET/private out,
+   rule A2); not a leveraged/inverse/volatility ETP (daily-reset products; among the 25 that is SKUU,
+   SKDD, RAM, NVDL, TSLL); not a crypto-underlying ETP (BITO-class); underlying trades US regular hours.
+2. *Characteristic:* after ≥ 3 weekends of bars, the passing feature's per-name value is ≥ the 25th
+   percentile of the measured 25's values AND ≥ the 75th percentile of the E1 set's values, both frozen
+   from the T1 run. Below either → not eligible; re-checked monthly, never mid-month.
+3. *Shadow period, 4 weekends:* the frozen SQL is run on the name weekly and written to a shadow ledger
+   that is **not traded and not used for selection** — promotion at the end of the 4 weekends is
+   automatic if (a) bars are complete, (b) the decision-bar quote volume clears the spec's liquidity floor
+   on ≥ 2 of the 4 weekends, (c) the Sunday name-check routine finds no pending corporate action.
+   Shadow outcomes are recorded and ignored, by declaration, because four weekends of outcomes are noise.
+4. *Cohort accounting:* promoted names are `cohort B` in the ledger; the 24 are `cohort A`. B is sized
+   like any name but capped at one third of a weekend's basket notional until B has ≥ 20 events. B is
+   suspended in full if its de-clustered mean net is < 0 at ≥ 20 events, or t < −1.0 at ≥ 10 events, at
+   any monthly re-measure; A is never re-sized on B's results. B is the mechanism's out-of-sample test.
+
+**Contamination disclosed.** E1's outcomes are known while the features are chosen. The features come
+from the mechanism sentence written into E1 on 2026-08-30, before any per-name feature value existed;
+the thresholds come from the measured 25's own distribution, not from tuning on E1 outcomes; T2 is a
+test, and the newcomers are the only clean out-of-sample set. If T2 passes narrowly, that is what it is.
+
+**Run 2026-09-09 20:12 UTC** (`scripts/analysis-fade-a7-newcomers.py full`; self-check first reproduced A6 exactly:
+orig-27 n=20, 94 events, +143.9, t=1.86; measured-25 +167.6, t=2.11). Bars: 112,087 rows backfilled across
+159 symbols, every EQUITY perp and BTC/ETH current to 2026-09-09 19:00 UTC. Sample: 19 Fridays 2026-04-10 →
+2026-08-28; 25 measured names and 95 E1 names all have ≥ 3 weekends.
+
+**T1 — separation (pass = AUC ≥ 0.75):**
+
+| Feature | measured-25 median | E1 median | AUC | verdict |
+|---|---:|---:|---:|---|
+| F1 weekend BTC correlation | 0.205 | 0.130 | **0.779** | pass |
+| F2 weekend/weekday volume ratio | 0.118 | 0.152 | 0.399 | fail (measured names are *less* weekend-heavy: their weekday volume is large) |
+| F3 weekend/weekday move ratio | 0.238 | 0.265 | 0.388 | fail |
+
+Sanity check on F1: the incumbents rank MSTR 0.742, COIN 0.657, CRCL 0.586, HOOD 0.454 at the top and
+AXTI −0.043, LLY 0.079, JPM 0.117 at the bottom — the crypto-native names are where the feature says they
+should be.
+
+**E1 extended through 2026-08-28 (the monthly re-measure E1 asked for):** all 95 E1 names, 16 weekends,
+192 events, mean **+38.0**, median +69.5, **t=0.50**, worst −865.7; measured-25 on the same weekends:
+14 weekends, 67 events, **+207.3**, t=2.1, worst −286.8. E1's decision stands.
+
+**T2 — within-E1 terciles by feature (pass = top mean > 0 and top − bottom ≥ 50 bp/event):**
+
+| Feature | bottom (n wk / events / mean / t) | middle | top | top − bottom | Welch t (p) | Holm p |
+|---|---|---|---|---:|---|---:|
+| **F1** | 11 / 53 / **+101.4** / 1.51 | 13 / 72 / +12.6 / 0.14 | 15 / 67 / **+165.5** / 2.81 (worst −115) | **+64.1** | 0.72 (0.48) | 1.00 |
+| F2 | 11 / 54 / +122.5 / 0.89 | 14 / 69 / +29.4 / 0.43 | 12 / 69 / +108.7 / 4.12 | −13.8 | −0.10 (0.92) | 0.92 |
+| F3 | 12 / 55 / +63.4 / 0.48 | 13 / 61 / +9.3 / 0.13 | 12 / 76 / +98.2 / 4.08 | +34.8 | 0.26 (0.80) | 1.00 |
+
+F1 tercile cuts 0.089 / 0.159. Top tercile (32 names, for the record, NOT admitted): CRDO, RKLB, INTW,
+BX, MRVL, MUU, DELL, IBM, CRM, BNC, SMCI, WDC, QNTX, BE, IREN, COHR, LRCX, CBRS, MSFT, DRAM, BABA, NFLX,
+CRWV, BOT, RIVN, AMD, ARM, GOOGL, ALAB, ASTS, USAR, BMNR. The four E1 disasters (LITE −866, APP −815,
+BOT −639, GOOGL −515) sit: APP bottom (0.019); LITE middle (0.156); BOT (0.244) and GOOGL (0.269) top — two of the four
+are above the tercile cut and above the 0.191 bar. The feature does not screen out single-name news.
+
+**Verdict, stated plainly.** F1 passes T1 and T2 *as declared*: AUC 0.78 and a top-minus-bottom gap of
++64 bp against a 50 bp bar. The gap is **not distinguishable from zero** (Welch t 0.72, Holm p 1.0), the
+terciles are not monotone (the middle is the worst), and the top tercile's t=2.81 is the largest of nine
+sub-samples examined (3 features × 3 terciles) and must not be read as an independent confirmation. Had
+T2 required Holm p < 0.10 — which the declaration did not — F1 would have failed. The declared rule stands
+because it was declared; the weakness is carried by the structure built for it: shadow first, cohort B
+capped at one third of the basket, suspended on its own numbers, cohort A untouched. The prior for cohort
+B is "probably a smaller edge than A, possibly none".
+
+**Frozen threshold (from T1, the declaration's formula):** eligible iff **F1 ≥ 0.191** (max of measured-25
+p25 = 0.170 and E1 p75 = 0.191), computed over ≥ 3 weekends. Ten of the 25 incumbents sit *below* it
+(AXTI, LLY, JPM, SNDK, PAYP, QCOM, EWJ, MU, AAPL, INTC): the newcomer bar is stricter than the incumbents'
+own admission, by design, and it removes nobody (declared: A is never re-sized on B's results).
+
+**E1 names above the threshold (24 of 95) are not admitted by this amendment**: their feature and their
+outcomes were computed on the same weekends, so selecting them now is outcome-contaminated. Declared
+extension (not requested, kept for consistency): an E1 name may enter the newcomer route only on its F1
+over weekends **from 2026-09-11 onward**, ≥ 3 weekends, same threshold, same shadow — earliest check at the
+October re-measure.
+
+**T3 — newcomers (features only; weekends 2026-08-07 → 2026-09-04; 09-04 is included here because the
+feature window is Fri 20:00 → Sun 19:00 UTC and does not depend on the US session):**
+
+| Symbol | Issuer (Nasdaq quote page, 2026-09-09) | mechanical | weekends | F1 | status |
+|---|---|---|---:|---:|---|
+| RDDT | Reddit Inc | ok | 4 | **0.233** | **eligible → shadow from weekend 2026-09-11** |
+| VST | Vistra Corp | ok | 3 | 0.182 | below 0.191; re-check October |
+| LYTE | Roundhill Photonics & Optics ETF | ok | 3 | 0.114 | no |
+| GDX | VanEck Gold Miners ETF | ok | 3 | 0.026 | no |
+| NET | Cloudflare | ok | 3 | −0.026 | no |
+| KO | Coca-Cola | ok | 4 | −0.030 | no |
+| SHOP | Shopify | ok | 3 | −0.087 | no |
+| MRNA, TEM, MRK, IONQ, MARA, PDD, DJT | Moderna, Tempus AI, Merck, IonQ, MARA Holdings, PDD, Trump Media | ok | 1 | 0.151 / 0.164 / 0.057 / 0.062 / 0.073 / 0.088 / 0.081 | one weekend, not judgeable; October |
+| DDOG, TEAM, MDB, ZS, GTLB, GPRO | Datadog, Atlassian, MongoDB, Zscaler, GitLab, GoPro | ok | 0 | — | October |
+| SKUU, SKDD, RAM, NVDL, TSLL | 2x daily ETPs (GraniteShares/Roundhill/Direxion) | **excluded** | — | — | daily-reset products |
+
+RDDT per weekend: 08-14 −0.203, 08-21 0.358, 08-28 0.234, 09-04 0.233 (08-07 lacks the 100 weekday bars).
+MARA — a bitcoin miner, the name the mechanism story would nominate first — reads 0.073 on its one weekend;
+one weekend is noise, October decides.
+
+**Disclosure:** the shadow mode's smoke test at 2026-09-09 20:12 UTC printed RDDT's 2026-08-28 row (weekend +140.5 bp, not triggered, so not an event; decision-bar quote volume $1,581). It was seen before the shadow period began; it informs nothing above, but the declaration said no newcomer outcome would be computed and one was.
+
+**Operational from here.** RDDT: shadow ledger for weekends 2026-09-11, 09-18, 09-25, 10-02 (the frozen
+SQL run weekly via `scripts/analysis-fade-a7-newcomers.py shadow RDDTUSDT <friday>`, written to the shadow
+ledger below, not traded, not selected on). Promotion check 2026-10-05: bars complete, decision-bar quote
+volume ≥ the spec's floor on ≥ 2 of 4, no pending corporate action. **Trading cohort B requires a live-spec
+filing by the user; nothing in this amendment changes what is traded.** All other newcomers: re-check at
+the October re-measure on ≥ 3 weekends.
+
+
 ## Live ledger (appended per traded weekend; the spec's "re-measure monthly" input)
 
 | # | Friday | form | events | spec net (equal-weight) | basket P/L at 15k/3k sizing | recorded |
@@ -385,3 +532,230 @@ Cumulative at spec sizing, weekends 1–20 (2026-01-30 → 08-21, complete data 
 +4.61% of the 50k account** (excl. private names +$2,545 = +5.09%); 13 of 20 traded weekends positive,
 6 of 26 in-scope weekends sat out; average deployed $9,600, +1.20% per traded weekend on deployed
 capital; worst weekend −$367 (2026-05-15), best +$625 (2026-06-05). With weekend 21: **+$2,486 = +4.97%**.
+
+### A7 critic pass — 2026-09-09 20:29 UTC: the admission rule is withdrawn the day it was declared
+
+Three independent adversarial reviews (statistics, mechanism, operations; each re-ran the script and
+reproduced every number) were run on the amendment as written above. Their objections, the checks they
+asked for, and the decision:
+
+**1. The declared T2 bar had no error control.** With weekend SDs of 223 (bottom, n=11) and 228 bp (top,
+n=15), the standard error of the top-minus-bottom gap is 89 bp, so a gap ≥ 50 bp had about a 29% chance
+under no effect for one feature and about 64% for at least one of three. "Top mean > 0" is nearly
+automatic when the pooled E1 mean is +38. The Holm correction was reported but never consulted by the
+pass rule. The operative threshold (0.191, 24 E1 names) was never tested; the tercile cut was 0.159 (32
+names). "Passed as declared" was true and uninformative.
+
+**2. The two tests that speak to the mechanism, run at the critics' request (20:29 UTC, `diagnostics` mode):**
+
+| Split at F1 = 0.191 | above | below | gap | Welch t |
+|---|---|---|---:|---:|
+| E1 names, 2026-04-10 → 08-28 | 24 names, 14 wk, 53 ev, **+106.6**, t 1.34 | 71 names, 13 wk, 139 ev, +30.8, t 0.35 | +75.7 | 0.64 (one-sided p 0.27) |
+| **Cohort A, A6 sample** | 15 names, 15 wk, 57 ev, **+75.5**, t 0.94 | 10 names, 15 wk, 30 ev, **+208.0**, t 2.33 | **−132.4** | −1.10 |
+
+Inside the measured universe the *low*-correlation names (EWJ, AAPL, INTC, MU, LLY, JPM, QCOM, PAYP, SNDK,
+AXTI) earned the most. Whatever the fade is a property of, F1 does not rank it, in either population.
+
+**3. The feature is not what the mechanism sentence claimed.** F1 computed over weekday hours separates
+measured from E1 almost as well (AUC 0.696, medians 0.317 vs 0.236) as over weekend hours (0.779); plain
+weekend quote volume per hour separates better (AUC 0.819, medians $98,977 vs $12,326 per hour). The
+co-movement is the underlying's BTC exposure and the name's liquidity in every session, not weekend
+pushing. F2's AUC of 0.40 said the same thing: the measured names carry *less* of their volume on weekends.
+Within E1, volume terciles do not order outcomes either (+70.9 / +119.7 / +92.7 bp), and a per-weekend
+rank-normalised F1 gives +117.4 / +29.1 / +133.1 — non-monotone again. On the Binance weekend index: it is
+a vendor blend (dxFeed, Kaiko, Pyth Pro, ~1% Binance perp) that is stale while the underlying is closed,
+so weekend perp moves are Binance participants' and mark-vs-index is what funding prices; that part of the
+sentence stands.
+
+**4. Three to four weekends of F1 cannot classify a name.** The cross-sectional median F1 across all names
+swings from 0.03 (07-17) to 0.47 (06-05) by weekend, and the share above 0.191 from 13% to 94%; the median
+within-name weekly SD is 0.195, larger than the between-name spread. Split-half (first 4 weekends vs the
+rest, names with ≥ 8) agrees on eligibility at 0.191 for 54 of 100 names. RDDT's four weekends rank 0.04,
+0.48, 0.68, 0.48 among the incumbents on the same weekends: it cleared the bar because three of its
+weekends were high-correlation weekends for everyone.
+
+**5. Operational defects.** (a) The promotion gate cited "the spec's liquidity floor"; the live spec has
+none. RDDT's Sunday decision bars were $2,963 / $2,711 / $5,869 / $1,581 / $720 (08-09 → 09-06) against an
+incumbent median of ~$65k and p25 of ~$19k (Gate study); any floor that admits RDDT is no floor. Four
+incumbents themselves printed under $2,500 on recent Sundays (JPM $585, LLY $1,000, NOK $1,083, PAYP
+$2,480 on 08-30) — cohort A has no liquidity rule, which is a separate finding for the user. (b) RDDT is
+not on the prop platform's 36-symbol list, so "cohort B" could only ever trade on the own-capital book,
+where the 15,000/3,000/one-third figures are undefined. (c) The script's outcome function was correct only
+for Fridays up to 2026-10-30 (fixed 20:29 UTC: anchor, entry and exit bars now derive from
+America/New_York and the NYSE closure list, with the live spec's shifted form on holiday weekends;
+self-check asserts a winter, a summer and a Labor Day weekend and reproduces A6). (d) The kill rule could
+not fire inside a year at 0.13–0.20 events per name-weekend, and the one-third cap never binds for one
+name. (e) The ETP exclusion reached the right answer for the wrong reason: no daily reset occurs inside a
+Friday-close-to-Monday-11:00 hold; the reasons that apply are the halved trigger scale and duplicate
+exposure (TSLL on TSLA, NVDL on NVDA). ADRs and foreign-market ETFs with a US regular session are eligible
+in principle, as TSM, PAYP, NOK, EWJ, EWY already are. (f) MARA's one-weekend F1 (0.073) rests on a decision
+bar with one trade. (g) The E1 membership and thresholds were re-derived from a live `exchangeInfo` call;
+they are now constants in the script, and the 20:12 UTC per-name values are in
+`data/fade-a7-features-2026-09-09.json`. **Correction 2026-09-12 07:51 UTC:** that claim of "tracked" was wrong when written — `.gitignore` excludes `data/` wholesale and nothing in it had ever been committed. The file is force-added to git as part of the A8 pre-registration commit.
+
+**(h) Found while fixing (c), disclosed 2026-09-09 20:31 UTC: the pre-listed holiday exclusion missed Juneteenth.** The written
+rule excludes "weekends adjacent to full US market closures"; the enumerated list (MLK, Presidents, Good Friday,
+Memorial, Independence) omitted **Friday 2026-06-19**, a full NYSE closure, so A6, E1 and A7 all kept that weekend
+with a closed-market Friday bar as anchor. Effect on the headline: **none** — no name in the 27 was ≤ −50 bp from
+that stale bar, so the ledger's 20 weekends / 94 events / +143.9 / t 1.86 are identical with the weekend removed.
+Effect on the E1 extension: 16 → 15 weekends, 192 → 183 events, +38.0 → **+47.7 bp, t 0.50 → 0.6**; decision
+unchanged. For the record only: under the live spec's shifted form (anchor = Thursday 06-18 close) the weekend
+would have produced five events in the 27 — EWJ +181, AAPL +141, AMZN −367, NVDA −17, SPCX −755 bp — which the
+live rule would have traded; the ledger starts 2026-09-04 and is unaffected. The script now derives the
+closure-adjacent list from the NYSE closure list (`hol_by_rule`) for every future cut, and keeps the enumerated
+list only to reproduce the published numbers.
+
+**Decision (2026-09-09 20:29 UTC).** The A7 admission rule (items 1–4 of "Admission rule for a newcomer") is
+**withdrawn**: the kill clause declared at 20:05 UTC applies — no feature is supported, so the
+characteristic route is dead. RDDT's shadow start on 2026-09-11 is withdrawn; the shadow ledger below is
+closed with no rows. What stands: the daily collection of every EQUITY perp; the mechanical eligibility
+list (restated per 5e); the E1 extension through 08-28 (+38.0, t 0.50; decision unchanged); the finding
+that cohort A has no liquidity rule. The withdrawal is post-hoc in the conservative direction and is
+disclosed as such.
+
+**What replaces it — the pooled newcomer cohort cut (declared 2026-09-09 20:29 UTC, before any newcomer outcome
+beyond the disclosed 08-28 RDDT row exists).** Per-name history is not, and never was, the criterion: the
+24 were admitted as a block and measured as a block. New listings are treated the same way. Cohort N1 =
+every EQUITY perp listed after E1's data cut and before 2026-09-04 that passes mechanical eligibility (KO,
+RDDT, GDX, NET, VST, SHOP, LYTE, DJT, MRNA, TEM, MRK, IONQ, MARA, PDD, DDOG, TEAM, MDB, ZS, GTLB, GPRO —
+20 names; SKUU, SKDD, RAM, NVDL, TSLL excluded). It is measured **once**, on the frozen definition, when
+every name in it has ≥ 20 non-holiday weekends of bars (the 2026-09-02 group reaches that on the weekend
+of 2027-02-12; run at the February 2027 re-measure), against the measured-25 on the same weekends as the
+control, exactly as E1 was. **Admission of N1 as a block iff its de-clustered mean net ≥ +100 bp with
+t ≥ 1.5 and its worst weekend ≥ −500 bp; otherwise it stays out and the next cohort (listings from
+2026-09-04 on) is measured the same way when it qualifies.** No name enters on its own outcomes, no name
+enters early, and the cohort's sizing on admission is the spec's per-name rule with no separate cap.
+Until February 2027 nothing changes in what is traded. Names listed on the prop platform meanwhile do not
+join before the cut either.
+
+## Amendment A8 — declared 2026-09-12 07:37 UTC, revised 2026-09-12 07:50 UTC after adversarial review: the newcomer cohort becomes a group-sequential test (supersedes A7's single February cut)
+
+**Why.** The user's observation: an edge is worth most when it is new, and the cost of waiting for a
+conventional sample is that the edge is crowded by the time the sample exists. A7 answered the newcomer
+question with one measurement in February 2027 and nothing before it. The fix is not a lower bar. A test looked
+at on a declared schedule, with boundaries that spend the *same* total error budget across the looks, holds the
+same false-positive rate as the single test while letting a strong cohort be recognised months earlier and a
+dead one be dropped months earlier. The standing rules are `IDEA_TESTING_PROTOCOL.md`; this is their first
+application.
+
+**Revision history, stated first because it is load-bearing.** Declared 07:37 UTC with the window opening
+2026-09-11. Three adversarial reviews then found, among other things, that the 2026-09-11 anchor bar had closed
+at 20:00 UTC on 09-11, **before** the declaration, so "fully prospective" was not literally true; and that the
+null had been calibrated on the frozen non-shifted definition with holiday weekends excluded, which is not the
+definition this amendment declares. Both are corrected here at 2026-09-12 07:50 UTC: the window moves forward one week to
+**2026-09-18**, whose anchor bar had not yet formed at either timestamp, and the null is rebuilt on the live
+shifted form with holiday weekends included. **No observation existed in either window at either timestamp**,
+so the revision is itself fully prospective; it costs one calendar weekend and makes the claim exact. The
+boundaries did not move — the rebuilt null gives a lower error rate, and by protocol §5 a recomputation may only
+tighten, never loosen.
+
+**Three corrections to A7, found while building this.**
+1. A7 said the cohort reaches 20 weekends "on the weekend of 2027-02-12". Counting non-holiday weekends from
+   2026-09-11, the twentieth is **2027-02-19**; 02-12 is closure-adjacent (Presidents Day).
+2. More seriously, A7 conflated **calendar weekends of bars** with **observations**. The statistic is computed on
+   de-clustered weekends, and a weekend in which no cohort name triggers carries no information. Measured on
+   3,000 random 20-name subsets of the 95-name E1 population on this amendment's own definition: a 20-name
+   cohort yields a usable weekend on **0.588** of calendar weekends. A7's February test would have run on about
+   **12 observations, not 20**, and its t ≥ 1.5 bar was being applied to a smaller sample than the text implied.
+3. A7 excluded holiday weekends, inheriting the study convention. The live rule **trades** them in shifted form
+   (standing decision, 2026-09-06). A prospective test of what would be traded must include them, so A8 counts
+   every weekend on the live shifted form, making the test's definition identical to the traded rule.
+
+**The test.**
+
+| Item | Declaration |
+|---|---|
+| Population | Cohort N1: 20 names listed 2026-08-06 → 09-03 (KO, RDDT, GDX, NET, VST, SHOP, LYTE, DJT, MRNA, TEM, MRK, IONQ, MARA, PDD, DDOG, TEAM, MDB, ZS, GTLB, GPRO). Frozen. SKUU, SKDD, RAM, NVDL, TSLL excluded as leveraged ETPs (halved trigger scale, duplicate exposure). Later listings are the next cohort. |
+| Window | Weekends from **2026-09-18** inclusive. |
+| Definition | The frozen event definition in **live shifted form**: anchor = last US session close (13:00 NY on an early-close day), entry = 19:00 UTC bar the evening before the next session, exit = 10:00 NY bar of that session, trigger ≤ −50 bp, cost 9 bp, funding in (entry, exit]. Identical to `WeekendFadeMonitorApplication`. |
+| Information metric | **m = usable weekends** (weekends with ≥ 1 triggered name). The weekend observation is the equal-weight mean net across that weekend's triggered names. |
+| Looks | m = **6, 9, 12**. No look at any other m. A missed look is evaluated on its own prefix `series[:k]` at its own boundary, never on the full series at a stale boundary. |
+| Boundaries | **t ≥ 2.55 at m=6, t ≥ 2.08 at m=9, t ≥ 1.80 at m=12** (O'Brien-Fleming shape, C = 1.80). |
+| Economic bars | Admission additionally requires **both** the equal-weight mean ≥ +100 bp **and** the event-weighted mean ≥ +100 bp. The second is the return per unit of capital deployed, which is what the money earns: a weekend with eight triggers deploys eight times the notional of a weekend with one, and on E1 the two statistics differ by more than 50 bp for a large minority of cohorts (+38.0 equal-weight against +141.5 event-weighted on E1 itself). |
+| Futility | Stop and declare the cohort dead if **mean + 1.282 × SE < +100 bp** at a scheduled look. Checked only at a scheduled look, never between. |
+| Standing condition | A weekend worse than **−500 bp** suspends the cohort whenever it occurs, before or after admission, and forces a re-measure. Deliberately **not** part of the crossing rule: a "worst so far" bar is easier to satisfy with fewer observations and would reward stopping early. |
+| Control | At each look the script also reports cohort A's de-clustered mean over the same weekends and the N1-minus-A difference. **Context only, not part of the crossing rule**, so the error rate is unchanged. A7 had promised a same-period control and the sequential rule dropped it; this reinstates it as a reported statistic. A crossing with A far above N1 is to be read as a regime in which the whole tokenized-perp complex faded well, not as evidence about N1 specifically. |
+| Attrition | A name delisted or with bars ending mid-test contributes the weekends it has; the ledger records the missing-name count per weekend. The population is never replaced or topped up. If fewer than 15 of the 20 names are still listed at a look, that is disclosed with the result. |
+| Backstop | If m = 12 is not reached by the weekend of **2027-04-30**, the final analysis runs then at whatever m ≥ 8 exists, at boundary C/√(m/12) — which is stricter in error terms, not an extra look. If m < 8 even then, the cohort is untestable and rolls into the next one. |
+| Not crossed at m = 12 | Not admitted, test closed. N1 may only be re-declared as part of a fresh cohort with a fresh window after 2027-06-30. No extensions. |
+| On admission | **The size is not yet declared, and a crossing does not authorise a trade until it is.** N1 names are not on the prop platform's 36-symbol list, so an admitted cohort could only trade the own-capital Binance book, whose Plan S sizing was drafted for $10k and never filed, against roughly $5.1k of actual equity. This deliberately leaves protocol §1 item 9 unsatisfied; the deadline to fill it is the first look, expected around 2026-11-20. |
+
+**Calibration** (`python3 scripts/analysis-sequential-test.py boundaries`). The null is the centred empirical
+distribution of weekend means as a 20-name cohort experiences them, built by resampling random 20-name subsets
+of the E1 population **on this amendment's own definition** (live shifted form, holidays included): SD **276 bp**,
+left-skewed, 1st percentile −973, 99th +779. C was chosen so the family-wise one-sided error rate stays at or
+below 0.075 under the **worst** of three nulls:
+
+| Null | family-wise one-sided alpha |
+|---|---:|
+| Empirical, 20-name cohorts | 0.0579 |
+| Normal, same SD | 0.0727 |
+| t(4), same SD | 0.0700 |
+| Full rule, empirical (economic bars + futility stopping) | 0.0507 |
+| *Reference: A7's single test, t ≥ 1.5 at m = 12* | *0.077 – 0.082* |
+
+The first three rows are 50,000-path Monte Carlo estimates with a standard error near 0.0012, so "at or below
+0.075" means within Monte Carlo error of it, and they are **efficacy-only upper bounds**: they apply neither
+economic bar nor futility stopping, both of which only remove crossings. The full rule comes in at 0.0507. The sequential test is therefore
+slightly **more conservative** than the single test it replaces. Calibrating on the empirical null alone would
+have understated the rate by about a fifth, which is why the protocol requires the worst of the three.
+
+**What the boundaries demand, stated honestly.** At the resampled cohort SD of 276 bp the boundaries correspond
+to means of 287 / 191 / 143 bp. But the statistic uses the **sample** SD of m observations, and at m = 6
+that is badly downward-biased and, conditional on a crossing, selected to be small: the unconditional sample SD of six
+draws has a median of 224 bp, and conditional on a null m = 6 crossing it has a median of **142 bp** with a
+crossing mean of **184 bp**, not 287. So the +100 bp bar is **not** inert at the first look — it removes about
+**10%** of null crossings and is the operative
+protection against a quiet start. The earlier claim that "the economic bar never binds" was wrong and is
+withdrawn. A related fact the reader should have: **a large minority of cohorts are decided at m = 6**, mostly
+by futility, so in practice this is substantially a six-observation test.
+
+**Power** (`python3 scripts/analysis-sequential-test.py power`; empirical null shifted to a true weekend mean,
+economic bar applied, futility active):
+
+| True mean | Admitted, total | at m=6 | at m=9 | at m=12 | Killed for futility | A7's single test |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0 bp | 0.050 | 0.015 | 0.015 | 0.020 | 0.660 | 0.062 |
+| +100 | 0.398 | 0.113 | 0.146 | 0.138 | 0.219 | 0.414 |
+| +150 | 0.650 | 0.236 | 0.246 | 0.168 | 0.081 | 0.666 |
+| +200 | 0.823 | 0.401 | 0.287 | 0.135 | 0.022 | 0.830 |
+| +300 | 0.962 | 0.698 | 0.188 | 0.076 | 0.001 | 0.972 |
+
+Read honestly: the peeking is close to free (0.650 against 0.666 at a true +150) and what it buys is timing —
+at a true +200 the cohort is admitted at the first look, expected around **2026-11-20**, 40% of the time. It does
+**not** fix the underlying weakness: at an edge the size of the fade's own headline (+144 to +168 bp) this test
+still misses a real cohort about a third of the time, because 12 observations of a 276 bp distribution is not
+much. A failure to cross is **not** evidence of no edge, and this is written down in advance so a null result is
+not over-read later. A truly worthless cohort is killed at a scheduled look 66% of the time; a cohort at a
+true +100 is killed 22% of the time and one at a true +150 8% of the time, which is the declared cost of
+stopping early.
+
+**Expected timing** at 0.588 usable weekends per calendar weekend: m=6 around **2026-11-20**, m=9 around
+**2026-12-25**, m=12 around **2027-01-29**. Expectations, not commitments: the looks are triggered by m, never
+by date.
+
+**Error budget across cohorts.** This amendment controls error across the three looks **within** N1 and controls
+nothing across the stream of cohorts the design creates. Four cohorts at this budget carry roughly a one-in-four
+chance of at least one false admission somewhere. Per protocol §5: only one test runs at full budget at a time,
+an admission is provisional through a confirmation period, and no second cohort is admitted while an earlier
+admitted cohort is still inside it.
+
+**Disclosures.** (a) All 20 names have bars before the window; the seven listed 2026-08-06/17 have about five
+earlier calendar weekends and the rest two, and one N1 outcome (RDDT, weekend 2026-08-28) was computed and
+disclosed in A7's smoke test. The window uses none of it. (b) The null is calibrated from E1, a different
+population, because N1 has no outcomes; if N1's weekend distribution proves materially wider or narrower the
+boundaries remain valid in t-units but the power and timing tables do not. (c) The null, the 276 bp SD and the
+0.588 rate are measured over 2026-04-03 → 08-28, which contains three shifted weekends out of 22; roughly four
+of the nineteen weekends to the expected m=12 look are the shifted form, and the 2026-11-27 early-close anchor
+form has no measured precedent at all, so timing and power carry an unquantified error on that share. (d) The
+protocol and this amendment were written after A7's rule failed, so the motivation is post-hoc; the test is
+prospective. (e) Nothing here changes what is traded today, and a crossing changes nothing either until a size
+is filed.
+
+## Shadow ledger — cohort B candidates (A7; closed 2026-09-09 20:29 UTC, no rows — reopened only by a new amendment)
+
+Frozen definition, same as the live ledger. A row per candidate per weekend, from the weekend after
+eligibility. Opened 2026-09-09 20:12 UTC.
+
+| Weekend (Fri) | Symbol | wknd bp | triggered | price bp | funding bp | net bp | decision-bar quote vol | bars complete |
+|---|---|---:|---|---:|---:|---:|---:|---|
