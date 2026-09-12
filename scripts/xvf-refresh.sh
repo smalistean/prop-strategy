@@ -79,7 +79,7 @@ say "candles: hyperliquid"
 # importer only ever has completed months, which is how the fade study lost three August 2026
 # weekends for 19 names (WEEKEND_FADE_FUNDING_PREREGISTRATION.md, A6). Walks forward from each
 # symbol's latest stored bar, so a daily run is one page per symbol.
-say "klines: binance fade universe"
+say "klines: binance equity perps + fade universe + BTC/ETH"
 "$JAVA" -cp "$CP" com.smalistean.propstrategy.marketdownloader.PerpKlineRefreshApplication \
     >>"$LOG" 2>&1 || say "!! binance kline refresh failed"
 
