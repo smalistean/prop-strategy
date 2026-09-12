@@ -1,6 +1,71 @@
 # Project Status
 
-Last updated: 2026-09-09
+Last updated: 2026-09-12
+
+## Sequential testing protocol, and the newcomer cohort becomes a sequential test (2026-09-12 07:51 UTC)
+
+- **`IDEA_TESTING_PROTOCOL.md` (new).** Standing rules for testing any new idea, prompted by the user's point
+  that edges are worth most when new and that waiting for a conventional sample is itself a cost. The answer is
+  not a lower bar: raise information per unit of calendar time and spend the same error budget across scheduled
+  looks. Covers what must be declared before the first observation, why the information metric is de-clustered
+  observations and never calendar time, why an economic bar needs both an equal-weight and an event-weighted
+  form, how boundaries are calibrated (empirical + normal + t(4) nulls, keep the worst), the sizing ladder,
+  what voids a test, and that voiding carries the same embargo as failing so it cannot be the cheap way out.
+- **Prereg A8** applies it to cohort N1 (20 newcomer names), superseding A7's single February 2027 cut. Looks at
+  m = 6, 9, 12 usable weekends; boundaries **t ≥ 2.55 / 2.08 / 1.80**; futility if the one-sided 90% upper bound
+  drops below +100 bp; backstop 2027-04-30. Family-wise one-sided alpha **0.059 / 0.075 / 0.070** under the
+  empirical, normal and t(4) nulls against 0.077–0.082 for the single test it replaces, with power essentially
+  unchanged (0.650 vs 0.666 at a true +150 bp). What it buys is timing: at a true +200 the cohort is admitted at
+  the first look, expected around 2026-11-20, 40% of the time.
+- **Three adversarial critics reviewed it and found four blocking defects, all fixed before any observation
+  existed.** (1) The `look` script ran the futility rule at every weekend, which would have killed 54% of null
+  cohorts and 22% of cohorts as strong as the fade's own headline before the first declared look; the script now
+  splits into `count` (anchor and entry bars only, no outcome, no statistic, safe to run weekly) and `look`
+  (refuses unless a look is outstanding, evaluates a missed look on its own prefix at its own boundary).
+  (2) The window opened 2026-09-11, whose anchor bar had closed before the declaration; it moved to 2026-09-18,
+  costing one weekend and making "fully prospective" exact. (3) The null was calibrated on the frozen
+  non-shifted definition with holidays excluded, not the one A8 declares; rebuilt on the live shifted form
+  (SD 276 bp, usable rate 0.59), which lowered the error rate, so the boundaries stand unchanged. (4) Nothing
+  was committed, so the declaration had no evidence of its own date — see the pre-registration commit.
+- **Also corrected:** "the economic bar never binds" was false (the sample SD at an m=6 crossing is selected
+  small, median ~130 bp, so the bar removes about an eighth of null crossings and is the operative guard there);
+  the economic bar now has an event-weighted form as well, because the equal-weight weekend mean is not the
+  return on capital; cohort A is reported at every look as context after A7 had promised a control; an attrition
+  clause, a cross-cohort error statement and an explicit "no size is declared, a crossing authorises nothing"
+  row were added. Two A7 errors also stand corrected: its February date was a week off, and it conflated
+  calendar weekends with observations.
+- Reproducible: `scripts/analysis-sequential-test.py` with `schedule`, `count`, `look`, `boundaries` and
+  `power`. The ledger moved to the tracked `research/n1_sequential_ledger.jsonl`, since a record of what was
+  looked at and when is worthless inside gitignored `logs/`. Nothing traded changes today.
+
+## Weekend fade: every Binance equity perp now collected; new-listing shortcut declared, tested, withdrawn (2026-09-09 20:29 UTC)
+
+- `PerpKlineRefreshApplication` discovers every `underlyingType=EQUITY` perp from `exchangeInfo` on each
+  daily run, floors a new listing at its own `onboardDate`, and keeps BTC/ETH 1h current (they had stopped
+  on 2026-08-11). Backfill 2026-09-09 19:5x UTC: 112,087 rows, 159 symbols current to 19:00 UTC. Binance
+  classified 156 EQUITY perps; 25 were listed after E1's data cut, none on the prop watchlist.
+- **Prereg amendment A7** asked whether a listing can join the fade without a half-year of history, since
+  no incumbent was ever admitted on its own outcomes (~3.5 events per name). Declared 20:05 UTC: three
+  hourly-bar features, tests T1–T3, a shadow cohort. Result 20:12 UTC: weekend-BTC correlation cleared the
+  declared bars (AUC 0.78; tercile gap +64 bp) but not inferentially (Welch t 0.72, Holm p 1.0). Three
+  adversarial critics then showed the bar had ~29% pass probability under no effect, the feature at 3–4
+  weekends is weekend regime not name character (split-half agreement 54%), and the two tests they asked
+  for went the wrong way: inside cohort A the low-correlation names earned +208 bp vs +76 for the high ones.
+  **Rule withdrawn the same day; RDDT's shadow start withdrawn; replaced by a pooled newcomer-cohort cut
+  (20 names, first run February 2027, admission iff mean ≥ +100 bp, t ≥ 1.5, worst ≥ −500).** Every
+  number reproduces from `scripts/analysis-fade-a7-newcomers.py`; frozen values in
+  `data/fade-a7-features-2026-09-09.json`.
+- **E1 extended through 2026-08-28:** all 95 E1 names +38.0 bp/weekend, t 0.50 (192 events); measured-25
+  on the same weekends +207.3, t 2.1. E1's decision stands.
+- **Open finding for the user:** the live spec has no liquidity rule; on recent Sundays JPM ($585), LLY
+  ($1,000), NOK ($1,083) and PAYP ($2,480) printed decision bars far below a 3,000 USDT order. Plan S has
+  the 10%-of-bar rule (R3); the prop rule has none.
+- Also found: the pre-registered holiday list missed Juneteenth (Fri 2026-06-19, full closure). Headline unaffected
+  (no trigger in the 27 that weekend); E1 extension +38.0 → +47.7 bp, t 0.6, decision unchanged; future cuts derive
+  closure-adjacent weekends from the NYSE list. Under the live shifted form that weekend would have traded five names.
+- Fixed in passing: the fade study script's outcome definition was summer-only; it now derives anchor,
+  entry and exit bars from America/New_York and the NYSE closure list (shifted form on holidays), with a
+  self-check that reproduces A6 and asserts a winter, a summer and a Labor Day weekend.
 
 ## XVF own-capital book closed — last pair (ONG) flattened; HL and Bybit capital to be consolidated on Binance (2026-09-09 18:44 UTC)
 
