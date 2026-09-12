@@ -2,6 +2,26 @@
 
 Last updated: 2026-09-12
 
+## Earnings-night continuation expanded and killed (2026-09-12 10:07 UTC)
+
+- **The eight-event pilot did not survive a frozen, pilot-excluded expansion.** Before joining any outcome,
+  `EARNINGS_NIGHT_PREREGISTRATION.md` froze current Binance EQUITY/USDT instruments, domestic listed operating
+  issuers, exact SEC 8-K Item 2.02 timestamps and a deterministic earnings-results document rule. The manifest
+  has 155 exchange instruments, 104 eligible issuers and 71 source events on 37 dates; SHA-256
+  `f318b8cf40fe06e78d4a5d2d88be8b98a3d0060ffecedd49e86e0a8727ac0d00`.
+- **Primary cohort B result: FAIL.** Excluding all 25 pilot names left 45 source events; 32 crossed the frozen 3%
+  trigger across 21 independent nights. Same-direction continuation from the first post-20:00-NY bar to the
+  next session's 10:00-NY open averaged **-56.4 bp/night after funding and 13 bp**, median -35.2, t=-0.56;
+  event-weighted -72.3. The 9 bp sensitivity remained -52.4. Removing the best night gave -107.4 and removing
+  APP, the best-contributing symbol, -88.1. Long and short continuations were both negative; Q2 was positive on
+  four nights, Q3 negative on 17.
+- Same-clock generic shocks without a same-date Item 2.02 filing were also negative (-73.3 bp, 32 dates,
+  t=-0.91). The exact stratified adjustment was unavailable because some frozen cells had no controls; it was
+  not rebucketed. This does not rescue a primary result that is itself negative, and reversal was not tested.
+- Capacity was not the problem: the 10%-of-decision-hour proxy had a ~$70k median, ~$16k p25 and $2.2k minimum.
+  The idea is closed because the forecast failed. Full ledger and reproducible script:
+  `research/earnings-night-result-2026-09-12.json`, `scripts/analysis-earnings-night.py`.
+
 ## Sequential testing protocol, and the newcomer cohort becomes a sequential test (2026-09-12 07:51 UTC)
 
 - **`IDEA_TESTING_PROTOCOL.md` (new).** Standing rules for testing any new idea, prompted by the user's point
