@@ -1,0 +1,580 @@
+{
+  "analysisScriptSha256": "cc99c5f66e80416f4d735e37acb9d3b58ba45d0652336f5c0eeb4d65d9f4ef9e",
+  "appendixNonDecisionHorizons": {
+    "fiveMinuteDateWeightedNet25Bp": {
+      "byDate": {
+        "2026-06-03": 38.375449078,
+        "2026-06-10": 32.946210269,
+        "2026-07-05": -108.288243024,
+        "2026-07-09": -7.760998483,
+        "2026-08-16": -29.344048653
+      },
+      "events": 5,
+      "mean": -14.814326162599999,
+      "median": -7.760998483,
+      "n": 5,
+      "positiveFraction": 0.4,
+      "sd": 59.3895117651162,
+      "t": -0.5577725654899967,
+      "worst": -108.288243024,
+      "zeroVariance": false
+    },
+    "thirtyMinuteDateWeightedNet25Bp": {
+      "byDate": {
+        "2026-06-03": 97.714245348,
+        "2026-06-10": -19.621026895,
+        "2026-07-05": -22.487825616,
+        "2026-07-09": 37.060405461,
+        "2026-08-16": -81.472632493
+      },
+      "events": 5,
+      "mean": 2.2386331610000005,
+      "median": -19.621026895,
+      "n": 5,
+      "positiveFraction": 0.4,
+      "sd": 67.8692987428863,
+      "t": 0.07375552742403879,
+      "worst": -81.472632493,
+      "zeroVariance": false
+    }
+  },
+  "codeFreeze": "research/dividend-reopening-code-freeze-2026-09-13.json",
+  "codeFreezeSha256": "9f7c5cfe367f37d2784215cfc8021c3bb14a89656a5421fb6ead1d9c85dc32fb",
+  "counts": {
+    "controlCandidates": 310,
+    "matchedControlDates": 0,
+    "matchedEventDates": 0,
+    "matchedEvents": 0,
+    "selectedControlExecutionFailures": 0,
+    "selectedControls": 0,
+    "signalAttritionFraction": 0.32,
+    "signalUnusableEvents": 16,
+    "signalUsableControlCandidates": 167,
+    "signalUsableEvents": 34,
+    "sourceEvents": 50,
+    "standaloneControlExecutedTriggers": 25,
+    "standaloneControlExecutionFailures": 0,
+    "standaloneControlTriggerSignals": 25,
+    "triggerRateOfSignalUsableEvents": 0.17647058823529413,
+    "triggerRateOfSourceEvents": 0.12,
+    "triggeredDates": 5,
+    "triggeredEvents": 5,
+    "triggeredExecutionFailures": 1,
+    "triggeredSignalDates": 6,
+    "triggeredSignals": 6
+  },
+  "decisionConditions": {
+    "atLeast12TriggerDates": false,
+    "atLeast8DistinctMatchedEventAndControlDates": false,
+    "bestSymbolPositivePnlShareAtMost25Pct": false,
+    "dateDeclusteredTAtLeast2": false,
+    "dateWeightedMeanNet25AtLeast25Bp": false,
+    "dateWeightedMeanNet40Nonnegative": false,
+    "eventMeanWithoutBestSymbolPositive": false,
+    "eventWeightedMeanNet25AtLeast25Bp": false,
+    "matchedEventMinusControlMeanPositive": null,
+    "matchedMeanGapRatioBetween0_9And1_1": null,
+    "meanWithoutBestDatePositive": false,
+    "preAndPostUsdtConversionMeansNonnegative": false,
+    "signalBarAttritionAtMost20Pct": false,
+    "zeroTriggeredExecutionFailures": false
+  },
+  "diagnosticsNotDecisionRules": {
+    "gapBp": {
+      "mean": 22.861125145264705,
+      "median": 31.541615939,
+      "n": 34,
+      "positiveFraction": 0.7647058823529411,
+      "sd": 38.53611667378571,
+      "t": 3.4591477421687347,
+      "worst": -87.517974516,
+      "zeroVariance": false
+    },
+    "markVsPMinusBp": {
+      "mean": -0.3414369056764706,
+      "median": 1.0288080085,
+      "n": 34,
+      "positiveFraction": 0.5294117647058824,
+      "sd": 10.718989765047922,
+      "t": -0.185735989656058,
+      "worst": -46.798553499,
+      "zeroVariance": false
+    },
+    "pMinusDividendProxy": {
+      "dateWeightedNet25Bp": {
+        "byDate": {
+          "2026-06-03": 93.67759254,
+          "2026-06-10": -46.271393643,
+          "2026-07-05": -125.39035325,
+          "2026-07-09": -4.31319818,
+          "2026-08-16": -66.268462207
+        },
+        "events": 5,
+        "mean": -29.713162948,
+        "median": -46.271393643,
+        "n": 5,
+        "positiveFraction": 0.2,
+        "sd": 81.60120465082616,
+        "t": -0.8142116585479033,
+        "worst": -125.39035325,
+        "zeroVariance": false
+      },
+      "directionDisagreementsWhenBothTrigger": 0,
+      "eventWeightedNet25Bp": {
+        "mean": -29.713162948,
+        "median": -46.271393643,
+        "n": 5,
+        "positiveFraction": 0.2,
+        "sd": 81.60120465082616,
+        "t": -0.8142116585479033,
+        "worst": -125.39035325,
+        "zeroVariance": false
+      },
+      "executionFailures": 1,
+      "triggerStatusDisagreements": 0,
+      "triggeredSignalDates": 6,
+      "triggeredSignals": 6
+    },
+    "perpIndexExitBp": {
+      "mean": 13.1147455524,
+      "median": 11.464428151,
+      "n": 5,
+      "positiveFraction": 1.0,
+      "sd": 8.057528500184825,
+      "t": 3.6395108701268337,
+      "worst": 3.968148732,
+      "zeroVariance": false
+    },
+    "perpIndexMinusBp": {
+      "mean": -1.0147950947878783,
+      "median": 2.041558106,
+      "n": 33,
+      "positiveFraction": 0.6060606060606061,
+      "sd": 31.573261055732022,
+      "t": -0.18463578992104546,
+      "worst": -112.050905735,
+      "zeroVariance": false
+    },
+    "perpIndexPlusBp": {
+      "mean": 8.3333804375,
+      "median": 1.8387298534999998,
+      "n": 34,
+      "positiveFraction": 0.5294117647058824,
+      "sd": 28.679813937237313,
+      "t": 1.694276697849043,
+      "worst": -40.40362786,
+      "zeroVariance": false
+    },
+    "signalFailureReasons": {
+      "inactiveTradeBar": 16
+    },
+    "triggeredEntryAdjustedDisplacementBp": {
+      "mean": 56.730721181,
+      "median": 65.866665676,
+      "n": 5,
+      "positiveFraction": 0.8,
+      "sd": 86.82525190581205,
+      "t": 1.461023679043442,
+      "worst": -83.263560562,
+      "zeroVariance": false
+    },
+    "triggeredExecutionFailureDetails": [
+      {
+        "eventId": "2026-06-29:DISUSDT",
+        "reason": "noExecutableExit[20:18:inactiveTradeBar,20:19:inactiveTradeBar,20:20:inactiveTradeBar,20:21:inactiveTradeBar,20:22:inactiveTradeBar,20:23:inactiveTradeBar]"
+      }
+    ],
+    "triggeredExitAdjustedDisplacementBp": {
+      "mean": 45.1098783082,
+      "median": 24.85160584,
+      "n": 5,
+      "positiveFraction": 0.8,
+      "sd": 123.67035376467604,
+      "t": 0.8156259870155684,
+      "worst": -123.680493129,
+      "zeroVariance": false
+    }
+  },
+  "failedNonSampleConditions": [
+    "signalBarAttritionAtMost20Pct",
+    "zeroTriggeredExecutionFailures",
+    "dateWeightedMeanNet25AtLeast25Bp",
+    "eventWeightedMeanNet25AtLeast25Bp",
+    "dateDeclusteredTAtLeast2",
+    "meanWithoutBestDatePositive",
+    "eventMeanWithoutBestSymbolPositive",
+    "dateWeightedMeanNet40Nonnegative",
+    "preAndPostUsdtConversionMeansNonnegative",
+    "bestSymbolPositivePnlShareAtMost25Pct"
+  ],
+  "ledger": "research/dividend-reopening-ledger-2026-09-13.json",
+  "ledgerSha256": "45bf347242ad8ec5a15b1becbc56edb845b25e3ebff968792ccd34fc2837347f",
+  "matchedControl": {
+    "dateWeightedEventMinusControlNet25Bp": {
+      "byDate": {},
+      "events": 0,
+      "mean": null,
+      "median": null,
+      "n": 0,
+      "positiveFraction": null,
+      "sd": null,
+      "t": null,
+      "worst": null,
+      "zeroVariance": null
+    },
+    "gapDistanceBp": {
+      "mean": null,
+      "median": null,
+      "n": 0,
+      "positiveFraction": null,
+      "sd": null,
+      "t": null,
+      "worst": null,
+      "zeroVariance": null
+    },
+    "meanAbsoluteGapRatio": null,
+    "pairs": [],
+    "selectedControlExecutionFailureDetails": []
+  },
+  "preregistrationSha256": "f0e2baed7810f36e7951d8d06682087adfa1e1a1eec1a646a7a95ad19c08ef1e",
+  "primary": {
+    "byDirection": {
+      "long": {
+        "dateWeighted": {
+          "byDate": {
+            "2026-08-16": -66.268462207
+          },
+          "events": 1,
+          "mean": -66.268462207,
+          "median": -66.268462207,
+          "n": 1,
+          "positiveFraction": 0.0,
+          "sd": null,
+          "t": null,
+          "worst": -66.268462207,
+          "zeroVariance": null
+        },
+        "eventWeighted": {
+          "mean": -66.268462207,
+          "median": -66.268462207,
+          "n": 1,
+          "positiveFraction": 0.0,
+          "sd": null,
+          "t": null,
+          "worst": -66.268462207,
+          "zeroVariance": null
+        }
+      },
+      "short": {
+        "dateWeighted": {
+          "byDate": {
+            "2026-06-03": 93.67759254,
+            "2026-06-10": -46.271393643,
+            "2026-07-05": -125.39035325,
+            "2026-07-09": -4.31319818
+          },
+          "events": 4,
+          "mean": -20.57433813325,
+          "median": -25.292295911500002,
+          "n": 4,
+          "positiveFraction": 0.25,
+          "sd": 91.22255573042274,
+          "t": -0.45108006388355226,
+          "worst": -125.39035325,
+          "zeroVariance": false
+        },
+        "eventWeighted": {
+          "mean": -20.57433813325,
+          "median": -25.292295911500002,
+          "n": 4,
+          "positiveFraction": 0.25,
+          "sd": 91.22255573042274,
+          "t": -0.45108006388355226,
+          "worst": -125.39035325,
+          "zeroVariance": false
+        }
+      }
+    },
+    "byUsdtConversionRegime": {
+      "before2026-07-16": {
+        "byDate": {
+          "2026-06-03": 93.67759254,
+          "2026-06-10": -46.271393643,
+          "2026-07-05": -125.39035325,
+          "2026-07-09": -4.31319818
+        },
+        "events": 4,
+        "mean": -20.57433813325,
+        "median": -25.292295911500002,
+        "n": 4,
+        "positiveFraction": 0.25,
+        "sd": 91.22255573042274,
+        "t": -0.45108006388355226,
+        "worst": -125.39035325,
+        "zeroVariance": false
+      },
+      "from2026-07-16": {
+        "byDate": {
+          "2026-08-16": -66.268462207
+        },
+        "events": 1,
+        "mean": -66.268462207,
+        "median": -66.268462207,
+        "n": 1,
+        "positiveFraction": 0.0,
+        "sd": null,
+        "t": null,
+        "worst": -66.268462207,
+        "zeroVariance": null
+      }
+    },
+    "capacity": {
+      "entryQuoteVolume": {
+        "mean": 396139.16896000004,
+        "median": 25754.8665,
+        "n": 5,
+        "positiveFraction": 1.0,
+        "sd": 849580.4384458596,
+        "t": 1.042625359836699,
+        "worst": 3825.4809,
+        "zeroVariance": false
+      },
+      "entryTradeCount": {
+        "mean": 1180.0,
+        "median": 194.0,
+        "n": 5,
+        "positiveFraction": 1.0,
+        "sd": 2232.2554737305495,
+        "t": 1.1820153403141556,
+        "worst": 36.0,
+        "zeroVariance": false
+      },
+      "exitDelayMinutes": {
+        "mean": 0.4,
+        "median": 0.0,
+        "n": 5,
+        "positiveFraction": 0.2,
+        "sd": 0.8944271909999159,
+        "t": 1.0000000000000002,
+        "worst": 0.0,
+        "zeroVariance": false
+      }
+    },
+    "dateContributions": {
+      "2026-06-03": {
+        "events": 1,
+        "net25BpMean": 93.67759254
+      },
+      "2026-06-10": {
+        "events": 1,
+        "net25BpMean": -46.271393643
+      },
+      "2026-07-05": {
+        "events": 1,
+        "net25BpMean": -125.39035325
+      },
+      "2026-07-09": {
+        "events": 1,
+        "net25BpMean": -4.31319818
+      },
+      "2026-08-16": {
+        "events": 1,
+        "net25BpMean": -66.268462207
+      }
+    },
+    "dateWeightedNet25Bp": {
+      "byDate": {
+        "2026-06-03": 93.67759254,
+        "2026-06-10": -46.271393643,
+        "2026-07-05": -125.39035325,
+        "2026-07-09": -4.31319818,
+        "2026-08-16": -66.268462207
+      },
+      "events": 5,
+      "mean": -29.713162948,
+      "median": -46.271393643,
+      "n": 5,
+      "positiveFraction": 0.2,
+      "sd": 81.60120465082616,
+      "t": -0.8142116585479033,
+      "worst": -125.39035325,
+      "zeroVariance": false
+    },
+    "eventWeightedNet25Bp": {
+      "mean": -29.713162948,
+      "median": -46.271393643,
+      "n": 5,
+      "positiveFraction": 0.2,
+      "sd": 81.60120465082616,
+      "t": -0.8142116585479033,
+      "worst": -125.39035325,
+      "zeroVariance": false
+    },
+    "positivePnlConcentration": {
+      "share": 1.0,
+      "symbol": "QCOMUSDT",
+      "totalPositiveEventPnlBp": 93.67759254026561
+    },
+    "post2026-08-31MarkMethodUnderpowered": {
+      "byDate": {},
+      "events": 0,
+      "mean": null,
+      "median": null,
+      "n": 0,
+      "positiveFraction": null,
+      "sd": null,
+      "t": null,
+      "worst": null,
+      "zeroVariance": null
+    },
+    "sensitivitiesDateWeighted": {
+      "13bp": {
+        "byDate": {
+          "2026-06-03": 105.67759254,
+          "2026-06-10": -34.271393643,
+          "2026-07-05": -113.39035325,
+          "2026-07-09": 7.68680182,
+          "2026-08-16": -54.268462207
+        },
+        "events": 5,
+        "mean": -17.713162948,
+        "median": -34.271393643,
+        "n": 5,
+        "positiveFraction": 0.4,
+        "sd": 81.60120465082616,
+        "t": -0.4853829869024804,
+        "worst": -113.39035325,
+        "zeroVariance": false
+      },
+      "25bp": {
+        "byDate": {
+          "2026-06-03": 93.67759254,
+          "2026-06-10": -46.271393643,
+          "2026-07-05": -125.39035325,
+          "2026-07-09": -4.31319818,
+          "2026-08-16": -66.268462207
+        },
+        "events": 5,
+        "mean": -29.713162948,
+        "median": -46.271393643,
+        "n": 5,
+        "positiveFraction": 0.2,
+        "sd": 81.60120465082616,
+        "t": -0.8142116585479033,
+        "worst": -125.39035325,
+        "zeroVariance": false
+      },
+      "40bp": {
+        "byDate": {
+          "2026-06-03": 78.67759254,
+          "2026-06-10": -61.271393643,
+          "2026-07-05": -140.39035325,
+          "2026-07-09": -19.31319818,
+          "2026-08-16": -81.268462207
+        },
+        "events": 5,
+        "mean": -44.713162948,
+        "median": -61.271393643,
+        "n": 5,
+        "positiveFraction": 0.2,
+        "sd": 81.60120465082616,
+        "t": -1.225247498104682,
+        "worst": -140.39035325,
+        "zeroVariance": false
+      }
+    },
+    "symbolContributions": {
+      "MUUSDT": {
+        "events": 1,
+        "net25BpMean": -125.39035325,
+        "net25BpSum": -125.39035325036717
+      },
+      "NVOUSDT": {
+        "events": 1,
+        "net25BpMean": -66.268462207,
+        "net25BpSum": -66.26846220677672
+      },
+      "ORCLUSDT": {
+        "events": 1,
+        "net25BpMean": -4.31319818,
+        "net25BpSum": -4.313198179561439
+      },
+      "QCOMUSDT": {
+        "events": 1,
+        "net25BpMean": 93.67759254,
+        "net25BpSum": 93.67759254026561
+      },
+      "TSMUSDT": {
+        "events": 1,
+        "net25BpMean": -46.271393643,
+        "net25BpSum": -46.271393643031786
+      }
+    },
+    "withoutBestDate": {
+      "mean": -60.56085182,
+      "median": -56.269927925000005,
+      "n": 4,
+      "positiveFraction": 0.0,
+      "removedDate": "2026-06-03",
+      "sd": 50.34358028252725,
+      "t": -2.4059016653219185,
+      "worst": -125.39035325,
+      "zeroVariance": false
+    },
+    "withoutBestSymbolEventWeighted": {
+      "mean": -60.56085182,
+      "median": -56.269927925000005,
+      "n": 4,
+      "positiveFraction": 0.0,
+      "removedSymbol": "QCOMUSDT",
+      "sd": 50.34358028252725,
+      "t": -2.4059016653219185,
+      "worst": -125.39035325,
+      "zeroVariance": false
+    }
+  },
+  "revealedAtUtc": "2026-09-13T11:16:59.790453Z",
+  "schemaVersion": 1,
+  "standaloneControl": {
+    "dateWeightedNet25Bp": {
+      "byDate": {
+        "2026-05-17": -34.407998203,
+        "2026-05-18": 32.109669925,
+        "2026-05-25": -50.984024637,
+        "2026-05-31": 87.2903472325,
+        "2026-06-03": 49.737623238,
+        "2026-06-07": -22.392225038,
+        "2026-06-21": -3.6318338939999997,
+        "2026-06-24": -36.687854238,
+        "2026-06-28": -56.282586027,
+        "2026-07-05": -8.966878229000002,
+        "2026-07-06": 10.227272727,
+        "2026-07-12": -36.3993059255,
+        "2026-07-19": -34.881855741500004,
+        "2026-07-20": -9.167129315,
+        "2026-07-26": -37.82825090366667,
+        "2026-07-29": 101.638722911
+      },
+      "events": 25,
+      "mean": -3.1641441323854176,
+      "median": -15.7796771765,
+      "n": 16,
+      "positiveFraction": 0.3125,
+      "sd": 47.852542413047814,
+      "t": -0.2644912034201685,
+      "worst": -56.282586027,
+      "zeroVariance": false
+    },
+    "eventWeightedNet25Bp": {
+      "mean": -5.9558557366,
+      "median": -21.52430812,
+      "n": 25,
+      "positiveFraction": 0.32,
+      "sd": 61.78317608447134,
+      "t": -0.4819965655745037,
+      "worst": -67.335623799,
+      "zeroVariance": false
+    }
+  },
+  "verdict": "FAIL"
+}

@@ -1,0 +1,15 @@
+{
+  "analysisScript": "scripts/analysis-dividend-reopening.py",
+  "analysisScriptSha256": "cc99c5f66e80416f4d735e37acb9d3b58ba45d0652336f5c0eeb4d65d9f4ef9e",
+  "archiveChecksumSetSha256": "cbcbfff38374a89f80b02cc9bafe25894d2f7ef7e4ba43ac3a322be17775e7e1",
+  "availability": "research/dividend-reopening-archive-availability-2026-09-12.json",
+  "availabilitySha256": "5549244bf26ebee72962f88c3a150ed58b1e4ae0aabb7f166d76458b6a29e8a6",
+  "availableArchiveChecksums": 235,
+  "createdAtUtc": "2026-09-13T10:53:28Z",
+  "inventory": "research/dividend-reopening-feasibility-2026-09-12.json",
+  "inventorySha256": "7294a753d8a3b1300474cb876bdd07e5ccff403cf0cbbb165adaf8371ec20786",
+  "outcomeBlind": true,
+  "preregistration": "DIVIDEND_REOPENING_PREREGISTRATION.md",
+  "preregistrationSha256": "f0e2baed7810f36e7951d8d06682087adfa1e1a1eec1a646a7a95ad19c08ef1e",
+  "schemaVersion": 1
+}

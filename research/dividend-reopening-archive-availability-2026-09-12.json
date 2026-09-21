@@ -1,0 +1,5462 @@
+{
+  "createdAtUtc": "2026-09-13T06:19:13.967888Z",
+  "inventory": "research/dividend-reopening-feasibility-2026-09-12.json",
+  "objects": [
+    {
+      "archive": {
+        "contentLength": 1055240,
+        "lastModified": "Tue, 02 Jun 2026 10:57:43 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Tue, 02 Jun 2026 10:57:43 GMT",
+        "officialSha256": "ba117a4864bd44647ed45a5cf5106d3f5f7c01978a098b319a0e4c768c5b4678",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/AVGOUSDT/1m/AVGOUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "AVGOUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/AVGOUSDT/1m/AVGOUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1037302,
+        "lastModified": "Tue, 02 Jun 2026 10:57:44 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Tue, 02 Jun 2026 10:57:44 GMT",
+        "officialSha256": "e7d90ae5416204f589c94eaec9fb68562db0fc005ef527c9c16fcd96d94bc438",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/BABAUSDT/1m/BABAUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "BABAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BABAUSDT/1m/BABAUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 0,
+        "lastModified": null,
+        "status": 404
+      },
+      "checksum": {
+        "contentLength": 0,
+        "lastModified": null,
+        "officialSha256": null,
+        "status": 404
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/CATUSDT/1m/CATUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "CATUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/CATUSDT/1m/CATUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 0,
+        "lastModified": null,
+        "status": 404
+      },
+      "checksum": {
+        "contentLength": 0,
+        "lastModified": null,
+        "officialSha256": null,
+        "status": 404
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/CRMUSDT/1m/CRMUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "CRMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/CRMUSDT/1m/CRMUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 452015,
+        "lastModified": "Tue, 02 Jun 2026 10:58:02 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Tue, 02 Jun 2026 10:58:02 GMT",
+        "officialSha256": "2724793ed664433dd773d10d37d530c9f5e9a965620996b5de0ca0bacc28bec0",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/CSCOUSDT/1m/CSCOUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "CSCOUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/CSCOUSDT/1m/CSCOUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 0,
+        "lastModified": null,
+        "status": 404
+      },
+      "checksum": {
+        "contentLength": 0,
+        "lastModified": null,
+        "officialSha256": null,
+        "status": 404
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/DELLUSDT/1m/DELLUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "DELLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DELLUSDT/1m/DELLUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 435230,
+        "lastModified": "Tue, 02 Jun 2026 10:58:05 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Tue, 02 Jun 2026 10:58:05 GMT",
+        "officialSha256": "2a60c127b56c47d9f78a27892226701a311c22ce384257ee4427f391587d5e3f",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/DISUSDT/1m/DISUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "DISUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DISUSDT/1m/DISUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1240472,
+        "lastModified": "Tue, 02 Jun 2026 10:58:19 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Tue, 02 Jun 2026 10:58:19 GMT",
+        "officialSha256": "0c7c3fd5d8837cde9b49a0540af25010316e28c60a387c279de0053c80dddcd6",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "GOOGLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 428500,
+        "lastModified": "Tue, 02 Jun 2026 10:58:22 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Tue, 02 Jun 2026 10:58:22 GMT",
+        "officialSha256": "6a3d59c81bd276e705c3bacc120becd1b13eb7c5eec2848d71b4dbc2ff27c30f",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/HDUSDT/1m/HDUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "HDUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/HDUSDT/1m/HDUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 0,
+        "lastModified": null,
+        "status": 404
+      },
+      "checksum": {
+        "contentLength": 0,
+        "lastModified": null,
+        "officialSha256": null,
+        "status": 404
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/HPEUSDT/1m/HPEUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "HPEUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/HPEUSDT/1m/HPEUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 326833,
+        "lastModified": "Tue, 02 Jun 2026 10:58:29 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Tue, 02 Jun 2026 10:58:29 GMT",
+        "officialSha256": "5087f55f40af99b24d57995f0965d0ce8f201afdca45e656ff41fe2995f07efd",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/JPMUSDT/1m/JPMUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "JPMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/JPMUSDT/1m/JPMUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1164568,
+        "lastModified": "Tue, 02 Jun 2026 10:58:39 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Tue, 02 Jun 2026 10:58:39 GMT",
+        "officialSha256": "af5e4f55e839d50028089b301cf99dc2a0c809494fa6b980e7f3e797645f9f34",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/METAUSDT/1m/METAUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "METAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/METAUSDT/1m/METAUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 695885,
+        "lastModified": "Tue, 02 Jun 2026 10:58:42 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Tue, 02 Jun 2026 10:58:42 GMT",
+        "officialSha256": "39c17708d1753d019c43dddf86f61134ea16286ec84a2dfa4f6c3ca6cadafffd",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/MRVLUSDT/1m/MRVLUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "MRVLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/MRVLUSDT/1m/MRVLUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 835020,
+        "lastModified": "Tue, 02 Jun 2026 11:02:43 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Tue, 02 Jun 2026 11:02:43 GMT",
+        "officialSha256": "aa1daf6b0bf4df469aeb7ef7819f1b50d807eff2e34c7c545392844acb6a1453",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/MSFTUSDT/1m/MSFTUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "MSFTUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/MSFTUSDT/1m/MSFTUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 907075,
+        "lastModified": "Tue, 02 Jun 2026 11:01:19 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Tue, 02 Jun 2026 11:01:19 GMT",
+        "officialSha256": "0036772a589eb28edbcbf9e6a6d5b64e31ce02c3b88f5685b9fed6a22521da53",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MSFTUSDT/1m/MSFTUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "MSFTUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MSFTUSDT/1m/MSFTUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1148613,
+        "lastModified": "Tue, 02 Jun 2026 10:58:42 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Tue, 02 Jun 2026 10:58:42 GMT",
+        "officialSha256": "dfb4790a2c9ac7e2f27266226f68683dd5e5ac666759688376b2f676c8a633c1",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/MSFTUSDT/1m/MSFTUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "MSFTUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/MSFTUSDT/1m/MSFTUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1596421,
+        "lastModified": "Tue, 02 Jun 2026 10:58:43 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Tue, 02 Jun 2026 10:58:43 GMT",
+        "officialSha256": "a2529b8ec12450fdf49534703ebc367884a519a53a13faf6bb448b9377f671a5",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/MUUSDT/1m/MUUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "MUUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/MUUSDT/1m/MUUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1430254,
+        "lastModified": "Tue, 02 Jun 2026 10:58:47 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Tue, 02 Jun 2026 10:58:47 GMT",
+        "officialSha256": "a17dd4e040bff4197368cbb78eed8b6745397fb4c0d65b15a14963c00570c895",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "NVDAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 608882,
+        "lastModified": "Tue, 02 Jun 2026 10:58:51 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Tue, 02 Jun 2026 10:58:51 GMT",
+        "officialSha256": "a638b586cdc3debf554fea863b7da7f753dcd8a451bf243166c78576f0fd6903",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/ORCLUSDT/1m/ORCLUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "ORCLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ORCLUSDT/1m/ORCLUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1049482,
+        "lastModified": "Tue, 02 Jun 2026 10:58:58 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Tue, 02 Jun 2026 10:58:58 GMT",
+        "officialSha256": "89bfbfaa7ea80f4e52d395b26ee30e2d6e12f4f8283afcec52471399172a8efd",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/QCOMUSDT/1m/QCOMUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "QCOMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/QCOMUSDT/1m/QCOMUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1315344,
+        "lastModified": "Tue, 02 Jun 2026 10:58:59 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Tue, 02 Jun 2026 10:58:59 GMT",
+        "officialSha256": "06a52f320a5759d9bc312e38998470b954c3e71b9d3241ae86182d60269b9bc9",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/QQQUSDT/1m/QQQUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "QQQUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/QQQUSDT/1m/QQQUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1162350,
+        "lastModified": "Tue, 02 Jun 2026 10:59:11 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Tue, 02 Jun 2026 10:59:12 GMT",
+        "officialSha256": "1f453091088a127a39f6c4f7749e18b118cc1602f7b94a561930bff63a31a071",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/SPYUSDT/1m/SPYUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "SPYUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/SPYUSDT/1m/SPYUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 0,
+        "lastModified": null,
+        "status": 404
+      },
+      "checksum": {
+        "contentLength": 0,
+        "lastModified": null,
+        "officialSha256": null,
+        "status": 404
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/STRCUSDT/1m/STRCUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "STRCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/STRCUSDT/1m/STRCUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 0,
+        "lastModified": null,
+        "status": 404
+      },
+      "checksum": {
+        "contentLength": 0,
+        "lastModified": null,
+        "officialSha256": null,
+        "status": 404
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/STXXUSDT/1m/STXXUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "STXXUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/STXXUSDT/1m/STXXUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1157586,
+        "lastModified": "Tue, 02 Jun 2026 10:59:22 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Tue, 02 Jun 2026 10:59:22 GMT",
+        "officialSha256": "85831f486b9513f146e416c84d8b62ee771cabc28293ed25331fa95e760dd904",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/TSMUSDT/1m/TSMUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "TSMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TSMUSDT/1m/TSMUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 197514,
+        "lastModified": "Tue, 02 Jun 2026 10:59:28 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Tue, 02 Jun 2026 10:59:28 GMT",
+        "officialSha256": "3e08ab5da3a6e43d13fc8ae45aaa136df196f0be72840c3b4597de73cb795850",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/WDCUSDT/1m/WDCUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "WDCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/WDCUSDT/1m/WDCUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 0,
+        "lastModified": null,
+        "status": 404
+      },
+      "checksum": {
+        "contentLength": 0,
+        "lastModified": null,
+        "officialSha256": null,
+        "status": 404
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/XLEUSDT/1m/XLEUSDT-1m-2026-05.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-05",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "XLEUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/XLEUSDT/1m/XLEUSDT-1m-2026-05.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1207854,
+        "lastModified": "Thu, 02 Jul 2026 12:04:14 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 12:04:14 GMT",
+        "officialSha256": "9ce97c6d861e95f81fbf14f1879f5e7e25c0320a91975e825c3b91219f3a339d",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/AAPLUSDT/1m/AAPLUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "AAPLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/AAPLUSDT/1m/AAPLUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 719433,
+        "lastModified": "Thu, 02 Jul 2026 12:04:21 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 12:04:21 GMT",
+        "officialSha256": "fe0762e6e0204ee65a2f459f34e36d5ae7699059873d276cbf251c654c718469",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/AMATUSDT/1m/AMATUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "AMATUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/AMATUSDT/1m/AMATUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 996868,
+        "lastModified": "Thu, 02 Jul 2026 11:43:09 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 11:43:09 GMT",
+        "officialSha256": "da9e8873591eb6f9e60df035c3847d37d16636c2d390447616e499384f73c360",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/AVGOUSDT/1m/AVGOUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "AVGOUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/AVGOUSDT/1m/AVGOUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 901487,
+        "lastModified": "Thu, 02 Jul 2026 11:47:48 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 11:47:48 GMT",
+        "officialSha256": "8aaf9968fea8bf5dc57395221b34f81b8d27f4b62ec5cb7ae54317e2f76ca70e",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/AVGOUSDT/1m/AVGOUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "AVGOUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/AVGOUSDT/1m/AVGOUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1312123,
+        "lastModified": "Thu, 02 Jul 2026 12:04:27 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 12:04:27 GMT",
+        "officialSha256": "d86323ff9dc984b4becab29dbcbafd9534405f4664b77ce00d42faa824e2fcdc",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/AVGOUSDT/1m/AVGOUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "AVGOUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/AVGOUSDT/1m/AVGOUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 925155,
+        "lastModified": "Thu, 02 Jul 2026 11:43:10 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 11:43:10 GMT",
+        "officialSha256": "95a9462b7186101a2f4a8e4188b0a267513f2ddffaf43c0a8e9e823b554eca60",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/BABAUSDT/1m/BABAUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "BABAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/BABAUSDT/1m/BABAUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 836389,
+        "lastModified": "Thu, 02 Jul 2026 11:47:49 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 11:47:49 GMT",
+        "officialSha256": "f05c02c1be45c93991b7fe54b14235ef6febe9b61c3f065a6cef0248e3218c93",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BABAUSDT/1m/BABAUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "BABAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BABAUSDT/1m/BABAUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1091002,
+        "lastModified": "Thu, 02 Jul 2026 12:04:29 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 12:04:29 GMT",
+        "officialSha256": "2e822822f1f0deebfbdef9ed3f352412e3d2b0c2ddc3b905ada845d866317089",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/BABAUSDT/1m/BABAUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "BABAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BABAUSDT/1m/BABAUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 525108,
+        "lastModified": "Thu, 02 Jul 2026 12:04:40 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Thu, 02 Jul 2026 12:04:40 GMT",
+        "officialSha256": "4abc1a89132e98f34e7520c6e60d35ad78fc3fd96598906174252c43c3c3befb",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/BXUSDT/1m/BXUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "BXUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BXUSDT/1m/BXUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 0,
+        "lastModified": null,
+        "status": 404
+      },
+      "checksum": {
+        "contentLength": 0,
+        "lastModified": null,
+        "officialSha256": null,
+        "status": 404
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/CATUSDT/1m/CATUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "CATUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/CATUSDT/1m/CATUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 798121,
+        "lastModified": "Thu, 02 Jul 2026 11:43:24 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:43:24 GMT",
+        "officialSha256": "b238be2836bcabe01f46aa256ffd708adb56ccd2228dd42a921103592140b24e",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/CRMUSDT/1m/CRMUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "CRMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/CRMUSDT/1m/CRMUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 755900,
+        "lastModified": "Thu, 02 Jul 2026 11:48:05 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:48:05 GMT",
+        "officialSha256": "3317572f41e414e7035507cc859aada8d4e5d8e873196fa0b28e092035b58d81",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/CRMUSDT/1m/CRMUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "CRMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/CRMUSDT/1m/CRMUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 578620,
+        "lastModified": "Thu, 02 Jul 2026 12:04:46 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 12:04:46 GMT",
+        "officialSha256": "c9584c43502878e808fc90301a3eafe53285a7c26db1b2fad41ce779150a4e1b",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/CRMUSDT/1m/CRMUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "CRMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/CRMUSDT/1m/CRMUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 724054,
+        "lastModified": "Thu, 02 Jul 2026 12:04:47 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 12:04:47 GMT",
+        "officialSha256": "c81bce044f562383867825b7475034dfbc3ba727325884d6fa0409573f77b1cb",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/CSCOUSDT/1m/CSCOUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "CSCOUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/CSCOUSDT/1m/CSCOUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 943136,
+        "lastModified": "Thu, 02 Jul 2026 12:04:50 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 12:04:50 GMT",
+        "officialSha256": "b6da8270decda4d8299bdd556290dd456d1652cdfff930afe832ed4ae0959517",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/DELLUSDT/1m/DELLUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "DELLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DELLUSDT/1m/DELLUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 746130,
+        "lastModified": "Thu, 02 Jul 2026 11:43:28 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:43:28 GMT",
+        "officialSha256": "d7c62a2de263ee863a8c0df64270975a1be4373696d7b9cef5b1116bf5ca1a04",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/DISUSDT/1m/DISUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "DISUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/DISUSDT/1m/DISUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 729797,
+        "lastModified": "Thu, 02 Jul 2026 11:48:10 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:48:10 GMT",
+        "officialSha256": "def55bc98c4c3e857393174272e28cfd047a0c5e5a344eea52f4985d9fd11c93",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/DISUSDT/1m/DISUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "DISUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/DISUSDT/1m/DISUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 646957,
+        "lastModified": "Thu, 02 Jul 2026 12:04:51 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 12:04:51 GMT",
+        "officialSha256": "dbfa3b45063a20a376ac176f052b09d5fbae47600893333fe909188dd74cb88f",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/DISUSDT/1m/DISUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "DISUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DISUSDT/1m/DISUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 988443,
+        "lastModified": "Thu, 02 Jul 2026 11:43:41 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Thu, 02 Jul 2026 11:43:41 GMT",
+        "officialSha256": "d91d44b5c0022cdafac4f01d65207c2408647d2d63e2fa04a5502f40a6932236",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "GOOGLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 862028,
+        "lastModified": "Thu, 02 Jul 2026 11:48:24 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Thu, 02 Jul 2026 11:48:24 GMT",
+        "officialSha256": "0eb92a09e9f2a9baf1989dd216275b01d8fe532b6520f9ffdaa8c267ed13a3bc",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "GOOGLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1300382,
+        "lastModified": "Thu, 02 Jul 2026 12:05:07 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Thu, 02 Jul 2026 12:05:07 GMT",
+        "officialSha256": "1b8be4ddbc8e298c3b0e2f21f44108c33ea0267912e811d632e348096d5f23b4",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "GOOGLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 765662,
+        "lastModified": "Thu, 02 Jul 2026 11:43:43 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Thu, 02 Jul 2026 11:43:43 GMT",
+        "officialSha256": "e2e3bcc09f2a0cb19104c2a343a9feb593becde3ff1f377164ab255b353f1da1",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/HDUSDT/1m/HDUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "HDUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/HDUSDT/1m/HDUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 782596,
+        "lastModified": "Thu, 02 Jul 2026 11:48:27 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Thu, 02 Jul 2026 11:48:27 GMT",
+        "officialSha256": "d66e9580682bcb6dd27699dbcfb3f134c1d5b7882ffaf170620986eaed687ed2",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/HDUSDT/1m/HDUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "HDUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/HDUSDT/1m/HDUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 726917,
+        "lastModified": "Thu, 02 Jul 2026 12:05:09 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Thu, 02 Jul 2026 12:05:09 GMT",
+        "officialSha256": "6a26bab8b51d1b02da1c0d5f4959baa92bd2fbd3497ccb1e83754c66f6843373",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/HDUSDT/1m/HDUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "HDUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/HDUSDT/1m/HDUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 608112,
+        "lastModified": "Thu, 02 Jul 2026 11:43:45 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:43:45 GMT",
+        "officialSha256": "d339a3b47b28e6488bb7af8a32558ac2508bdb57f6290bf8a8c1d9f1eca0ad47",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/HPEUSDT/1m/HPEUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "HPEUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/HPEUSDT/1m/HPEUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 575219,
+        "lastModified": "Thu, 02 Jul 2026 11:48:29 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:48:29 GMT",
+        "officialSha256": "d6fd631309c2b7422b405820235628eae6b318ec51f68f94d32f7fd884e47db7",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/HPEUSDT/1m/HPEUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "HPEUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/HPEUSDT/1m/HPEUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 540803,
+        "lastModified": "Thu, 02 Jul 2026 12:05:12 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 12:05:12 GMT",
+        "officialSha256": "c59add78c5bc553178477bb1f7d324c482c3a4661a32da574bb3a065af131a83",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/HPEUSDT/1m/HPEUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "HPEUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/HPEUSDT/1m/HPEUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 972422,
+        "lastModified": "Thu, 02 Jul 2026 12:05:13 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 12:05:13 GMT",
+        "officialSha256": "932b950aa72eb1cc7968bc01e2110a2019b9114c87b4512c107b71e2486ce85b",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/IBMUSDT/1m/IBMUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "IBMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/IBMUSDT/1m/IBMUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 669371,
+        "lastModified": "Thu, 02 Jul 2026 12:05:18 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 12:05:18 GMT",
+        "officialSha256": "f54776a1b21ea4f4e418ca214978cd81f17cf4f9f1be5321af1147bf8cb8036e",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/JPMUSDT/1m/JPMUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "JPMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/JPMUSDT/1m/JPMUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 255247,
+        "lastModified": "Thu, 02 Jul 2026 12:05:20 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 12:05:20 GMT",
+        "officialSha256": "12674ad066ec11176d04a648adb1a7d3cf440fbb286748f53cb10d9c675fd480",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/KLACUSDT/1m/KLACUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "KLACUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/KLACUSDT/1m/KLACUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 810900,
+        "lastModified": "Thu, 02 Jul 2026 12:05:23 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 12:05:24 GMT",
+        "officialSha256": "50eb7393b9c4ea07cf839c12057804671efde29220ceae79cfe32ba8cf5a04ef",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/LLYUSDT/1m/LLYUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "LLYUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LLYUSDT/1m/LLYUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 969880,
+        "lastModified": "Thu, 02 Jul 2026 11:43:59 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 11:43:59 GMT",
+        "officialSha256": "c6e4d72f30fff277ba7cc12cc8c661544253e21f385a3252dbddc107266fb110",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/METAUSDT/1m/METAUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "METAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/METAUSDT/1m/METAUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 867886,
+        "lastModified": "Thu, 02 Jul 2026 11:48:44 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 11:48:44 GMT",
+        "officialSha256": "9b66f242f079679f05080d423ea830d4476d16edd8afea1a3f6d68c097fefa92",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/METAUSDT/1m/METAUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "METAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/METAUSDT/1m/METAUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1181402,
+        "lastModified": "Thu, 02 Jul 2026 12:05:28 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 12:05:28 GMT",
+        "officialSha256": "22f00d4d4428cada09f24c5bac53b5cf18e1b303c59c6cd472e340c32658b56f",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/METAUSDT/1m/METAUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "METAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/METAUSDT/1m/METAUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1615806,
+        "lastModified": "Thu, 02 Jul 2026 12:05:31 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 12:05:31 GMT",
+        "officialSha256": "39b97a05f5109cd93233fe89b37dbf56a0209f065ce1598779e0e5def07b6995",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/MRVLUSDT/1m/MRVLUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "MRVLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/MRVLUSDT/1m/MRVLUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1272428,
+        "lastModified": "Thu, 02 Jul 2026 12:05:31 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 12:05:31 GMT",
+        "officialSha256": "1289c2d29d0ab5c3607edf52c5e32fcc5ac6de018cdc58b3f14c5f003c82f5f6",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/MSFTUSDT/1m/MSFTUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "MSFTUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/MSFTUSDT/1m/MSFTUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1708969,
+        "lastModified": "Thu, 02 Jul 2026 12:05:32 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Thu, 02 Jul 2026 12:05:32 GMT",
+        "officialSha256": "a31657d7304c2f6ce751b449a1a6cf860c3bc346a9ff8c9377cf0912c39a8533",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/MUUSDT/1m/MUUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "MUUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/MUUSDT/1m/MUUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 980303,
+        "lastModified": "Thu, 02 Jul 2026 11:44:05 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 11:44:05 GMT",
+        "officialSha256": "c439ad1c0a7c445e7ad904aef37be00af6483bf0a49f69f6e9761868e0b457b6",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/NVDAUSDT/1m/NVDAUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "NVDAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/NVDAUSDT/1m/NVDAUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 849103,
+        "lastModified": "Thu, 02 Jul 2026 11:48:52 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 11:48:52 GMT",
+        "officialSha256": "70618faaf5ed73f43a4ab4d70827def7ad1ba6b3ca08669804196fef9ff89d74",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/NVDAUSDT/1m/NVDAUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "NVDAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/NVDAUSDT/1m/NVDAUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1430887,
+        "lastModified": "Thu, 02 Jul 2026 12:05:37 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 12:05:37 GMT",
+        "officialSha256": "f33c0802157e0426c3d2248a2ad4fcf26ff319a669e00c2c25b59892977355f1",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "NVDAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 685236,
+        "lastModified": "Thu, 02 Jul 2026 12:05:37 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 12:05:37 GMT",
+        "officialSha256": "81c772b37141827975d2d39396d62f10578f12461d5f18ffab992975377364bb",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/NVOUSDT/1m/NVOUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "NVOUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/NVOUSDT/1m/NVOUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1280159,
+        "lastModified": "Thu, 02 Jul 2026 12:05:41 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 12:05:41 GMT",
+        "officialSha256": "82b0e672c4d0b93c7394c7459d2ab10cf791437e1ce925005070e1812330abba",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/ORCLUSDT/1m/ORCLUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "ORCLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ORCLUSDT/1m/ORCLUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 990880,
+        "lastModified": "Thu, 02 Jul 2026 11:44:14 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 11:44:14 GMT",
+        "officialSha256": "60a057ae7f7d7bb34ab2adc711d16ffce86bcb2f657873592deef23f784f9160",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/QCOMUSDT/1m/QCOMUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "QCOMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/QCOMUSDT/1m/QCOMUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 899679,
+        "lastModified": "Thu, 02 Jul 2026 11:49:02 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 11:49:02 GMT",
+        "officialSha256": "bdebc16b2e2fa7d3ebe2c5425be2a031da98062653c7bfa22ca3671eccf568cb",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/QCOMUSDT/1m/QCOMUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "QCOMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/QCOMUSDT/1m/QCOMUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1331231,
+        "lastModified": "Thu, 02 Jul 2026 12:05:48 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 12:05:48 GMT",
+        "officialSha256": "b773145a60e331cadfb724ba752033dfd55b36a1e8cd589439048f38ede1eb31",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/QCOMUSDT/1m/QCOMUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "QCOMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/QCOMUSDT/1m/QCOMUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1027614,
+        "lastModified": "Thu, 02 Jul 2026 11:44:15 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:44:15 GMT",
+        "officialSha256": "7fb96cb152c6a3c2873215a6ac44c4b541b13bcd1069f7e3b892205f362c01ff",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/QQQUSDT/1m/QQQUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "QQQUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/QQQUSDT/1m/QQQUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 876352,
+        "lastModified": "Thu, 02 Jul 2026 11:49:02 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:49:02 GMT",
+        "officialSha256": "714879721666fbeafdb6545a94a2e1a093e095ab6920c53fa95cd91e72e3f9a9",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/QQQUSDT/1m/QQQUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "QQQUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/QQQUSDT/1m/QQQUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1472880,
+        "lastModified": "Thu, 02 Jul 2026 12:05:49 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 12:05:49 GMT",
+        "officialSha256": "6728b3eb03d51d8f889944046d775ce2a426da71ef1f1e66860eedb2b89b205a",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/QQQUSDT/1m/QQQUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "QQQUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/QQQUSDT/1m/QQQUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1005324,
+        "lastModified": "Thu, 02 Jul 2026 11:44:25 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:44:25 GMT",
+        "officialSha256": "61ad2059e7ad944ddc23deb7c8bafb9ae2ddc0b025e4ef5cb47620d44e422145",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/SPYUSDT/1m/SPYUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "SPYUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/SPYUSDT/1m/SPYUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 839366,
+        "lastModified": "Thu, 02 Jul 2026 11:49:14 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:49:14 GMT",
+        "officialSha256": "581e036914e0bf6e57bb6465f326b0f80c81061d9e9351d78404b2ad64d5f3ae",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/SPYUSDT/1m/SPYUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "SPYUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/SPYUSDT/1m/SPYUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1321592,
+        "lastModified": "Thu, 02 Jul 2026 12:06:02 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 12:06:02 GMT",
+        "officialSha256": "8ec059ae8f1cdb41b102b7d7af0510da60e69ba10ea0fc63a2b1b50c4caea6e7",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/SPYUSDT/1m/SPYUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "SPYUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/SPYUSDT/1m/SPYUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 0,
+        "lastModified": null,
+        "status": 404
+      },
+      "checksum": {
+        "contentLength": 0,
+        "lastModified": null,
+        "officialSha256": null,
+        "status": 404
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/STRCUSDT/1m/STRCUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "STRCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/STRCUSDT/1m/STRCUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 640270,
+        "lastModified": "Thu, 02 Jul 2026 11:44:28 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 11:44:28 GMT",
+        "officialSha256": "4e6366fd520d7df171c5870bf6e15f70d0760390cf97f93c934e6333702505d9",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/STXXUSDT/1m/STXXUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "STXXUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/STXXUSDT/1m/STXXUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 578241,
+        "lastModified": "Thu, 02 Jul 2026 11:49:16 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 11:49:16 GMT",
+        "officialSha256": "c0a4a9fd8f1001fa73e1966a534c4379dc7ed6e9d30db407340b7763acb99dde",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/STXXUSDT/1m/STXXUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "STXXUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/STXXUSDT/1m/STXXUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 643715,
+        "lastModified": "Thu, 02 Jul 2026 12:06:04 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Thu, 02 Jul 2026 12:06:04 GMT",
+        "officialSha256": "1caaeadc5e5c576a288584bcdc7cf88dd2def71c33b9ca2499cf3a667709545e",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/STXXUSDT/1m/STXXUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "STXXUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/STXXUSDT/1m/STXXUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 996484,
+        "lastModified": "Thu, 02 Jul 2026 11:44:33 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:44:33 GMT",
+        "officialSha256": "27de6c4a6dfe2f30cffeb5bc2e96ebbca749ce0687252653b37dcb99af9d6a76",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/TSMUSDT/1m/TSMUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "TSMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/TSMUSDT/1m/TSMUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 889528,
+        "lastModified": "Thu, 02 Jul 2026 11:49:23 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:49:23 GMT",
+        "officialSha256": "47ccd2e54376a293b0dd94d1a75584be50398151bfb6b6f515891c3c9409c19b",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TSMUSDT/1m/TSMUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "TSMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TSMUSDT/1m/TSMUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1272222,
+        "lastModified": "Thu, 02 Jul 2026 12:06:12 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 12:06:12 GMT",
+        "officialSha256": "bbc3712b6a961889d5ca08b8cb930f356a098cde7b7fde07de83cd6d0046decc",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/TSMUSDT/1m/TSMUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "TSMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TSMUSDT/1m/TSMUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 0,
+        "lastModified": null,
+        "status": 404
+      },
+      "checksum": {
+        "contentLength": 0,
+        "lastModified": null,
+        "officialSha256": null,
+        "status": 404
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/TXNUSDT/1m/TXNUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "TXNUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TXNUSDT/1m/TXNUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 644300,
+        "lastModified": "Thu, 02 Jul 2026 12:06:18 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 87,
+        "lastModified": "Thu, 02 Jul 2026 12:06:18 GMT",
+        "officialSha256": "28e075e65fbf674c7e1486eb0b06b9604ba7821dc115cda3c0af6a58f868f862",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/VUSDT/1m/VUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "VUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/VUSDT/1m/VUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1018538,
+        "lastModified": "Thu, 02 Jul 2026 11:44:39 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:44:39 GMT",
+        "officialSha256": "496ff35fc6fb6e0ad77444d68956fd6ba700ac8eda4f8eb3a9119b094be25cf8",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/WDCUSDT/1m/WDCUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "WDCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/WDCUSDT/1m/WDCUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 951834,
+        "lastModified": "Thu, 02 Jul 2026 11:49:29 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:49:29 GMT",
+        "officialSha256": "c3654ee144dc606f9e3966cf5c8ef4f98edbc8220e7fd6f4495fb5b1ee759944",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/WDCUSDT/1m/WDCUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "WDCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/WDCUSDT/1m/WDCUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1273681,
+        "lastModified": "Thu, 02 Jul 2026 12:06:19 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 12:06:19 GMT",
+        "officialSha256": "0e2542a571995b831331bc809d1fb4701bb64b097c4ff92872c50e7b5a632386",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/WDCUSDT/1m/WDCUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "WDCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/WDCUSDT/1m/WDCUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 662647,
+        "lastModified": "Thu, 02 Jul 2026 12:06:20 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 12:06:20 GMT",
+        "officialSha256": "7168a8c4b45a2d024f1486acd724fe96f2e8b1ef448554c40938c545ce2685ed",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/WMTUSDT/1m/WMTUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "WMTUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/WMTUSDT/1m/WMTUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 583158,
+        "lastModified": "Thu, 02 Jul 2026 11:44:41 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:44:41 GMT",
+        "officialSha256": "de515e8ec04574e4ed7320aff02e5c4cdab1b41f435140ef823fcde202fd4656",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/XLEUSDT/1m/XLEUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "XLEUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/XLEUSDT/1m/XLEUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 512586,
+        "lastModified": "Thu, 02 Jul 2026 11:49:31 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 11:49:31 GMT",
+        "officialSha256": "4f1dd9680a50594cfdb5cbe03957e1072d025c5964757eb3881241a59ee9c27b",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/XLEUSDT/1m/XLEUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "XLEUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/XLEUSDT/1m/XLEUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 381880,
+        "lastModified": "Thu, 02 Jul 2026 12:06:22 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Thu, 02 Jul 2026 12:06:22 GMT",
+        "officialSha256": "09abd59786948f9de7d2113272d256e27d39c066132ff4edc6050c72257169bf",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/XLEUSDT/1m/XLEUSDT-1m-2026-06.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-06",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "XLEUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/XLEUSDT/1m/XLEUSDT-1m-2026-06.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1294596,
+        "lastModified": "Sun, 02 Aug 2026 10:44:17 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:44:17 GMT",
+        "officialSha256": "c2875b5f5bc1511ef3d4b45383c45bbeb4ba3cf552aa522528c645c37f11db14",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/AAPLUSDT/1m/AAPLUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "AAPLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/AAPLUSDT/1m/AAPLUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1230105,
+        "lastModified": "Sun, 02 Aug 2026 10:44:24 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:44:24 GMT",
+        "officialSha256": "b37c4e079be68330576db4cff2e2d5b7c66a2cfd0a71b24e91ee16be37b5ed79",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/AMATUSDT/1m/AMATUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "AMATUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/AMATUSDT/1m/AMATUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 788375,
+        "lastModified": "Sun, 02 Aug 2026 10:44:43 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Sun, 02 Aug 2026 10:44:43 GMT",
+        "officialSha256": "60bdeef8087a7f990e45205058be7adc6b1805837d438df04c0db382ae6d9ddf",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/BXUSDT/1m/BXUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "BXUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BXUSDT/1m/BXUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 962272,
+        "lastModified": "Sun, 02 Aug 2026 10:13:01 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:13:01 GMT",
+        "officialSha256": "cd3df9f898027e30700decaa62bd00e316f67981ce379c4f7a5e298fe16a4c5e",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/CATUSDT/1m/CATUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "CATUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/CATUSDT/1m/CATUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 855024,
+        "lastModified": "Sun, 02 Aug 2026 10:42:58 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:42:58 GMT",
+        "officialSha256": "d8b7e658cdc75363382c7f6585cc7f90c21e5fa6ff61cd1a9885060d2ffc301a",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/CATUSDT/1m/CATUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "CATUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/CATUSDT/1m/CATUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 650315,
+        "lastModified": "Sun, 02 Aug 2026 10:44:45 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:44:45 GMT",
+        "officialSha256": "3329a2b7579c6aae19e1d8de2f138b1192df584034adc878ae6c4b5a4dcf5455",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/CATUSDT/1m/CATUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "CATUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/CATUSDT/1m/CATUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1015359,
+        "lastModified": "Sun, 02 Aug 2026 10:13:08 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:13:08 GMT",
+        "officialSha256": "887c37a1f8014b4b13cbaf210aa6782f2c9fcf5c179081a6b9f7e0bff620da53",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/CSCOUSDT/1m/CSCOUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "CSCOUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/CSCOUSDT/1m/CSCOUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 867593,
+        "lastModified": "Sun, 02 Aug 2026 10:43:05 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:43:05 GMT",
+        "officialSha256": "553a20958545281f4297a73d24846b58c4fe73af1e4318a21bb7ab1e6dc2ec37",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/CSCOUSDT/1m/CSCOUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "CSCOUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/CSCOUSDT/1m/CSCOUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 631192,
+        "lastModified": "Sun, 02 Aug 2026 10:44:51 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:44:51 GMT",
+        "officialSha256": "a3803e3f5838db70d2888dc70f11a2ec7f704c264c93ae2bedff0644805fb19f",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/CSCOUSDT/1m/CSCOUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "CSCOUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/CSCOUSDT/1m/CSCOUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1106325,
+        "lastModified": "Sun, 02 Aug 2026 10:13:10 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:13:10 GMT",
+        "officialSha256": "68970733c8eaeea35096b80579155d7218e27a864df2760c4ccbe996edd171d8",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/DELLUSDT/1m/DELLUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "DELLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/DELLUSDT/1m/DELLUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 978389,
+        "lastModified": "Sun, 02 Aug 2026 10:43:08 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:43:08 GMT",
+        "officialSha256": "e4b2f13c29f6b9cf7e9b163f4d5defe5eb4842cfe06c46574d1e7cc39ef876f8",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/DELLUSDT/1m/DELLUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "DELLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/DELLUSDT/1m/DELLUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1198586,
+        "lastModified": "Sun, 02 Aug 2026 10:44:54 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:44:54 GMT",
+        "officialSha256": "009fd444e542427ae36187e7db4711babaa555f4cd796c50752545b5f4dfd98d",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/DELLUSDT/1m/DELLUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "DELLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DELLUSDT/1m/DELLUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 598816,
+        "lastModified": "Sun, 02 Aug 2026 10:44:58 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:44:58 GMT",
+        "officialSha256": "c0129c583006068751d9c8095d3db2189c29d363556607d24197af334655f720",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/EBAYUSDT/1m/EBAYUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "EBAYUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/EBAYUSDT/1m/EBAYUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1408393,
+        "lastModified": "Sun, 02 Aug 2026 10:45:11 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:45:11 GMT",
+        "officialSha256": "bb62b3f3619763b1c7b44e8e92cfe87f475b69dba5d8e43e2a624e68e8300b2a",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/GLWUSDT/1m/GLWUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "GLWUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/GLWUSDT/1m/GLWUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1357267,
+        "lastModified": "Sun, 02 Aug 2026 10:45:11 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Sun, 02 Aug 2026 10:45:11 GMT",
+        "officialSha256": "d74c9e63d1d616e05fd06bc188ce8f3bd2336eff986e78d518a1db7df0268b8b",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "GOOGLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 67861,
+        "lastModified": "Sun, 02 Aug 2026 10:45:13 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Sun, 02 Aug 2026 10:45:13 GMT",
+        "officialSha256": "7b6737ab9626bb1d7037a79753435950d55f6122c3281a67e0de1878dc639133",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/GSUSDT/1m/GSUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "GSUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/GSUSDT/1m/GSUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 552847,
+        "lastModified": "Sun, 02 Aug 2026 10:45:14 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Sun, 02 Aug 2026 10:45:14 GMT",
+        "officialSha256": "e4c52a4af847df5e6ee6802ca667db68d55870d21ac9d4c7a17f4c262c248fd4",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/HDUSDT/1m/HDUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "HDUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/HDUSDT/1m/HDUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1160243,
+        "lastModified": "Sun, 02 Aug 2026 10:45:18 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:45:18 GMT",
+        "officialSha256": "e26a88ef7451ddede1b6a20fdbfd496cc95fd0bbe9eecb693fcce5af4cb0914e",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/IBMUSDT/1m/IBMUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "IBMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/IBMUSDT/1m/IBMUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1011595,
+        "lastModified": "Sun, 02 Aug 2026 10:13:35 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:13:35 GMT",
+        "officialSha256": "28aade09302032abaca25a494c1fd2fb5e2836599b3df135011d34b95e1d4834",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/JPMUSDT/1m/JPMUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "JPMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/JPMUSDT/1m/JPMUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 843066,
+        "lastModified": "Sun, 02 Aug 2026 10:43:38 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:43:38 GMT",
+        "officialSha256": "1c5a4c4d697db9a19f1df2115d8304779b28af48bf03eae47b594cf523933a57",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/JPMUSDT/1m/JPMUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "JPMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/JPMUSDT/1m/JPMUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 677352,
+        "lastModified": "Sun, 02 Aug 2026 10:45:23 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:45:23 GMT",
+        "officialSha256": "024e01c9d78844f973eba0a44c08c176574a00fc779f7a0133e0a4ff8cca0599",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/JPMUSDT/1m/JPMUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "JPMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/JPMUSDT/1m/JPMUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 902011,
+        "lastModified": "Sun, 02 Aug 2026 10:45:26 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:45:26 GMT",
+        "officialSha256": "b374b0528a8142db49eed6c76b6e53221d047a233451a7aa404ca7011f081f0b",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/KLACUSDT/1m/KLACUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "KLACUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/KLACUSDT/1m/KLACUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 770431,
+        "lastModified": "Sun, 02 Aug 2026 10:45:29 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:45:29 GMT",
+        "officialSha256": "708c62f2b242ef4217a33025c9400b58823bf96a9921fb4301fa8c075089d499",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/LLYUSDT/1m/LLYUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "LLYUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LLYUSDT/1m/LLYUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1123500,
+        "lastModified": "Sun, 02 Aug 2026 10:13:48 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:13:48 GMT",
+        "officialSha256": "7c1d81a46f505fe6d2af0207df4b1d8823be0e4bc9c2f39a865f0cdc606f3cf2",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/MRVLUSDT/1m/MRVLUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "MRVLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/MRVLUSDT/1m/MRVLUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 974695,
+        "lastModified": "Sun, 02 Aug 2026 10:43:53 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:43:53 GMT",
+        "officialSha256": "94231efdcbdcfb08280a3580d63322e771f84245a90f292b88b82a8ebabdae0a",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MRVLUSDT/1m/MRVLUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "MRVLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MRVLUSDT/1m/MRVLUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1587645,
+        "lastModified": "Sun, 02 Aug 2026 10:45:37 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:45:37 GMT",
+        "officialSha256": "3d0afafe2fb4dc2b8a28239f6a1c4bd5fbad803c1422a51467d8f5eb5e79c8dc",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/MRVLUSDT/1m/MRVLUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "MRVLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/MRVLUSDT/1m/MRVLUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1242344,
+        "lastModified": "Sun, 02 Aug 2026 10:45:38 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:45:38 GMT",
+        "officialSha256": "84ca5496082ae2d8b7eadf4015c35c6ef4deb140205fd7275bdbe193d8a95823",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/MSFTUSDT/1m/MSFTUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "MSFTUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/MSFTUSDT/1m/MSFTUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1183692,
+        "lastModified": "Sun, 02 Aug 2026 10:13:49 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Sun, 02 Aug 2026 10:13:49 GMT",
+        "officialSha256": "49ef6e9f7b199807a9746e7c867817c584254d5d0eed7d7e0a370964979527eb",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/MUUSDT/1m/MUUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "MUUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/MUUSDT/1m/MUUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1059433,
+        "lastModified": "Sun, 02 Aug 2026 10:43:54 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Sun, 02 Aug 2026 10:43:54 GMT",
+        "officialSha256": "9821fed0bb8a77e9da1c96089b31795e5961a83a583eca0397924345db421fd4",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MUUSDT/1m/MUUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "MUUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MUUSDT/1m/MUUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1783349,
+        "lastModified": "Sun, 02 Aug 2026 10:45:38 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Sun, 02 Aug 2026 10:45:38 GMT",
+        "officialSha256": "96d1f6a3a13fcb2fe3f8edeffbbc705d0fd0dcd7076d8c608ec1b18722b712a4",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/MUUSDT/1m/MUUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "MUUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/MUUSDT/1m/MUUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1475703,
+        "lastModified": "Sun, 02 Aug 2026 10:45:43 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:45:43 GMT",
+        "officialSha256": "3484b849c5b7152309220b2c3343eaf978f5da19fdc1eb60ba5a74ff02987306",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "NVDAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 622682,
+        "lastModified": "Sun, 02 Aug 2026 10:45:44 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:45:44 GMT",
+        "officialSha256": "518d723768e36acde0ad3c309a93ead23c050c974cc80ed9e0d971d3f05251b3",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/NVOUSDT/1m/NVOUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "NVOUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/NVOUSDT/1m/NVOUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1072592,
+        "lastModified": "Sun, 02 Aug 2026 10:13:55 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:13:55 GMT",
+        "officialSha256": "26a901176e0781732c3613d9cefdc98063a40e20da42c572cdc5a249e61a0aa0",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/ORCLUSDT/1m/ORCLUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "ORCLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/ORCLUSDT/1m/ORCLUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 912890,
+        "lastModified": "Sun, 02 Aug 2026 10:44:02 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:44:02 GMT",
+        "officialSha256": "4dc61f96d339058c008937e55d6c0ce5f75c5645f6e0c8d553ae95105c0055e0",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ORCLUSDT/1m/ORCLUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "ORCLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ORCLUSDT/1m/ORCLUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1300396,
+        "lastModified": "Sun, 02 Aug 2026 10:45:48 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:45:48 GMT",
+        "officialSha256": "2f8c47bfa87d55cd3f319c9e7252c45f4929f4bda21c17c41e4392b3753c80e5",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/ORCLUSDT/1m/ORCLUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "ORCLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ORCLUSDT/1m/ORCLUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 76195,
+        "lastModified": "Sun, 02 Aug 2026 10:45:56 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:45:56 GMT",
+        "officialSha256": "e974946768e58990279567a78af67d7ab5ef2e454c60c28b65407b0147f4188e",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/PYPLUSDT/1m/PYPLUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "PYPLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/PYPLUSDT/1m/PYPLUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1228390,
+        "lastModified": "Sun, 02 Aug 2026 10:45:56 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:45:56 GMT",
+        "officialSha256": "0715d9297daf910b9e8f289234227fe81f5ab08a3d824459733ee9dc76a2a21a",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/QCOMUSDT/1m/QCOMUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "QCOMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/QCOMUSDT/1m/QCOMUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 922846,
+        "lastModified": "Sun, 02 Aug 2026 10:14:19 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:14:19 GMT",
+        "officialSha256": "6a015fa245d9f7e424ff8e662f0d05d27ee2a46de3ec5d5489314c1b76384cac",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/STRCUSDT/1m/STRCUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "STRCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/STRCUSDT/1m/STRCUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 797890,
+        "lastModified": "Sun, 02 Aug 2026 10:44:28 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:44:28 GMT",
+        "officialSha256": "d1277219e8ac6ac472d9c16c63cbf338a5a135ad0f85a1b964ca9fb17eb3fd18",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/STRCUSDT/1m/STRCUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "STRCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/STRCUSDT/1m/STRCUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 755732,
+        "lastModified": "Sun, 02 Aug 2026 10:46:13 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Sun, 02 Aug 2026 10:46:13 GMT",
+        "officialSha256": "c1106262d4f00bf2e052fe5765882f69e42ecc227e40bd147decadd0b8f5572f",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/STRCUSDT/1m/STRCUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "STRCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/STRCUSDT/1m/STRCUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 712892,
+        "lastModified": "Sun, 02 Aug 2026 10:46:18 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:46:18 GMT",
+        "officialSha256": "d2a3ea4787afa23bcb9048e94a086e69d6b8dc1bc372bf02d18638551d37d69b",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/TERUSDT/1m/TERUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "TERUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TERUSDT/1m/TERUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 990912,
+        "lastModified": "Sun, 02 Aug 2026 10:14:28 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:14:28 GMT",
+        "officialSha256": "b809248eb912098f3fd9c62644b105cd99724dbab8098b808da888657c71fd0b",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/TXNUSDT/1m/TXNUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "TXNUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/TXNUSDT/1m/TXNUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 869271,
+        "lastModified": "Sun, 02 Aug 2026 10:44:38 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:44:38 GMT",
+        "officialSha256": "2100fa6bd427086d4383c1bc4ad168aaccc1570e17c7392817cd61befd547c6a",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TXNUSDT/1m/TXNUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "TXNUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TXNUSDT/1m/TXNUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 551335,
+        "lastModified": "Sun, 02 Aug 2026 10:46:24 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:46:24 GMT",
+        "officialSha256": "1672da73de7dbbd13cb050f9fde03b5480778a0cd5d9438a4b61dd4acf7187ab",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/TXNUSDT/1m/TXNUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "TXNUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TXNUSDT/1m/TXNUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 623041,
+        "lastModified": "Sun, 02 Aug 2026 10:46:29 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 87,
+        "lastModified": "Sun, 02 Aug 2026 10:46:29 GMT",
+        "officialSha256": "c89fb4cc4c3b1cc61a5d66612f387ed0ddb6ec220c49fbe8bcb6504c8df2595d",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/VUSDT/1m/VUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "VUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/VUSDT/1m/VUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1440950,
+        "lastModified": "Sun, 02 Aug 2026 10:46:30 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:46:30 GMT",
+        "officialSha256": "b56537218544859b5fb984d4a6b69b9bee8a9a7474c67699893a9629ed310bec",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/WDCUSDT/1m/WDCUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "WDCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/WDCUSDT/1m/WDCUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 424357,
+        "lastModified": "Sun, 02 Aug 2026 10:46:30 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:46:30 GMT",
+        "officialSha256": "8d2b1846d255eabffd624daafadd8766be8a2598e66482f24eb8616cd8246352",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/WENUSDT/1m/WENUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "WENUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/WENUSDT/1m/WENUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 630785,
+        "lastModified": "Sun, 02 Aug 2026 10:46:31 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Sun, 02 Aug 2026 10:46:31 GMT",
+        "officialSha256": "ac751c785af1eac5c1895c18391d92897f448fd96ebbf738789ad6ea164b55e3",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/WMTUSDT/1m/WMTUSDT-1m-2026-07.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-07",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "WMTUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/WMTUSDT/1m/WMTUSDT-1m-2026-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1085230,
+        "lastModified": "Wed, 02 Sep 2026 09:41:10 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:41:10 GMT",
+        "officialSha256": "d5607be7a1aedb41179779a5ef58b078b067b8780fc0299ef6bc9fb359fdae69",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/AAPLUSDT/1m/AAPLUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "AAPLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/AAPLUSDT/1m/AAPLUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 899517,
+        "lastModified": "Wed, 02 Sep 2026 09:57:27 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:57:27 GMT",
+        "officialSha256": "8bfaf4dce3f0b050f9c72419c69cdee7156e7fc6cb52305a1f9a9e7bb260f75d",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/AAPLUSDT/1m/AAPLUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "AAPLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/AAPLUSDT/1m/AAPLUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1345877,
+        "lastModified": "Wed, 02 Sep 2026 09:48:39 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:48:39 GMT",
+        "officialSha256": "d99281b9650e670d1328730580831620605209aa71aa402413fe0b587131fe75",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/AAPLUSDT/1m/AAPLUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "AAPLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/AAPLUSDT/1m/AAPLUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1131549,
+        "lastModified": "Wed, 02 Sep 2026 09:41:14 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:41:14 GMT",
+        "officialSha256": "9389a304d38219e57c185c26bf84179ed5c154dd388c8bf57473a701cbc7a35d",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/AMATUSDT/1m/AMATUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "AMATUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/AMATUSDT/1m/AMATUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 953339,
+        "lastModified": "Wed, 02 Sep 2026 09:57:31 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:57:31 GMT",
+        "officialSha256": "d64f2dbdc0b702e8cba61377e7bce3a8ffc446a82fcdc448c3c7a7c035a83411",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/AMATUSDT/1m/AMATUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "AMATUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/AMATUSDT/1m/AMATUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1114997,
+        "lastModified": "Wed, 02 Sep 2026 09:48:44 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:48:44 GMT",
+        "officialSha256": "3374ab33fecf9b2687a5092a5c37e7e59b5c76b91afa590d56a9e206755b9a85",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/AMATUSDT/1m/AMATUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "AMATUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/AMATUSDT/1m/AMATUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1069848,
+        "lastModified": "Wed, 02 Sep 2026 09:41:30 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Wed, 02 Sep 2026 09:41:30 GMT",
+        "officialSha256": "4ffb0badf50164e6733c9495fc7cdad758667bac19556b07c6153cc3c90420fb",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/BXUSDT/1m/BXUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "BXUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/BXUSDT/1m/BXUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 867106,
+        "lastModified": "Wed, 02 Sep 2026 09:57:47 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Wed, 02 Sep 2026 09:57:47 GMT",
+        "officialSha256": "ea0b03c8ca8a1a7b4505e31c576831a6925805c1c8578da1d58b0fd873eb6c33",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BXUSDT/1m/BXUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "BXUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BXUSDT/1m/BXUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 779275,
+        "lastModified": "Wed, 02 Sep 2026 09:49:00 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Wed, 02 Sep 2026 09:49:00 GMT",
+        "officialSha256": "1414543226a29410757cb06dad785f6821ed370f1a940fbbb1a032c7594cb1fd",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/BXUSDT/1m/BXUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "BXUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BXUSDT/1m/BXUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1057969,
+        "lastModified": "Wed, 02 Sep 2026 09:41:42 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:41:42 GMT",
+        "officialSha256": "c624ba400fdf426007c3d788227a8f55bc9ff9c59086057c5118552d785c8968",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/EBAYUSDT/1m/EBAYUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "EBAYUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/EBAYUSDT/1m/EBAYUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 878100,
+        "lastModified": "Wed, 02 Sep 2026 09:57:59 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:57:59 GMT",
+        "officialSha256": "80dce1a4104b3e3fde7a04fc28e8b21af79c1b4404c8c7252cded42e42ace4a0",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/EBAYUSDT/1m/EBAYUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "EBAYUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/EBAYUSDT/1m/EBAYUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 638809,
+        "lastModified": "Wed, 02 Sep 2026 09:49:13 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:49:13 GMT",
+        "officialSha256": "98f67eca1f979205fef5201ee6c8285c19360d770da71d168d06f3e877111f35",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/EBAYUSDT/1m/EBAYUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "EBAYUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/EBAYUSDT/1m/EBAYUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1090887,
+        "lastModified": "Wed, 02 Sep 2026 09:41:51 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:41:51 GMT",
+        "officialSha256": "e469029df995ce8ff440e442dd548fe9c34f2a736fcfdab8df2923023e8af6e5",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/GLWUSDT/1m/GLWUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "GLWUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/GLWUSDT/1m/GLWUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 925301,
+        "lastModified": "Wed, 02 Sep 2026 09:58:10 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:58:10 GMT",
+        "officialSha256": "0ba27982fa62e122c6bc831274fca55e23ce2a8fdffa848e7c7dbb4791ed17e1",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/GLWUSDT/1m/GLWUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "GLWUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/GLWUSDT/1m/GLWUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1216418,
+        "lastModified": "Wed, 02 Sep 2026 09:49:22 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:49:22 GMT",
+        "officialSha256": "dd36900a935e5ddb93d9a24386ea99fd20ef73a245e6bb10f2bbee4f28cc9997",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/GLWUSDT/1m/GLWUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "GLWUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/GLWUSDT/1m/GLWUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1401048,
+        "lastModified": "Wed, 02 Sep 2026 09:49:23 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Wed, 02 Sep 2026 09:49:23 GMT",
+        "officialSha256": "70a39afc979f21923bfd05238279969f758d8474e3f61c82042f806d2a269a11",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "GOOGLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1141676,
+        "lastModified": "Wed, 02 Sep 2026 09:41:53 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Wed, 02 Sep 2026 09:41:53 GMT",
+        "officialSha256": "7bd5e6b7b8e77013ecb3cb4460246695659ac0daff05af2d555d8f050e1a6b58",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/GSUSDT/1m/GSUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "GSUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/GSUSDT/1m/GSUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 964286,
+        "lastModified": "Wed, 02 Sep 2026 09:58:12 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Wed, 02 Sep 2026 09:58:12 GMT",
+        "officialSha256": "530fd33dbcb3e09e84507955fd287a41c0529b7b89ffce2c0d8c804ad08ffdca",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/GSUSDT/1m/GSUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "GSUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/GSUSDT/1m/GSUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 487836,
+        "lastModified": "Wed, 02 Sep 2026 09:49:24 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Wed, 02 Sep 2026 09:49:24 GMT",
+        "officialSha256": "cc3baa4e2d7da2f840c8b4dad00215eee80248a45b0461cc84a9dffb24c41745",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/GSUSDT/1m/GSUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "GSUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/GSUSDT/1m/GSUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 563076,
+        "lastModified": "Wed, 02 Sep 2026 09:49:26 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 88,
+        "lastModified": "Wed, 02 Sep 2026 09:49:26 GMT",
+        "officialSha256": "161bb3a1d8994b4f8c8cf67e282d5116a59977621919ad70666a8fd7956e4ab4",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/HDUSDT/1m/HDUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "HDUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/HDUSDT/1m/HDUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1079399,
+        "lastModified": "Wed, 02 Sep 2026 09:41:58 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:41:58 GMT",
+        "officialSha256": "4b6739044f83e4957490f8ab3c00120b98774483b2c7ff096ecd273208398b69",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/IBMUSDT/1m/IBMUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "IBMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/IBMUSDT/1m/IBMUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 876042,
+        "lastModified": "Wed, 02 Sep 2026 09:58:16 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:58:16 GMT",
+        "officialSha256": "5c5442b6af94426c630ff465065c2c576318f0c1355b1001ce1500adfa784094",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/IBMUSDT/1m/IBMUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "IBMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/IBMUSDT/1m/IBMUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 978982,
+        "lastModified": "Wed, 02 Sep 2026 09:49:29 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:49:29 GMT",
+        "officialSha256": "7f2a5dc3104447706e26117473e80a0149eba0ef254861a03782a08cd0cf12f1",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/IBMUSDT/1m/IBMUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "IBMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/IBMUSDT/1m/IBMUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1093119,
+        "lastModified": "Wed, 02 Sep 2026 09:42:04 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:42:04 GMT",
+        "officialSha256": "0dccd41374eae260310665325386befdfd74da1d67bae83877fa795cc5f40636",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/KLACUSDT/1m/KLACUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "KLACUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/KLACUSDT/1m/KLACUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 921919,
+        "lastModified": "Wed, 02 Sep 2026 09:58:23 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:58:23 GMT",
+        "officialSha256": "92eb2d45d1900b255fc2734e24884a8ab5a7e23aac2a292c787da15fde10e804",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/KLACUSDT/1m/KLACUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "KLACUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/KLACUSDT/1m/KLACUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 664945,
+        "lastModified": "Wed, 02 Sep 2026 09:49:35 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:49:35 GMT",
+        "officialSha256": "a4c55f3851daf2955355126190187e5363edc842f367de534414fd80d8b5fb98",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/KLACUSDT/1m/KLACUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "KLACUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/KLACUSDT/1m/KLACUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1143855,
+        "lastModified": "Wed, 02 Sep 2026 09:42:08 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:42:08 GMT",
+        "officialSha256": "202c234cbd74561e2b591cc33992bc212696adb5293934a58305e21b27636833",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/LLYUSDT/1m/LLYUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "LLYUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/LLYUSDT/1m/LLYUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 954352,
+        "lastModified": "Wed, 02 Sep 2026 09:58:26 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:58:26 GMT",
+        "officialSha256": "d0389337995f9e2a4c4b4431148b8bcbde6bb3ddcba665d6aa03ba92d83b49a7",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LLYUSDT/1m/LLYUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "LLYUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LLYUSDT/1m/LLYUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 823037,
+        "lastModified": "Wed, 02 Sep 2026 09:49:38 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:49:38 GMT",
+        "officialSha256": "b94e0b9dad69cd704a01f7ad20c76e79443ca75c71bfe94f6da10b05313b4c3a",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/LLYUSDT/1m/LLYUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "LLYUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LLYUSDT/1m/LLYUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1103090,
+        "lastModified": "Wed, 02 Sep 2026 09:42:15 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:42:15 GMT",
+        "officialSha256": "b596347bfec503259bc5e7543e6c7f8540d5507bf174ab72c4453a5ccd87dd9c",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/MSFTUSDT/1m/MSFTUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "MSFTUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/MSFTUSDT/1m/MSFTUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 928791,
+        "lastModified": "Wed, 02 Sep 2026 09:58:33 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:58:33 GMT",
+        "officialSha256": "0bead04356ab57388c2a2cabaf274133d4573415b0822fee0d12f59421b2a31b",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MSFTUSDT/1m/MSFTUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "MSFTUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/MSFTUSDT/1m/MSFTUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1285119,
+        "lastModified": "Wed, 02 Sep 2026 09:49:46 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:49:46 GMT",
+        "officialSha256": "2c421a07bd3a18b12a343ae67acdd824ed988b782406e083f030908bc9f8d58d",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/MSFTUSDT/1m/MSFTUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "MSFTUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/MSFTUSDT/1m/MSFTUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1459688,
+        "lastModified": "Wed, 02 Sep 2026 09:49:50 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:49:50 GMT",
+        "officialSha256": "9e158d637c4d24d38538f6bd581646bc03321c41832c6ed9cee067796143e38b",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "NVDAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1025423,
+        "lastModified": "Wed, 02 Sep 2026 09:42:20 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:42:20 GMT",
+        "officialSha256": "4fe3dd8327f5326baa68adb6221e882e6ae4417c96a4199ac27f9b6aa864a659",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/NVOUSDT/1m/NVOUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "NVOUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/NVOUSDT/1m/NVOUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 814488,
+        "lastModified": "Wed, 02 Sep 2026 09:58:38 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:58:38 GMT",
+        "officialSha256": "018acf22c5a052d37a1df7ce43faa59a4676f438fa128545902590744bd2bad9",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/NVOUSDT/1m/NVOUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "NVOUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/NVOUSDT/1m/NVOUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 667702,
+        "lastModified": "Wed, 02 Sep 2026 09:49:50 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:49:50 GMT",
+        "officialSha256": "cb720f5fbe522c16b497da618bf13e5b4308e3a02ffc18fb9be356eaedbf9f63",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/NVOUSDT/1m/NVOUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "NVOUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/NVOUSDT/1m/NVOUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 596820,
+        "lastModified": "Wed, 02 Sep 2026 09:50:00 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:50:00 GMT",
+        "officialSha256": "d7d82f04233b171f7ce180442cc90030c733acbf8f7c5c92855a5d416c6154d8",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/PYPLUSDT/1m/PYPLUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "PYPLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/PYPLUSDT/1m/PYPLUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1064171,
+        "lastModified": "Wed, 02 Sep 2026 09:50:00 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:50:00 GMT",
+        "officialSha256": "8fff2f475452d555a09bdfc81aed0b406dc6e1d52a19c3c8eece1487d56ff593",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/QCOMUSDT/1m/QCOMUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "QCOMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/QCOMUSDT/1m/QCOMUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1031587,
+        "lastModified": "Wed, 02 Sep 2026 09:42:44 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:42:44 GMT",
+        "officialSha256": "dd59fe0c8fd09c6c311bcc27d721090ed74c3bbad7833be0edfc40742b1b4aeb",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/STRCUSDT/1m/STRCUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "STRCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/STRCUSDT/1m/STRCUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 812260,
+        "lastModified": "Wed, 02 Sep 2026 09:59:02 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:59:02 GMT",
+        "officialSha256": "039a035be8e4b128080a3eefcfe996e3b3e83978b3a650f4fc4b5c561287a460",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/STRCUSDT/1m/STRCUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "STRCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/STRCUSDT/1m/STRCUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 774461,
+        "lastModified": "Wed, 02 Sep 2026 09:50:15 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 90,
+        "lastModified": "Wed, 02 Sep 2026 09:50:15 GMT",
+        "officialSha256": "9d4b5b58a39946f1d9fdb24e9c84ad56475f6b4d478ae18e7cc11cfaf41e7ad2",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/STRCUSDT/1m/STRCUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "STRCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/STRCUSDT/1m/STRCUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 694399,
+        "lastModified": "Wed, 02 Sep 2026 09:50:18 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:50:18 GMT",
+        "officialSha256": "b4ba215f1d2891a379d4fd6a35b4d7a94e7aa148635ae8414370218817581c62",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/TERUSDT/1m/TERUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "TERUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TERUSDT/1m/TERUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1083859,
+        "lastModified": "Wed, 02 Sep 2026 09:42:57 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 87,
+        "lastModified": "Wed, 02 Sep 2026 09:42:57 GMT",
+        "officialSha256": "614528bd043d8480dffd5edd6c5714bc882a7d9541ec8f648a18133cdf13a3c5",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/VUSDT/1m/VUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "VUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/VUSDT/1m/VUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 860738,
+        "lastModified": "Wed, 02 Sep 2026 09:59:15 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 87,
+        "lastModified": "Wed, 02 Sep 2026 09:59:15 GMT",
+        "officialSha256": "3b61c46a9d0bbba1fd1f28204d18cd6a2251fa9ef873978fb00b1a715a81828a",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/VUSDT/1m/VUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "VUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/VUSDT/1m/VUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 603658,
+        "lastModified": "Wed, 02 Sep 2026 09:50:27 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 87,
+        "lastModified": "Wed, 02 Sep 2026 09:50:27 GMT",
+        "officialSha256": "903a81aeadb4dabe71ea0f57e4e3629f9900c56f8666a7cbb8b5364286e28965",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/VUSDT/1m/VUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "VUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/VUSDT/1m/VUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1365259,
+        "lastModified": "Wed, 02 Sep 2026 09:50:28 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:50:28 GMT",
+        "officialSha256": "cea0c348cffdb9f06c2d9e5a462bf5463a93928f861824325f7a1cba12abc155",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/WDCUSDT/1m/WDCUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "WDCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/WDCUSDT/1m/WDCUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 960392,
+        "lastModified": "Wed, 02 Sep 2026 09:42:57 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:42:57 GMT",
+        "officialSha256": "0bfa7174c7ca90ee02018762a12bcf3d01886430203d910ade399f86a7b83439",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/WENUSDT/1m/WENUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "WENUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/WENUSDT/1m/WENUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 801778,
+        "lastModified": "Wed, 02 Sep 2026 09:59:16 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:59:16 GMT",
+        "officialSha256": "a0bcb4a9feb7515a3881315f2f9ec7efec153d24be141599d3785e4bed477300",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/WENUSDT/1m/WENUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "WENUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/WENUSDT/1m/WENUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 663635,
+        "lastModified": "Wed, 02 Sep 2026 09:50:28 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:50:28 GMT",
+        "officialSha256": "f1afadd4de03dd3c9b87417b0ca395dc928232717b4db9c3465c102a277c6084",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/WENUSDT/1m/WENUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "WENUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/WENUSDT/1m/WENUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 1043176,
+        "lastModified": "Wed, 02 Sep 2026 09:42:59 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:42:59 GMT",
+        "officialSha256": "40bab34ea0329adc32498781222616494dd1af001a60e3b91cf08ae28d1cdea9",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/WMTUSDT/1m/WMTUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "WMTUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/WMTUSDT/1m/WMTUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 814458,
+        "lastModified": "Wed, 02 Sep 2026 09:59:17 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:59:17 GMT",
+        "officialSha256": "c406ff7d908ae92165ada86acb80e6491cb1b7bd5e6ce6725aaf07cb05d4a304",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/WMTUSDT/1m/WMTUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "WMTUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/WMTUSDT/1m/WMTUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 713206,
+        "lastModified": "Wed, 02 Sep 2026 09:50:29 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 89,
+        "lastModified": "Wed, 02 Sep 2026 09:50:29 GMT",
+        "officialSha256": "88e1b8d34970b42d509362ec069f267a90f23d36653f30eaa2796f83f024ef3c",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/monthly/klines/WMTUSDT/1m/WMTUSDT-1m-2026-08.zip.CHECKSUM",
+      "frequency": "monthly",
+      "period": "2026-08",
+      "scopes": [
+        "control",
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "WMTUSDT",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/WMTUSDT/1m/WMTUSDT-1m-2026-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 33947,
+        "lastModified": "Wed, 02 Sep 2026 08:42:40 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Wed, 02 Sep 2026 08:42:40 GMT",
+        "officialSha256": "d59f49797db5a9b5e26e359232791e9e44ee201d640e3ebe26c9928011cf4ee2",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/GSUSDT/1m/GSUSDT-1m-2026-09-01.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-01",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "GSUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/GSUSDT/1m/GSUSDT-1m-2026-09-01.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 26831,
+        "lastModified": "Wed, 02 Sep 2026 08:46:10 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Wed, 02 Sep 2026 08:46:10 GMT",
+        "officialSha256": "510dedcde4535bf91c2b27d6cc7f448646546161aff0a6b58243a9841389a8ae",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/GSUSDT/1m/GSUSDT-1m-2026-09-01.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-01",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "GSUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/GSUSDT/1m/GSUSDT-1m-2026-09-01.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 17549,
+        "lastModified": "Wed, 02 Sep 2026 08:45:20 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Wed, 02 Sep 2026 08:45:20 GMT",
+        "officialSha256": "4a8c482de1b437e4ca7bd140d01eba29f5c1b644b9b214ebf379f85327a2cdc6",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/GSUSDT/1m/GSUSDT-1m-2026-09-01.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-01",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "GSUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/GSUSDT/1m/GSUSDT-1m-2026-09-01.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 48018,
+        "lastModified": "Wed, 02 Sep 2026 08:46:21 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Wed, 02 Sep 2026 08:46:21 GMT",
+        "officialSha256": "8b38d33b0a7b9d985a27cb90f791161381bfbaeb4bb1c931aab261e75b2479f2",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/WDCUSDT/1m/WDCUSDT-1m-2026-09-01.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-01",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "WDCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/WDCUSDT/1m/WDCUSDT-1m-2026-09-01.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 34312,
+        "lastModified": "Wed, 02 Sep 2026 08:43:34 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Wed, 02 Sep 2026 08:43:34 GMT",
+        "officialSha256": "4db28212ffe46fd6c220b135bf934cf7ad1a96ea792b8b381d6ae114edb728d9",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/WENUSDT/1m/WENUSDT-1m-2026-09-01.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-01",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "WENUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/WENUSDT/1m/WENUSDT-1m-2026-09-01.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 26311,
+        "lastModified": "Wed, 02 Sep 2026 08:47:12 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Wed, 02 Sep 2026 08:47:12 GMT",
+        "officialSha256": "ad53327395213ce7aaaf68e9500e50083ffaab1de70977bd2c800856eee07ced",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/WENUSDT/1m/WENUSDT-1m-2026-09-01.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-01",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "WENUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/WENUSDT/1m/WENUSDT-1m-2026-09-01.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 25444,
+        "lastModified": "Wed, 02 Sep 2026 08:46:21 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Wed, 02 Sep 2026 08:46:21 GMT",
+        "officialSha256": "c63562fe91a9260323ad8b0dbd2bec31b89b8b77b5d77c9da1c3af68d7678d06",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/WENUSDT/1m/WENUSDT-1m-2026-09-01.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-01",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "WENUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/WENUSDT/1m/WENUSDT-1m-2026-09-01.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 31668,
+        "lastModified": "Thu, 03 Sep 2026 09:10:35 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Thu, 03 Sep 2026 09:10:35 GMT",
+        "officialSha256": "4a8d4a9fb9157a1fce894c29f67990f58aa800bbfb54a737b3007fd9f0864207",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/HDUSDT/1m/HDUSDT-1m-2026-09-02.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-02",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "HDUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/HDUSDT/1m/HDUSDT-1m-2026-09-02.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 26415,
+        "lastModified": "Thu, 03 Sep 2026 09:46:42 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Thu, 03 Sep 2026 09:46:42 GMT",
+        "officialSha256": "84e913363d21b3f8c29979baef91c5fd4204256ab160a858c703313d9c3b4257",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/HDUSDT/1m/HDUSDT-1m-2026-09-02.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-02",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "HDUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/HDUSDT/1m/HDUSDT-1m-2026-09-02.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 24256,
+        "lastModified": "Thu, 03 Sep 2026 09:15:47 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Thu, 03 Sep 2026 09:15:47 GMT",
+        "officialSha256": "97ff39b9140239dc1a0e41819611b9c51954dd11dbb30e1187fddfed4d21231f",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/HDUSDT/1m/HDUSDT-1m-2026-09-02.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-02",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "HDUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/HDUSDT/1m/HDUSDT-1m-2026-09-02.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 52404,
+        "lastModified": "Thu, 03 Sep 2026 09:16:11 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Thu, 03 Sep 2026 09:16:11 GMT",
+        "officialSha256": "47cc207a7c762fe418a6deb4441891825cf595d95334ccb4e4639fc7757b0857",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-02.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-02",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "NVDAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-02.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 38574,
+        "lastModified": "Thu, 03 Sep 2026 09:11:05 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Thu, 03 Sep 2026 09:11:05 GMT",
+        "officialSha256": "77fb3639fd7c98c2e1780d7687d3113491002c957d2e9f6613967f213b2a59a6",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/QCOMUSDT/1m/QCOMUSDT-1m-2026-09-02.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-02",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "QCOMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/QCOMUSDT/1m/QCOMUSDT-1m-2026-09-02.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 30200,
+        "lastModified": "Thu, 03 Sep 2026 09:47:18 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Thu, 03 Sep 2026 09:47:18 GMT",
+        "officialSha256": "dcc702e40cd6c5897b6d3611be6982f4af91df050966f7d95df584c60b3e12d0",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/QCOMUSDT/1m/QCOMUSDT-1m-2026-09-02.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-02",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "QCOMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/QCOMUSDT/1m/QCOMUSDT-1m-2026-09-02.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 40874,
+        "lastModified": "Thu, 03 Sep 2026 09:16:20 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Thu, 03 Sep 2026 09:16:20 GMT",
+        "officialSha256": "89a5f4cbc7bff8204d0316bef6b99d12afc5f84929238b9465d88039714cc8e4",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/QCOMUSDT/1m/QCOMUSDT-1m-2026-09-02.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-02",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "QCOMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/QCOMUSDT/1m/QCOMUSDT-1m-2026-09-02.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 39112,
+        "lastModified": "Fri, 04 Sep 2026 08:26:34 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 94,
+        "lastModified": "Fri, 04 Sep 2026 08:26:34 GMT",
+        "officialSha256": "03fd0c615ea6c14fde9c32e4b07d744e741338f1d30cd8626bb46c7f173029e7",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "GOOGLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 30362,
+        "lastModified": "Fri, 04 Sep 2026 08:54:55 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 94,
+        "lastModified": "Fri, 04 Sep 2026 08:54:55 GMT",
+        "officialSha256": "c4473549471600bf5a740fce2fd7b8271a1d6106f61c17b7e5e46d7f32d6256e",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "GOOGLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 49016,
+        "lastModified": "Fri, 04 Sep 2026 08:29:37 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 94,
+        "lastModified": "Fri, 04 Sep 2026 08:29:37 GMT",
+        "officialSha256": "25f95ad857c3a23b9de0131a48abe2d9dcd6db504fc10e8654136ed56e2b53c6",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "GOOGLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 31984,
+        "lastModified": "Fri, 04 Sep 2026 08:26:37 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Fri, 04 Sep 2026 08:26:37 GMT",
+        "officialSha256": "9c4d9a92862bc89e664fff902a380389caab0f33e92538bf029a42348747dffb",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/HDUSDT/1m/HDUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "HDUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/HDUSDT/1m/HDUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 27288,
+        "lastModified": "Fri, 04 Sep 2026 08:54:58 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Fri, 04 Sep 2026 08:54:58 GMT",
+        "officialSha256": "83aecc924509285fb037e243665b069ce5fed429f07d9cf11571668f31aedd29",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/HDUSDT/1m/HDUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "HDUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/HDUSDT/1m/HDUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 27531,
+        "lastModified": "Fri, 04 Sep 2026 08:29:40 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 91,
+        "lastModified": "Fri, 04 Sep 2026 08:29:40 GMT",
+        "officialSha256": "b0da5b1762d5996ac0aa3d7589268d7c72c1b30dec93ef31fd863f37bfbf036d",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/HDUSDT/1m/HDUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "HDUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/HDUSDT/1m/HDUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 53189,
+        "lastModified": "Fri, 04 Sep 2026 08:30:03 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Fri, 04 Sep 2026 08:30:03 GMT",
+        "officialSha256": "f6ab3bc425e4fe13d012ed503672601ef5b14bd8aa2a0fb57452c2c1f3b944fc",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "control"
+      ],
+      "stream": "trade",
+      "symbol": "NVDAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 37062,
+        "lastModified": "Fri, 04 Sep 2026 08:27:07 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Fri, 04 Sep 2026 08:27:07 GMT",
+        "officialSha256": "82012ada3bbbf090a15bb2ab1001f59ea83594d8c71cd7c31118f9f862eaba42",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/PYPLUSDT/1m/PYPLUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "PYPLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/PYPLUSDT/1m/PYPLUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 29274,
+        "lastModified": "Fri, 04 Sep 2026 08:55:31 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Fri, 04 Sep 2026 08:55:31 GMT",
+        "officialSha256": "5ad4a2848aa42ca9583cb08d24fa146c1feba9ece1ed21496b196f0fcb6073ca",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/PYPLUSDT/1m/PYPLUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "PYPLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/PYPLUSDT/1m/PYPLUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 26681,
+        "lastModified": "Fri, 04 Sep 2026 08:30:12 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Fri, 04 Sep 2026 08:30:12 GMT",
+        "officialSha256": "a2aa50a313ab4e5e490906ad4382955e6fd853ffe1eb77f97d7c54eb055c5ad9",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/PYPLUSDT/1m/PYPLUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "PYPLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/PYPLUSDT/1m/PYPLUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 38720,
+        "lastModified": "Fri, 04 Sep 2026 08:27:07 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Fri, 04 Sep 2026 08:27:07 GMT",
+        "officialSha256": "cf4ec240f872bf8c97f5d46df070babd388203998a93811e93c201bd79999050",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/QCOMUSDT/1m/QCOMUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "QCOMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/QCOMUSDT/1m/QCOMUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 30867,
+        "lastModified": "Fri, 04 Sep 2026 08:55:31 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Fri, 04 Sep 2026 08:55:31 GMT",
+        "officialSha256": "0485069cdaf50ddd593c17fc9287e26363247b9548bf114418f8773bcb7e9cd0",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/QCOMUSDT/1m/QCOMUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "QCOMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/QCOMUSDT/1m/QCOMUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 44715,
+        "lastModified": "Fri, 04 Sep 2026 08:30:12 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Fri, 04 Sep 2026 08:30:12 GMT",
+        "officialSha256": "97e209ad150c7f3d4a913922652b12390df53329648c838fa46a4f38f766a0e5",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/QCOMUSDT/1m/QCOMUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "QCOMUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/QCOMUSDT/1m/QCOMUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 40012,
+        "lastModified": "Fri, 04 Sep 2026 08:27:24 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Fri, 04 Sep 2026 08:27:24 GMT",
+        "officialSha256": "e45390bd23bc93c7f51dd3821b3408280495d39b5ea6cca61476fec56b837cd4",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/TERUSDT/1m/TERUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "TERUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/TERUSDT/1m/TERUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 31429,
+        "lastModified": "Fri, 04 Sep 2026 08:55:48 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Fri, 04 Sep 2026 08:55:48 GMT",
+        "officialSha256": "4d9932a4ccba4d65c9b56567302632d22a6ade352938bcb10e94fb91c7a069f6",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/TERUSDT/1m/TERUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "TERUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/TERUSDT/1m/TERUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 24789,
+        "lastModified": "Fri, 04 Sep 2026 08:30:29 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Fri, 04 Sep 2026 08:30:29 GMT",
+        "officialSha256": "0d7017d7d10b37722ed495d8d0f25cf4be48c8a65d9898ccf24ad1915f1aa507",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/TERUSDT/1m/TERUSDT-1m-2026-09-03.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-03",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "TERUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/TERUSDT/1m/TERUSDT-1m-2026-09-03.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 38951,
+        "lastModified": "Sat, 05 Sep 2026 07:27:21 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 94,
+        "lastModified": "Sat, 05 Sep 2026 07:27:21 GMT",
+        "officialSha256": "81683d455636df7815b8193d049eb5e33fc772c22381484ad6f651024cf9a29d",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-09-04.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-04",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "GOOGLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-09-04.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 30750,
+        "lastModified": "Sat, 05 Sep 2026 07:41:54 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 94,
+        "lastModified": "Sat, 05 Sep 2026 07:41:54 GMT",
+        "officialSha256": "7445b312f44ae56b5699afbc91c0d7088b9c53136ad117cac44f221b060fdf69",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-09-04.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-04",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "GOOGLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-09-04.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 47757,
+        "lastModified": "Sat, 05 Sep 2026 07:33:33 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 94,
+        "lastModified": "Sat, 05 Sep 2026 07:33:33 GMT",
+        "officialSha256": "e9253a4b9c0def61420981d2fc389d9e2ecb1fe395a3680a8fc091c5440e70f9",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-09-04.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-04",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "GOOGLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/GOOGLUSDT/1m/GOOGLUSDT-1m-2026-09-04.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 37063,
+        "lastModified": "Sat, 05 Sep 2026 07:27:51 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Sat, 05 Sep 2026 07:27:51 GMT",
+        "officialSha256": "731052db76a7d644e7f197db5fac78d315729a148edef9ea23645d3c555024d8",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/PYPLUSDT/1m/PYPLUSDT-1m-2026-09-04.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-04",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "PYPLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/PYPLUSDT/1m/PYPLUSDT-1m-2026-09-04.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 30279,
+        "lastModified": "Sat, 05 Sep 2026 07:42:27 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Sat, 05 Sep 2026 07:42:27 GMT",
+        "officialSha256": "2d8fa1452080a948c58d07068c4f670838b2419c9cdf6ae5b8135f453607839d",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/PYPLUSDT/1m/PYPLUSDT-1m-2026-09-04.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-04",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "PYPLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/PYPLUSDT/1m/PYPLUSDT-1m-2026-09-04.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 24515,
+        "lastModified": "Sat, 05 Sep 2026 07:34:07 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Sat, 05 Sep 2026 07:34:07 GMT",
+        "officialSha256": "2c4ec2bd2396bc736f81db62255d5157b074ff2ab4a077dd53ec323240bece90",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/PYPLUSDT/1m/PYPLUSDT-1m-2026-09-04.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-04",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "PYPLUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/PYPLUSDT/1m/PYPLUSDT-1m-2026-09-04.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 40118,
+        "lastModified": "Sat, 05 Sep 2026 07:28:07 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Sat, 05 Sep 2026 07:28:07 GMT",
+        "officialSha256": "e641ab21a8d8d688498328c7a4260158d6a3ffc22464c88875be1f46bbc5f3e0",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/TERUSDT/1m/TERUSDT-1m-2026-09-04.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-04",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "TERUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/TERUSDT/1m/TERUSDT-1m-2026-09-04.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 31672,
+        "lastModified": "Sat, 05 Sep 2026 07:42:44 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Sat, 05 Sep 2026 07:42:44 GMT",
+        "officialSha256": "4a9a4c6722bb5aaf0815b4ca55007d2216248eb6a4f4a59c39ca358000652a07",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/TERUSDT/1m/TERUSDT-1m-2026-09-04.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-04",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "TERUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/TERUSDT/1m/TERUSDT-1m-2026-09-04.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 25905,
+        "lastModified": "Sat, 05 Sep 2026 07:34:24 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Sat, 05 Sep 2026 07:34:24 GMT",
+        "officialSha256": "560a5d6f05bdc9c16f04f588528959b275858628d6779149e44d10a1ed58ee8c",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/TERUSDT/1m/TERUSDT-1m-2026-09-04.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-04",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "TERUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/TERUSDT/1m/TERUSDT-1m-2026-09-04.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 29004,
+        "lastModified": "Tue, 08 Sep 2026 08:13:16 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Tue, 08 Sep 2026 08:13:16 GMT",
+        "officialSha256": "2ef6366c55fcd688bf224c95ab4933215fdf1184668cabb93c5a2c8e700a124b",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/WDCUSDT/1m/WDCUSDT-1m-2026-09-07.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "WDCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/WDCUSDT/1m/WDCUSDT-1m-2026-09-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 28140,
+        "lastModified": "Tue, 08 Sep 2026 08:27:42 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Tue, 08 Sep 2026 08:27:42 GMT",
+        "officialSha256": "dd069605bbaed75578b651a16393afdb2a79cc72ce5ba8afd8dc59ff33912401",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/WDCUSDT/1m/WDCUSDT-1m-2026-09-07.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "WDCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/WDCUSDT/1m/WDCUSDT-1m-2026-09-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 40188,
+        "lastModified": "Tue, 08 Sep 2026 08:44:13 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Tue, 08 Sep 2026 08:44:13 GMT",
+        "officialSha256": "90ab3630da0dd68e88fc0b4ab4b6f83609ab834020558fbe4db746c97260ce5c",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/WDCUSDT/1m/WDCUSDT-1m-2026-09-07.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-07",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "WDCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/WDCUSDT/1m/WDCUSDT-1m-2026-09-07.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 40944,
+        "lastModified": "Wed, 09 Sep 2026 10:27:36 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Wed, 09 Sep 2026 10:27:36 GMT",
+        "officialSha256": "16814af689f21b81a22ad01141b8f426b47d7a68e18ea74c512334aeb691c558",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/WDCUSDT/1m/WDCUSDT-1m-2026-09-08.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "WDCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/WDCUSDT/1m/WDCUSDT-1m-2026-09-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 34803,
+        "lastModified": "Wed, 09 Sep 2026 10:31:39 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Wed, 09 Sep 2026 10:31:39 GMT",
+        "officialSha256": "13b558d9225729dbc0a875a1dfd2f793967e246ba5258a529d9bbc39e3899500",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/WDCUSDT/1m/WDCUSDT-1m-2026-09-08.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "WDCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/WDCUSDT/1m/WDCUSDT-1m-2026-09-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 49240,
+        "lastModified": "Wed, 09 Sep 2026 09:35:21 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 92,
+        "lastModified": "Wed, 09 Sep 2026 09:35:21 GMT",
+        "officialSha256": "354ccee69912a6743644d77e12cd08d89f4e253ef0fb3ce1af828517cd119c70",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/WDCUSDT/1m/WDCUSDT-1m-2026-09-08.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-08",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "WDCUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/WDCUSDT/1m/WDCUSDT-1m-2026-09-08.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 38231,
+        "lastModified": "Thu, 10 Sep 2026 09:42:24 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Thu, 10 Sep 2026 09:42:24 GMT",
+        "officialSha256": "bc4d59083a04ad0e98f677096ecdfcc8a2b99761218c65c95e00c56692863748",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-09.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-09",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "NVDAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-09.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 29569,
+        "lastModified": "Thu, 10 Sep 2026 10:49:23 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Thu, 10 Sep 2026 10:49:23 GMT",
+        "officialSha256": "a37b455abc5c653872dcb8ef055fbda273c9fb2e63446df97338de602be4f97a",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-09.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-09",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "NVDAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-09.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 50032,
+        "lastModified": "Thu, 10 Sep 2026 11:32:32 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Thu, 10 Sep 2026 11:32:32 GMT",
+        "officialSha256": "08ad0c9b2db75a0b9c6fef415be3d078cf75b5b069ac6ccf0ab8d72092ca8e9a",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-09.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-09",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "NVDAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-09.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 38790,
+        "lastModified": "Fri, 11 Sep 2026 08:42:55 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Fri, 11 Sep 2026 08:42:56 GMT",
+        "officialSha256": "3a81c843d1c5caec233927308c63eca8a4aaacb46e28c6db618a289212ec0437",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-10.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-10",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "index",
+      "symbol": "NVDAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/indexPriceKlines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-10.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 30721,
+        "lastModified": "Fri, 11 Sep 2026 10:42:05 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Fri, 11 Sep 2026 10:42:05 GMT",
+        "officialSha256": "1c8efde9c0774d37c70b5445a1529fecfe6c595b840c1972387cc504fe0b573f",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-10.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-10",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "mark",
+      "symbol": "NVDAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/markPriceKlines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-10.zip"
+    },
+    {
+      "archive": {
+        "contentLength": 51806,
+        "lastModified": "Fri, 11 Sep 2026 10:42:54 GMT",
+        "status": 200
+      },
+      "checksum": {
+        "contentLength": 93,
+        "lastModified": "Fri, 11 Sep 2026 10:42:54 GMT",
+        "officialSha256": "e92ae2695644f7648a6f11a71b602e3f4571887e915b2536b8f9bc05eeca38a6",
+        "status": 200
+      },
+      "checksumUrl": "https://data.binance.vision/data/futures/um/daily/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-10.zip.CHECKSUM",
+      "frequency": "daily",
+      "period": "2026-09-10",
+      "scopes": [
+        "primary"
+      ],
+      "stream": "trade",
+      "symbol": "NVDAUSDT",
+      "url": "https://data.binance.vision/data/futures/um/daily/klines/NVDAUSDT/1m/NVDAUSDT-1m-2026-09-10.zip"
+    }
+  ],
+  "outcomeBlind": true,
+  "population": {
+    "controlLookbackDays": 56,
+    "eventDatesNy": 31,
+    "events": 50,
+    "regimeStartNy": "2026-05-16",
+    "symbols": 41,
+    "uniqueControlCandidates": 310
+  },
+  "schemaVersion": 3,
+  "summary": {
+    "allAvailable": false,
+    "archiveHttp200": 235,
+    "checksumHttp200": 235,
+    "control": {
+      "allAvailable": false,
+      "archiveHttp200": 96,
+      "checksumHttp200": 96,
+      "objects": 106,
+      "officialChecksumValues": 96,
+      "totalCompressedBytes": 85723573
+    },
+    "objects": 245,
+    "officialChecksumValues": 235,
+    "primary": {
+      "allAvailable": true,
+      "archiveHttp200": 171,
+      "checksumHttp200": 171,
+      "objects": 171,
+      "officialChecksumValues": 171,
+      "totalCompressedBytes": 116634373
+    },
+    "totalCompressedBytes": 172591677
+  }
+}
