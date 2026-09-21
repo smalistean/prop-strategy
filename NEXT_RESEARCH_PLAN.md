@@ -1,6 +1,12 @@
 # Evidence-based research plan
 
-Last updated: 2026-08-09
+Last updated: 2026-09-12
+
+> **Current direction (2026-09-12):** the plan below preserves the completed candle-strategy
+> sequence as history. Its old funding/basis recommendation is superseded: the user has closed
+> that family after multiple tests and a losing real book. The active ordered backlog is
+> `STRUCTURAL_EVENT_RESEARCH_QUEUE.md`; board #17 failed its frozen one-look screen and board #19
+> failed its outcome-blind hedge-data gate. Board #18's maintenance-source feasibility gate is next.
 
 ## Apollo expanded-universe result — rejected
 
@@ -230,14 +236,24 @@ A candidate is deployable only if it demonstrates:
 
 ## Immediate next action
 
-Stages 1-3 are closed below. Do not optimize any of their thresholds. The next research proposal
-must use a materially independent source of edge; a cost-aware funding/basis hypothesis is the
-most natural candidate because it requires different data and does not depend on directional
-pullback prediction.
+Stages 1-3 and the funding family are closed. Do not optimize or rename them.
 
-Apollo remains closed as a fully automatic all-symbol candidate: the later 4h-map/15m-trigger v2
-produced positive BTC/XRP training results but a negative unselected eight-symbol result. Reopen it
-only as a labelled-example / semi-discretionary research workflow, not through more threshold tuning.
+Boards #17 and #19 are closed. #17's five executed dates averaged -29.7 bp after cost. #19 was
+stopped before prices: only nine contracts / six current-regime deadlines had the required paired
+Binance spot/futures archives versus 12 independent deadlines required
+(`DELISTING_DEADLINE_FEASIBILITY.md`).
+
+Proceed with board #18 only through its cheapest outcome-blind feasibility gate:
+
+1. inventory official scheduled transfer-suspension notices and determine whether start and reopen
+   clocks can be established without current-body look-ahead;
+2. identify a deterministic second-venue spot source before reading any basis values;
+3. close the idea immediately if at least 12 independent suspension windows cannot be paired with
+   simultaneous two-leg execution data;
+4. write a preregistration and open prices only if all three gates pass.
+
+Apollo remains closed as a fully automatic all-symbol candidate. Reopen it only as a labelled-
+example or semi-discretionary research workflow, not through more threshold tuning.
 
 ## Stage 1 result — closed, not promoted
 

@@ -1,6 +1,73 @@
 # Project Status
 
-Last updated: 2026-09-12
+Last updated: 2026-09-14
+
+## Two new assistant-originated mechanisms survived pre-screening (2026-09-14)
+
+- A mechanism-first search produced two candidates worth a data gate; weaker ideas were discarded
+  before being added to the board. **Board #22, margin-pair auto-settlement flow reversal, is next.**
+  Binance's forced margin processing supplies an exact clock while ordinary spot and perpetual
+  markets can remain open, avoiding board #19's missing-hedge problem. The existing frozen notice
+  catalog has 144 margin-removal/delisting title candidates before deduplication. The first pass is
+  deliberately mechanism-only: exact-clock/source eligibility, followed by a spot-volume and
+  spot-perp-basis discontinuity test versus matched clocks. No return rule is authorized unless
+  that discontinuity exists.
+- **Board #23, Pendle short-dated stablecoin PT convergence, is second.** PT has a known maturity
+  and is redeemable 1:1 for its accounting asset. It is being treated as a possible unlevered,
+  modest-return cash sleeve rather than alpha. Its first gate is executable historical price plus
+  actual-redemption coverage across at least 12 independent maturities, after gas, swap impact and
+  same-asset lending opportunity cost.
+- Pre-screen rejects were not promoted: airdrop entitlement basis (bespoke/unknown payout),
+  quarterly-delivery fixing (professional BTC/ETH arbitrage and no small-capital advantage),
+  collateral-haircut flow (hidden exposure and ambiguous direction), tick-grid queue priority
+  (latency/queue disadvantage), and index inclusion (no forced constituent purchase).
+
+## Delisting-deadline paired basis failed its data gate; board #19 closed (2026-09-13 16:14 UTC)
+
+- **Outcome-blind verdict: FAIL.** The corrected official-notice ledger has 74 terms-eligible
+  USDT contract events across 32 independent settlement clocks. The primary current 30-minute
+  settlement regime contributes 59 contracts / 26 clocks, but only **nine contracts across six
+  clocks** have all six required Binance futures plus same-asset Binance spot archive streams.
+  The pre-price gate required 12 independent clocks. Monthly and exact-day fallbacks were both
+  checked; current event coverage is only 15.3%.
+- The source audit caught and corrected a material first-pass error before any price join: two
+  official OMGUSDT postponement notices omit `Futures` from their titles. The final ledger records
+  the original and both replacements, marks earlier clocks superseded and excludes the final clock
+  because no exact replacement new-position restriction is stated. The scoped audit inventories
+  431 official Delisting-catalog titles and fetches all 76 explicit-futures-product candidates.
+- Execution evidence is also insufficient. The optional official futures `bookTicker` archive is
+  present on only two of 74 eligible event dates, both in the legacy regime, and on zero current-
+  regime dates. Klines and aggregate trades cannot prove a two-leg fill or capacity.
+- **No archive body and no price, basis, volume, funding or return field was opened.** There is no
+  P&L result to invert or retune. Full account: `DELISTING_DEADLINE_FEASIBILITY.md`; availability
+  artifact SHA-256 `b6161c8384c1deee88a5a96527ab903b1baa0104af72568b1fe107ce58589f12`.
+  Board #19 can reopen only with a separately frozen independent hedge source that raises the
+  current-regime sample to at least 12 clocks before outcomes. The ordered queue advances to board
+  #18's source/data feasibility gate; N1 remains the sole active full-error-budget prospective test.
+
+## Dividend-reopening one-look screen failed; board #17 closed (2026-09-13 11:16 UTC)
+
+- **Frozen verdict: FAIL.** The declared 50 bp dividend-adjusted reopening fade produced six
+  signals on six dates. One DIS signal had no active exit from 20:18 through 20:23, leaving five
+  executed trades / dates. Their mean was **-4.7 bp gross and -29.7 bp after the frozen 25 bp
+  round-trip cost**, median -46.3 bp and date-declustered t=-0.81. Only QCOM won; removing it gave
+  -60.6 bp and it supplied 100% of positive P&L. The 13 bp sensitivity was still -17.7 bp.
+- **The screen failed independently of sample size.** Signal attrition was 32% versus the <=20%
+  gate, there was one triggered execution failure versus zero allowed, both economic means and
+  t-statistic failed, the pre/post conversion strata were negative, 40 bp cost mean was -44.7 bp,
+  and stability/concentration gates failed. Only six dates triggered versus 12 required.
+- No event had a same-symbol, same-weekday, same-regime, same-sign control inside the frozen
+  0.8-1.25 absolute-gap caliper. The 25 standalone non-event fades across 16 dates were also
+  negative (-3.2 bp date-weighted after cost). The alternative mark proxy produced identical
+  signals and outcomes. The non-decision 30-minute appendix was +2.2 bp with t=0.07 and cannot
+  rescue or redefine the strategy.
+- Integrity: the frozen code/checksum manifest bound all 235 official archives; 172,591,677
+  compressed bytes and 7,674,351 rows were verified with zero duplicate timestamps. Full account:
+  `DIVIDEND_REOPENING_RESULT.md`; result SHA-256
+  `0f1d004e01be9f38a323a9965b38a99faf11f4e0b674a4cecc907bf564a22554`.
+- **Do not retune board #17 on these events.** It authorizes neither prospective shadowing nor
+  capital. The queue advanced to board #19, whose later data-gate rejection is recorded above. N1
+  remains the sole active full-error-budget prospective test.
 
 ## Earnings-night continuation expanded and killed (2026-09-12 10:07 UTC)
 

@@ -1,5 +1,10 @@
 # Research options — ordered queue (opened 2026-08-12, reordered 2026-08-12)
 
+> **Superseded 2026-09-12.** This file preserves the August decision trail. Cross-venue funding is
+> no longer in progress or the project's best active candidate: the user closed the broader funding
+> family after multiple tests and a losing real book. Current priorities live in
+> `STRUCTURAL_EVENT_RESEARCH_QUEUE.md`; do not execute the old “next step” directions below.
+
 One item at a time, in the order below. Each open item gets its own pre-registration document written
 **before** any backtest, and its result recorded in that same document whether it passes or fails.
 

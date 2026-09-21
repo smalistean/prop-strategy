@@ -265,6 +265,27 @@ keys, and tracked experiment file without changing the execution engine.
 
 # Phase 7 -- Strategy Search
 
+## Current structural-event sequence (2026-09-12)
+
+-   [x] Record the five mechanism-driven candidates and their overlap/data gates in
+    `STRUCTURAL_EVENT_RESEARCH_QUEUE.md`.
+-   [x] Run board #17's outcome-blind event and coverage inventory without loading any
+    event-window returns (`DIVIDEND_REOPENING_FEASIBILITY.md`).
+-   [x] Verify the complete object plan without reading event-window contents: all 171
+    primary-scoped archives/checksums exist; 96 of 106 control-scoped objects exist and the ten
+    absent pre-listing months remain explicit unavailable controls.
+-   [x] Freeze `DIVIDEND_REOPENING_PREREGISTRATION.md`.
+-   [x] Import only the declared 1-minute data, run the frozen retrospective screen once and
+    record the verdict before starting board #19 (`DIVIDEND_REOPENING_RESULT.md`): FAIL, 6 signals /
+    6 dates, one execution failure, five executed-date net mean -29.7 bp after 25 bp, t=-0.81.
+-   [x] Build board #19's scoped outcome-blind delisting terms/event ledger and paired archive gate
+    before joining any price, basis or return data (`DELISTING_DEADLINE_FEASIBILITY.md`): corrected
+    two omitted OMG postponements; current regime 59 contracts / 26 clocks, but only 9 contracts /
+    6 clocks have all same-asset Binance spot/futures streams versus 12 required. **FAIL; no prices
+    opened and no P&L screen run.**
+-   [ ] Run board #18's outcome-blind maintenance-notice/source feasibility gate; do not join basis
+    values unless exact suspension windows and at least 12 independently hedgeable windows exist.
+
 -   [x] Add a Donchian breakout strategy with prior-candle price channels,
     volume confirmation, ATR risk, an asymmetric target, and a channel/time
     exit.
