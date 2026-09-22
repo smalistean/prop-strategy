@@ -1,0 +1,395 @@
+<title>The Weekend Fade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+:root{
+  --page:#f6f7f9; --surface:#ffffff; --ink:#101318; --ink-2:#545b66; --muted:#8a919c;
+  --line:#e3e6ea; --axis:#c5c9d0; --accent:#2a78d6; --accent-wash:rgba(42,120,214,.07);
+  --up:#2a78d6; --down:#e34948; --closed:rgba(16,19,24,.045);
+  --ring:rgba(16,19,24,.10);
+  --display:"Bricolage Grotesque","Avenir Next","Helvetica Neue",Arial,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#0f1115; --surface:#171a20; --ink:#f2f4f7; --ink-2:#b6bcc7; --muted:#8a919c;
+    --line:#2a2e36; --axis:#3a3f48; --accent:#3987e5; --accent-wash:rgba(57,135,229,.10);
+    --up:#3987e5; --down:#e66767; --closed:rgba(242,244,247,.06); --ring:rgba(255,255,255,.10);
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0f1115; --surface:#171a20; --ink:#f2f4f7; --ink-2:#b6bcc7; --muted:#8a919c;
+  --line:#2a2e36; --axis:#3a3f48; --accent:#3987e5; --accent-wash:rgba(57,135,229,.10);
+  --up:#3987e5; --down:#e66767; --closed:rgba(242,244,247,.06); --ring:rgba(255,255,255,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.55;padding-inline:20px;padding-block:0 64px}
+.col{max-width:68ch;margin-inline:auto}
+.wide{max-width:1040px;margin-inline:auto}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;letter-spacing:-.01em;margin:0}
+h1{font-size:clamp(40px,7vw,64px);font-weight:700;line-height:1.02}
+h2{font-size:clamp(24px,3.6vw,32px);font-weight:700;line-height:1.15;margin-top:56px;margin-bottom:12px}
+h3{font-size:18px;font-weight:700;margin-top:24px;margin-bottom:6px}
+p{margin:0 0 14px}
+.lede{font-size:20px;color:var(--ink-2);margin-top:14px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+header{padding-top:56px;padding-bottom:8px}
+.asof{color:var(--muted);font-size:14px;margin-top:10px;font-variant-numeric:tabular-nums}
+.panel{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:18px 18px 14px;margin-top:22px}
+svg{display:block;width:100%;height:auto;font-family:var(--body)}
+svg text{fill:var(--ink-2);font-size:12px}
+.cap{color:var(--muted);font-size:14px;margin-top:10px}
+.rule{list-style:none;padding:0;margin:0;counter-reset:r}
+.rule li{display:grid;grid-template-columns:112px 1fr;gap:14px;padding:12px 0;border-top:1px solid var(--line);align-items:baseline}
+.rule li:first-child{border-top:0}
+.rule .when{font-family:var(--display);font-weight:700;color:var(--accent);font-size:15px;line-height:1.3}
+.legend{display:flex;flex-wrap:wrap;gap:16px 22px;font-size:14px;color:var(--ink-2);margin:6px 0 8px}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.sw{width:14px;height:14px;border-radius:3px;display:inline-block}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:16px}
+.tile{background:var(--surface);border:1px solid var(--ring);border-radius:8px;padding:12px 14px}
+.tile .k{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.tile .v{font-family:var(--display);font-size:26px;font-weight:700;margin-top:4px;line-height:1.1}
+.tile .s{font-size:13px;color:var(--ink-2);margin-top:4px}
+.group{margin-top:18px}
+.group .eyebrow{margin-bottom:6px;display:block}
+.risks{padding-left:0;list-style:none;margin:0}
+.risks li{padding:12px 0;border-top:1px solid var(--line)}
+.risks li:first-child{border-top:0}
+.risks b{font-family:var(--display);font-weight:700}
+details{margin-top:14px}
+summary{cursor:pointer;color:var(--accent);font-weight:700}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums;margin-top:10px}
+th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.tscroll{overflow-x:auto}
+button{font:inherit;font-weight:700;color:var(--accent);background:transparent;border:1px solid var(--accent);border-radius:999px;padding:6px 14px;cursor:pointer}
+button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--page);padding:8px 10px;border-radius:6px;font-size:13px;line-height:1.35;max-width:260px;opacity:0;transition:opacity .12s;z-index:5;font-variant-numeric:tabular-nums}
+.tip.on{opacity:1}
+footer{margin-top:64px;color:var(--muted);font-size:14px;border-top:1px solid var(--line);padding-top:18px}
+a{color:var(--accent)}
+.langbar{display:flex;gap:6px;margin-top:14px}
+.langbar button{padding:3px 12px;font-size:13px;border-color:var(--line);color:var(--muted)}
+.langbar button.on{border-color:var(--accent);color:var(--accent)}
+.hero-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.pos{fill:var(--up)} .neg{fill:var(--down)}
+.bt{opacity:.5}
+@media (prefers-reduced-motion:reduce){ .anim *{transition:none!important;animation:none!important} }
+</style>
+
+<header class="col">
+  <div class="eyebrow" data-i18n="eyebrow.top">What I do on Sunday nights</div>
+  <h1 data-i18n="h1">The Weekend Fade</h1>
+  <div class="langbar"><button id="lang-en" type="button" class="on">EN</button><button id="lang-ru" type="button">RU</button></div>
+  <p class="lede" data-i18n="lede">A stock market that sleeps, a copy of it that doesn't, and a rule for the gap between them. Every result so far is on this page &#8212; the losses too.</p>
+  <div class="asof" id="asof">Data as of &#8212;</div>
+</header>
+
+<section class="wide">
+  <h2 class="col" style="max-width:68ch" data-i18n="h2.hero">One weekend, drawn</h2>
+  <div class="panel anim" id="hero">
+    <div class="hero-head">
+      <div class="eyebrow" data-i18n="eyebrow.hero">Price of one stock, Friday noon to Monday noon, New York time</div>
+      <button id="replay" type="button" data-i18n="btn.replay">Replay</button>
+    </div>
+    <svg id="heroSvg" viewBox="0 0 1000 380" role="img" aria-label="The real stock price stops at Friday's close and restarts Monday morning. The Binance contract keeps trading through the weekend, drifts lower, and snaps back toward the stock after Monday's open. We buy Sunday evening and sell Monday at 11.">
+    </svg>
+    <p class="cap" data-i18n="cap.hero">An illustration of the mechanism, not a real weekend. The real ones are further down.</p>
+  </div>
+  <div class="col" style="margin-top:22px">
+    <p data-i18n="p.mech1">Binance sells contracts that follow real US stocks &#8212; Tesla, Apple, Coinbase, about two dozen of them. The real stock market closes on Friday at 4pm New York time and opens again Monday at 9:30. The Binance contracts trade all weekend anyway.</p>
+    <p data-i18n="p.mech2">With the real market shut there is no true price to lean on, and nobody can hedge. So the Binance price drifts on thin weekend trading. Some names drift down. On Monday morning the real market opens, and the contract moves back toward where the stock actually is.</p>
+    <p data-i18n="p.mech3">I buy the ones that drifted down, on Sunday evening. I sell them on Monday at 11am New York.</p>
+  </div>
+</section>
+
+<section class="col">
+  <h2 data-i18n="h2.rule">The rule, in five lines</h2>
+  <ul class="rule">
+    <li><span class="when" data-i18n="rule.when1">Friday 4pm NY</span><span data-i18n="rule.t1">Write down every stock's closing price. That is the reference for the weekend.</span></li>
+    <li><span class="when" data-i18n="rule.when2">Sunday 8pm UTC</span><span data-i18n="rule.t2">Any name that is more than 0.5% below Friday's close gets bought. Three-quarters of the account goes in, split equally across them, and never more than a fifth of the account on any one name &#8212; so one name means 20% in, two means 40%, three means 60%, four or more means the full 75%. Nothing is chosen by feel.</span></li>
+    <li><span class="when" data-i18n="rule.when3">Two skips, only</span><span data-i18n="rule.t3">A company is skipped if it reports earnings before Monday's exit, or if it put out real news over the weekend. Nothing else skips a name.</span></li>
+    <li><span class="when" data-i18n="rule.when4">Monday 11am NY</span><span data-i18n="rule.t4">Sell everything. No stop-losses, no early exits, no holding on.</span></li>
+    <li><span class="when" data-i18n="rule.when5">Always</span><span data-i18n="rule.t5">The rule was written down and frozen before the first trade. A bad weekend doesn't change it. Neither does a good one.</span></li>
+  </ul>
+</section>
+
+<section class="wide">
+  <h2 class="col" style="max-width:68ch" data-i18n="h2.record">The record, every weekend</h2>
+  <div class="col" style="max-width:68ch"><p data-i18n="p.record">Nothing is left out. The first twenty weekends are the backtest &#8212; the rule applied to the past, before any money was at risk. The last three are real, with my own money. Each bar is money. For the backtest, it is what the rule would have made on a $5,000 account sized exactly as the rule says. For the live weekends, it is what my account actually made.</p></div>
+  <div class="panel">
+    <div class="legend">
+      <span><i class="sw" style="background:var(--up);opacity:.5"></i><span data-i18n="legend.bt.win">Backtest, made money</span></span>
+      <span><i class="sw" style="background:var(--down);opacity:.5"></i><span data-i18n="legend.bt.loss">Backtest, lost money</span></span>
+      <span><i class="sw" style="background:var(--up)"></i><span data-i18n="legend.live.win">Live, made money</span></span>
+      <span><i class="sw" style="background:var(--down)"></i><span data-i18n="legend.live.loss">Live, lost money</span></span>
+    </div>
+    <svg id="recSvg" viewBox="0 0 1000 400" role="img" aria-label="Bar chart of the result of each weekend, backtest and live."></svg>
+    <p class="cap" data-i18n="cap.record">Hover a bar for the date, the names bought, how much went in, and the result in dollars and as a share of the account.</p>
+  </div>
+
+  <div class="col" style="max-width:68ch">
+    <div class="group"><span class="eyebrow" data-i18n="eyebrow.bt">Backtest &#183; 20 weekends &#183; Jan &#8211; Aug 2026 &#183; on a $5,000 account</span>
+      <div class="tiles" id="tilesBT"></div></div>
+    <div class="group"><span class="eyebrow" data-i18n="eyebrow.live">Live &#183; my own money &#183; from Sep 2026</span>
+      <div class="tiles" id="tilesLive"></div></div>
+    <p style="margin-top:18px" data-i18n-html="p.explain1">Backtest bars are what the rule would have made on a <span id="btE">$5,000</span> account, sized exactly as the rule sizes: one name gets 20% of the account, two get 40%, three get 60%, four or more get the full 75%. That is why a big percentage on a single name is still a small bar &#8212; the rule never puts much on one name. Live bars are what my account actually made. On 09-04 I put in $300 where the rule said about $1,000, so that bar is smaller than the rule's would have been.</p>
+    <p data-i18n-html="p.explain2">The backtest adds up to <b id="btTotal">+$661.26</b> over twenty weekends &#8212; <b id="btAvgUsd">+$33.06</b> per weekend, about <span id="btAvgPct">+0.66%</span> of the account each time. In practice thin markets would have trimmed roughly an eighth of that at this size, so read the total as nearer <span id="btTrim">+$575</span> than <span id="btTotal2">+$661</span>. It comes from twenty weekends and could be luck &#8212; the standard statistical test puts that at roughly one chance in twelve. Three live weekends can't confirm it or deny it. They are the beginning of the answer, not the answer.</p>
+    <details>
+      <summary data-i18n="summary.table">Show as a table</summary>
+      <div class="tscroll"><table id="tbl"></table></div>
+    </details>
+  </div>
+</section>
+
+<section class="col">
+  <h2 data-i18n="h2.why">Why does this exist? Why hasn't someone bigger taken it?</h2>
+  <p data-i18n="p.why1">Because it is small. The whole thing can absorb perhaps $300&#8211;500 thousand before extra money stops earning anything. A fund doesn't get out of bed for that.</p>
+  <p data-i18n="p.why2">It is also awkward. The decision has to be made at one fixed minute on a Sunday evening, across many names at once, and unwound at another fixed minute on Monday &#8212; every week, without exception. And it lives in an odd corner &#8212; stock contracts on a crypto exchange &#8212; that most stock investors never look at.</p>
+  <p data-i18n="p.why3">What is left for one person is exactly what is too small and too annoying for a company.</p>
+  <div class="panel">
+    <div class="eyebrow" data-i18n="eyebrow.cap">What a dollar earns, by how many dollars are already in &#8212; yearly rate, from the same weekends</div>
+    <svg id="capSvg" viewBox="0 0 1000 260" role="img" aria-label="Line chart: yearly return falls from about 21% at five thousand dollars to about 4% at one million."></svg>
+    <p class="cap" data-i18n="cap.capacity">Estimated from the backtest weekends and the size of the Binance order books. Around $300&#8211;500k, adding money adds almost nothing.</p>
+  </div>
+</section>
+
+<section class="col">
+  <h2 data-i18n="h2.risk">What can go wrong</h2>
+  <ul class="risks">
+    <li data-i18n-html="risk1"><b>One name can gap.</b> AXTI lost 12.8% in a single weekend this July. The rule holds it anyway, so that loss is real.</li>
+    <li data-i18n-html="risk2"><b>Some weekends everything falls together.</b> Eight of the twenty-three weekends lost money. The worst cost <span id="rWorst">$107.55</span> on a $5,000 account &#8212; about <span id="rWorstPct">2.2%</span> of it.</li>
+    <li data-i18n-html="risk3"><b>It can stop working, quietly.</b> If enough people start doing the same thing, the weekend drift shrinks. I record the inputs every week to catch that &#8212; but at this sample size I would only know months after it happened.</li>
+    <li data-i18n-html="risk4"><b>It depends on me.</b> The rule is fixed, but someone has to run it every single week, and that someone is me.</li>
+    <li data-i18n-html="risk5"><b>It depends on Binance.</b> They can change the contracts or shut them down, and they have done both to other names.</li>
+  </ul>
+</section>
+
+<footer class="col">
+  <p data-i18n-html="footer">The chart reads from a small file, <code>ledger.json</code>, that I update after each Monday exit. This is a page about what I do with my own money. It isn't advice, and I'm not managing anyone else's.</p>
+</footer>
+<div class="tip" id="tip" role="status" aria-live="polite"></div>
+
+<script type="application/json" id="fallback">
+{"as_of_utc":"2026-09-22T17:48Z","currency":"USDT","headline":{"backtest_weekends":20,"backtest_mean_bp":143.9,"backtest_t":1.86,"backtest_won":13,"backtest_lost":7,"backtest_worst_bp":-427.7,"backtest_best_bp":956.0,"live_weekends":3,"live_won":2,"live_lost":1,"reference_equity_usd":5000,"basket_fraction":0.75,"per_name_cap_fraction":0.2,"backtest_total_usd":661.26,"backtest_mean_usd":33.06,"backtest_worst_usd":-107.55,"backtest_best_usd":156.3,"liquidity_fill_fraction":0.87},"capacity":[{"equity_usd":5000,"annualised_pct":21},{"equity_usd":10000,"annualised_pct":20},{"equity_usd":20000,"annualised_pct":17},{"equity_usd":50000,"annualised_pct":15},{"equity_usd":100000,"annualised_pct":14},{"equity_usd":200000,"annualised_pct":12},{"equity_usd":300000,"annualised_pct":10},{"equity_usd":500000,"annualised_pct":7},{"equity_usd":1000000,"annualised_pct":4}],"weekends":[{"friday":"2026-01-30","phase":"backtest","names":1,"net_bp":-156.4,"deployed_usd":1000.0,"usd":-15.64},{"friday":"2026-02-20","phase":"backtest","names":2,"net_bp":-427.7,"deployed_usd":2000.0,"usd":-85.54},{"friday":"2026-02-27","phase":"backtest","names":3,"net_bp":140.5,"deployed_usd":3000.0,"usd":42.15},{"friday":"2026-03-06","phase":"backtest","names":6,"net_bp":353.8,"deployed_usd":3750.0,"usd":132.68},{"friday":"2026-03-20","phase":"backtest","names":2,"net_bp":467.4,"deployed_usd":2000.0,"usd":93.48},{"friday":"2026-03-27","phase":"backtest","names":6,"net_bp":72.7,"deployed_usd":3750.0,"usd":27.26},{"friday":"2026-04-10","phase":"backtest","names":12,"net_bp":400.4,"deployed_usd":3750.0,"usd":150.15},{"friday":"2026-04-17","phase":"backtest","names":17,"net_bp":-69.8,"deployed_usd":3750.0,"usd":-26.18},{"friday":"2026-05-08","phase":"backtest","names":1,"net_bp":956.0,"deployed_usd":1000.0,"usd":95.6},{"friday":"2026-05-15","phase":"backtest","names":5,"net_bp":-244.5,"deployed_usd":3750.0,"usd":-91.69},{"friday":"2026-06-05","phase":"backtest","names":11,"net_bp":416.8,"deployed_usd":3750.0,"usd":156.3},{"friday":"2026-06-12","phase":"backtest","names":2,"net_bp":227.9,"deployed_usd":2000.0,"usd":45.58},{"friday":"2026-06-26","phase":"backtest","names":3,"net_bp":306.1,"deployed_usd":3000.0,"usd":91.83},{"friday":"2026-07-10","phase":"backtest","names":4,"net_bp":-286.8,"deployed_usd":3750.0,"usd":-107.55},{"friday":"2026-07-17","phase":"backtest","names":7,"net_bp":79.1,"deployed_usd":3750.0,"usd":29.66},{"friday":"2026-07-24","phase":"backtest","names":2,"net_bp":145.9,"deployed_usd":2000.0,"usd":29.18},{"friday":"2026-07-31","phase":"backtest","names":1,"net_bp":-208.0,"deployed_usd":1000.0,"usd":-20.8},{"friday":"2026-08-07","phase":"backtest","names":1,"net_bp":97.9,"deployed_usd":1000.0,"usd":9.79},{"friday":"2026-08-14","phase":"backtest","names":2,"net_bp":700.7,"deployed_usd":2000.0,"usd":140.14},{"friday":"2026-08-21","phase":"backtest","names":6,"net_bp":-93.7,"deployed_usd":3750.0,"usd":-35.14},{"friday":"2026-09-04","phase":"live","names":1,"net_bp":603.0,"own_notional_usd":300,"own_equity_usd":5074,"own_realized_usd":18.49,"usd":18.49,"rule_deployed_usd":1014.8,"names_list":["PAYP"],"note":"Labor Day weekend: entry Monday 20:00 UTC, exit Tuesday. One extra leg (MSTR) was entered before the rule's decision time and lost $9.05; it is not in the number above."},{"friday":"2026-09-11","phase":"live","names":20,"net_bp":-85.4,"own_notional_usd":3767,"own_equity_usd":5077,"own_realized_usd":-31.35,"usd":-31.35,"rule_deployed_usd":3807.75,"names_list":["COIN","HOOD","MSTR","PLTR","META","SPY","QQQ","EWJ","AMZN","QCOM","JPM","TSLA","SNDK","TSM","MU","INTC","AXTI","EWY","AAOI","NOK"]},{"friday":"2026-09-18","phase":"live","names":6,"net_bp":423.4,"own_notional_usd":3767,"own_equity_usd":5046,"own_realized_usd":159.22,"usd":159.22,"rule_deployed_usd":3784.5,"names_list":["AXTI","HOOD","MU","PAYP","TSM","SNDK"]}]}
+</script>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const RU={"eyebrow.top":"\u0427\u0435\u043c \u044f \u0437\u0430\u043d\u0438\u043c\u0430\u044e\u0441\u044c \u0432\u0435\u0447\u0435\u0440\u043e\u043c \u0432 \u0432\u043e\u0441\u043a\u0440\u0435\u0441\u0435\u043d\u044c\u0435","h1":"\u0424\u0435\u0439\u0434 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0445","lede":"\u0424\u043e\u043d\u0434\u043e\u0432\u044b\u0439 \u0440\u044b\u043d\u043e\u043a, \u043a\u043e\u0442\u043e\u0440\u044b\u0439 \u0441\u043f\u0438\u0442, \u0435\u0433\u043e \u043a\u043e\u043f\u0438\u044f, \u043a\u043e\u0442\u043e\u0440\u0430\u044f \u043d\u0435 \u0441\u043f\u0438\u0442, \u0438 \u043f\u0440\u0430\u0432\u0438\u043b\u043e \u0434\u043b\u044f \u0440\u0430\u0437\u0440\u044b\u0432\u0430 \u043c\u0435\u0436\u0434\u0443 \u043d\u0438\u043c\u0438. \u0412\u0441\u0435 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u044b \u2014 \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435, \u0432\u043a\u043b\u044e\u0447\u0430\u044f \u0443\u0431\u044b\u0442\u043a\u0438.","asof.label":"\u0414\u0430\u043d\u043d\u044b\u0435 \u043d\u0430","h2.hero":"\u041e\u0434\u043d\u0438 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0435, \u043d\u0430\u0440\u0438\u0441\u043e\u0432\u0430\u043d\u043d\u044b\u0435","eyebrow.hero":"\u0426\u0435\u043d\u0430 \u043e\u0434\u043d\u043e\u0439 \u0430\u043a\u0446\u0438\u0438, \u0441 \u043f\u043e\u043b\u0443\u0434\u043d\u044f \u043f\u044f\u0442\u043d\u0438\u0446\u044b \u0434\u043e \u043f\u043e\u043b\u0443\u0434\u043d\u044f \u043f\u043e\u043d\u0435\u0434\u0435\u043b\u044c\u043d\u0438\u043a\u0430 \u043f\u043e \u041d\u044c\u044e-\u0419\u043e\u0440\u043a\u0443","btn.replay":"\u0415\u0449\u0451 \u0440\u0430\u0437","cap.hero":"\u0418\u043b\u043b\u044e\u0441\u0442\u0440\u0430\u0446\u0438\u044f \u043c\u0435\u0445\u0430\u043d\u0438\u0437\u043c\u0430, \u0430 \u043d\u0435 \u0440\u0435\u0430\u043b\u044c\u043d\u044b\u0435 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0435. \u0420\u0435\u0430\u043b\u044c\u043d\u044b\u0435 \u2014 \u043d\u0438\u0436\u0435.","p.mech1":"Binance \u0442\u043e\u0440\u0433\u0443\u0435\u0442 \u043a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u0430\u043c\u0438, \u043a\u043e\u0442\u043e\u0440\u044b\u0435 \u0441\u043b\u0435\u0434\u0443\u044e\u0442 \u0437\u0430 \u0440\u0435\u0430\u043b\u044c\u043d\u044b\u043c\u0438 \u0430\u043a\u0446\u0438\u044f\u043c\u0438 \u0421\u0428\u0410 \u2014 Tesla, Apple, Coinbase, \u0432\u0441\u0435\u0433\u043e \u043e\u043a\u043e\u043b\u043e \u0434\u0432\u0443\u0445 \u0434\u0435\u0441\u044f\u0442\u043a\u043e\u0432. \u041d\u0430\u0441\u0442\u043e\u044f\u0449\u0430\u044f \u0431\u0438\u0440\u0436\u0430 \u0437\u0430\u043a\u0440\u044b\u0432\u0430\u0435\u0442\u0441\u044f \u0432 \u043f\u044f\u0442\u043d\u0438\u0446\u0443 \u0432 16:00 \u043f\u043e \u041d\u044c\u044e-\u0419\u043e\u0440\u043a\u0443 \u0438 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u0442\u0441\u044f \u0432 \u043f\u043e\u043d\u0435\u0434\u0435\u043b\u044c\u043d\u0438\u043a \u0432 9:30. \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b \u043d\u0430 Binance \u0442\u043e\u0440\u0433\u0443\u044e\u0442\u0441\u044f \u0432\u0441\u0435 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0435.","p.mech2":"\u041f\u043e\u043a\u0430 \u043d\u0430\u0441\u0442\u043e\u044f\u0449\u0438\u0439 \u0440\u044b\u043d\u043e\u043a \u0437\u0430\u043a\u0440\u044b\u0442, \u043d\u0435\u0442 \u0446\u0435\u043d\u044b, \u043d\u0430 \u043a\u043e\u0442\u043e\u0440\u0443\u044e \u043c\u043e\u0436\u043d\u043e \u043e\u043f\u0435\u0440\u0435\u0442\u044c\u0441\u044f, \u0438 \u0437\u0430\u0445\u0435\u0434\u0436\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u043f\u043e\u0437\u0438\u0446\u0438\u044e \u043d\u0435\u0432\u043e\u0437\u043c\u043e\u0436\u043d\u043e. \u041f\u043e\u044d\u0442\u043e\u043c\u0443 \u0446\u0435\u043d\u0430 \u043d\u0430 Binance \u0434\u0440\u0435\u0439\u0444\u0443\u0435\u0442 \u043d\u0430 \u0442\u043e\u043d\u043a\u043e\u043c \u0432\u044b\u0445\u043e\u0434\u043d\u043e\u043c \u043e\u0431\u044a\u0451\u043c\u0435. \u041d\u0435\u043a\u043e\u0442\u043e\u0440\u044b\u0435 \u0431\u0443\u043c\u0430\u0433\u0438 \u0443\u0445\u043e\u0434\u044f\u0442 \u0432\u043d\u0438\u0437. \u0412 \u043f\u043e\u043d\u0435\u0434\u0435\u043b\u044c\u043d\u0438\u043a \u0443\u0442\u0440\u043e\u043c \u0440\u044b\u043d\u043e\u043a \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u0442\u0441\u044f, \u0438 \u043a\u043e\u043d\u0442\u0440\u0430\u043a\u0442 \u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u0442\u0441\u044f \u0442\u0443\u0434\u0430, \u0433\u0434\u0435 \u043d\u0430 \u0441\u0430\u043c\u043e\u043c \u0434\u0435\u043b\u0435 \u043d\u0430\u0445\u043e\u0434\u0438\u0442\u0441\u044f \u0430\u043a\u0446\u0438\u044f.","p.mech3":"\u042f \u043f\u043e\u043a\u0443\u043f\u0430\u044e \u0442\u0435, \u0447\u0442\u043e \u0443\u0448\u043b\u0438 \u0432\u043d\u0438\u0437, \u0432\u0435\u0447\u0435\u0440\u043e\u043c \u0432 \u0432\u043e\u0441\u043a\u0440\u0435\u0441\u0435\u043d\u044c\u0435. \u041f\u0440\u043e\u0434\u0430\u044e \u0432 \u043f\u043e\u043d\u0435\u0434\u0435\u043b\u044c\u043d\u0438\u043a \u0432 11:00 \u043f\u043e \u041d\u044c\u044e-\u0419\u043e\u0440\u043a\u0443.","h2.rule":"\u041f\u0440\u0430\u0432\u0438\u043b\u043e, \u0432 \u043f\u044f\u0442\u0438 \u0441\u0442\u0440\u043e\u043a\u0430\u0445","rule.when1":"\u041f\u044f\u0442\u043d\u0438\u0446\u0430, 16:00 \u041d\u044c\u044e-\u0419\u043e\u0440\u043a","rule.t1":"\u0417\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u0446\u0435\u043d\u0443 \u0437\u0430\u043a\u0440\u044b\u0442\u0438\u044f \u043a\u0430\u0436\u0434\u043e\u0439 \u0430\u043a\u0446\u0438\u0438. \u042d\u0442\u043e \u043e\u0440\u0438\u0435\u043d\u0442\u0438\u0440 \u043d\u0430 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0435.","rule.when2":"\u0412\u043e\u0441\u043a\u0440\u0435\u0441\u0435\u043d\u044c\u0435, 20:00 UTC","rule.t2":"\u041b\u044e\u0431\u0430\u044f \u0431\u0443\u043c\u0430\u0433\u0430, \u043a\u043e\u0442\u043e\u0440\u0430\u044f \u043d\u0438\u0436\u0435 \u043f\u044f\u0442\u043d\u0438\u0447\u043d\u043e\u0433\u043e \u0437\u0430\u043a\u0440\u044b\u0442\u0438\u044f \u0431\u043e\u043b\u0435\u0435 \u0447\u0435\u043c \u043d\u0430 0,5%, \u043f\u043e\u043a\u0443\u043f\u0430\u0435\u0442\u0441\u044f. \u0412 \u0440\u044b\u043d\u043e\u043a \u0438\u0434\u0443\u0442 \u0442\u0440\u0438 \u0447\u0435\u0442\u0432\u0435\u0440\u0442\u0438 \u0441\u0447\u0451\u0442\u0430, \u043f\u043e\u0440\u043e\u0432\u043d\u0443 \u043c\u0435\u0436\u0434\u0443 \u0431\u0443\u043c\u0430\u0433\u0430\u043c\u0438, \u0438 \u043d\u0435 \u0431\u043e\u043b\u0435\u0435 \u043f\u044f\u0442\u043e\u0439 \u0447\u0430\u0441\u0442\u0438 \u0441\u0447\u0451\u0442\u0430 \u043d\u0430 \u043e\u0434\u043d\u0443 \u0431\u0443\u043c\u0430\u0433\u0443 \u2014 \u0442\u043e \u0435\u0441\u0442\u044c \u043e\u0434\u043d\u0430 \u0431\u0443\u043c\u0430\u0433\u0430 \u044d\u0442\u043e 20%, \u0434\u0432\u0435 \u2014 40%, \u0442\u0440\u0438 \u2014 60%, \u0447\u0435\u0442\u044b\u0440\u0435 \u0438 \u0431\u043e\u043b\u044c\u0448\u0435 \u2014 \u0432\u0441\u0435 75%. \u041d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u0432\u044b\u0431\u0438\u0440\u0430\u0435\u0442\u0441\u044f \u043d\u0430 \u043e\u0449\u0443\u0449\u0435\u043d\u0438\u044f\u0445.","rule.when3":"\u0422\u043e\u043b\u044c\u043a\u043e \u0434\u0432\u0430 \u0438\u0441\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f","rule.t3":"\u0411\u0443\u043c\u0430\u0433\u0430 \u043f\u0440\u043e\u043f\u0443\u0441\u043a\u0430\u0435\u0442\u0441\u044f, \u0435\u0441\u043b\u0438 \u043a\u043e\u043c\u043f\u0430\u043d\u0438\u044f \u043e\u0442\u0447\u0438\u0442\u044b\u0432\u0430\u0435\u0442\u0441\u044f \u0434\u043e \u0432\u044b\u0445\u043e\u0434\u0430 \u0432 \u043f\u043e\u043d\u0435\u0434\u0435\u043b\u044c\u043d\u0438\u043a, \u0438\u043b\u0438 \u0435\u0441\u043b\u0438 \u0437\u0430 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0435 \u0432\u044b\u0448\u043b\u0430 \u0440\u0435\u0430\u043b\u044c\u043d\u0430\u044f \u043d\u043e\u0432\u043e\u0441\u0442\u044c. \u0411\u043e\u043b\u044c\u0448\u0435 \u043d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u044f\u0432\u043b\u044f\u0435\u0442\u0441\u044f \u043f\u0440\u0438\u0447\u0438\u043d\u043e\u0439 \u043f\u0440\u043e\u043f\u0443\u0441\u043a\u0430.","rule.when4":"\u041f\u043e\u043d\u0435\u0434\u0435\u043b\u044c\u043d\u0438\u043a, 11:00 \u041d\u044c\u044e-\u0419\u043e\u0440\u043a","rule.t4":"\u041f\u0440\u043e\u0434\u0430\u0442\u044c \u0432\u0441\u0451. \u0411\u0435\u0437 \u0441\u0442\u043e\u043f-\u043b\u043e\u0441\u0441\u043e\u0432, \u0431\u0435\u0437 \u0434\u043e\u0441\u0440\u043e\u0447\u043d\u044b\u0445 \u0432\u044b\u0445\u043e\u0434\u043e\u0432, \u0431\u0435\u0437 \u00ab\u043f\u043e\u0434\u0435\u0440\u0436\u0443 \u0435\u0449\u0451\u00bb.","rule.when5":"\u0412\u0441\u0435\u0433\u0434\u0430","rule.t5":"\u041f\u0440\u0430\u0432\u0438\u043b\u043e \u0431\u044b\u043b\u043e \u0437\u0430\u043f\u0438\u0441\u0430\u043d\u043e \u0438 \u0437\u0430\u043c\u043e\u0440\u043e\u0436\u0435\u043d\u043e \u0434\u043e \u043f\u0435\u0440\u0432\u043e\u0439 \u0441\u0434\u0435\u043b\u043a\u0438. \u041f\u043b\u043e\u0445\u0438\u0435 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0435 \u0435\u0433\u043e \u043d\u0435 \u043c\u0435\u043d\u044f\u044e\u0442. \u0425\u043e\u0440\u043e\u0448\u0438\u0435 \u2014 \u0442\u043e\u0436\u0435.","h2.record":"\u0418\u0441\u0442\u043e\u0440\u0438\u044f, \u043a\u0430\u0436\u0434\u044b\u0435 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0435","p.record":"\u041d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u0441\u043a\u0440\u044b\u0442\u043e. \u041f\u0435\u0440\u0432\u044b\u0435 \u0434\u0432\u0430\u0434\u0446\u0430\u0442\u044c \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0445 \u2014 \u044d\u0442\u043e \u0431\u044d\u043a\u0442\u0435\u0441\u0442: \u043f\u0440\u0430\u0432\u0438\u043b\u043e, \u043f\u0440\u0438\u043c\u0435\u043d\u0451\u043d\u043d\u043e\u0435 \u043a \u043f\u0440\u043e\u0448\u043b\u043e\u043c\u0443, \u0434\u043e \u0442\u043e\u0433\u043e \u043a\u0430\u043a \u0434\u0435\u043d\u044c\u0433\u0438 \u0431\u044b\u043b\u0438 \u0432 \u0440\u0438\u0441\u043a\u0435. \u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0435 \u0442\u0440\u043e\u0435 \u2014 \u0440\u0435\u0430\u043b\u044c\u043d\u044b\u0435, \u043d\u0430 \u043c\u043e\u0438 \u0441\u043e\u0431\u0441\u0442\u0432\u0435\u043d\u043d\u044b\u0435 \u0434\u0435\u043d\u044c\u0433\u0438. \u041a\u0430\u0436\u0434\u044b\u0439 \u0441\u0442\u043e\u043b\u0431\u0438\u043a \u2014 \u044d\u0442\u043e \u0434\u0435\u043d\u044c\u0433\u0438. \u0414\u043b\u044f \u0431\u044d\u043a\u0442\u0435\u0441\u0442\u0430 \u044d\u0442\u043e \u0442\u043e, \u0447\u0442\u043e \u043f\u0440\u0430\u0432\u0438\u043b\u043e \u0437\u0430\u0440\u0430\u0431\u043e\u0442\u0430\u043b\u043e \u0431\u044b \u043d\u0430 \u0441\u0447\u0451\u0442\u0435 \u0432 $5 000, \u0441 \u0440\u0430\u0437\u043c\u0435\u0440\u043e\u043c \u043f\u043e\u0437\u0438\u0446\u0438\u0438 \u0440\u043e\u0432\u043d\u043e \u043f\u043e \u043f\u0440\u0430\u0432\u0438\u043b\u0443. \u0414\u043b\u044f \u0440\u0435\u0430\u043b\u044c\u043d\u044b\u0445 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0445 \u2014 \u0442\u043e, \u0447\u0442\u043e \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0442\u0435\u043b\u044c\u043d\u043e \u0437\u0430\u0440\u0430\u0431\u043e\u0442\u0430\u043b \u043c\u043e\u0439 \u0441\u0447\u0451\u0442.","legend.bt.win":"\u0411\u044d\u043a\u0442\u0435\u0441\u0442, \u0432 \u043f\u043b\u044e\u0441","legend.bt.loss":"\u0411\u044d\u043a\u0442\u0435\u0441\u0442, \u0432 \u043c\u0438\u043d\u0443\u0441","legend.live.win":"\u0420\u0435\u0430\u043b\u044c\u043d\u043e, \u0432 \u043f\u043b\u044e\u0441","legend.live.loss":"\u0420\u0435\u0430\u043b\u044c\u043d\u043e, \u0432 \u043c\u0438\u043d\u0443\u0441","cap.record":"\u041d\u0430\u0432\u0435\u0434\u0438\u0442\u0435 \u043d\u0430 \u0441\u0442\u043e\u043b\u0431\u0438\u043a: \u0434\u0430\u0442\u0430, \u043a\u0443\u043f\u043b\u0435\u043d\u043d\u044b\u0435 \u0431\u0443\u043c\u0430\u0433\u0438, \u0441\u043a\u043e\u043b\u044c\u043a\u043e \u0432\u043e\u0448\u043b\u043e \u0432 \u0440\u044b\u043d\u043e\u043a, \u0438 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u0432 \u0434\u043e\u043b\u043b\u0430\u0440\u0430\u0445 \u0438 \u0432 \u0434\u043e\u043b\u0435 \u043e\u0442 \u0441\u0447\u0451\u0442\u0430.","eyebrow.bt":"\u0411\u044d\u043a\u0442\u0435\u0441\u0442 \u00b7 20 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0445 \u00b7 \u044f\u043d\u0432 \u2013 \u0430\u0432\u0433 2026 \u00b7 \u043d\u0430 \u0441\u0447\u0451\u0442\u0435 $5 000","eyebrow.live":"\u0420\u0435\u0430\u043b\u044c\u043d\u043e \u00b7 \u043c\u043e\u0438 \u0434\u0435\u043d\u044c\u0433\u0438 \u00b7 \u0441 \u0441\u0435\u043d 2026","p.explain1":"\u0421\u0442\u043e\u043b\u0431\u0438\u043a\u0438 \u0431\u044d\u043a\u0442\u0435\u0441\u0442\u0430 \u2014 \u044d\u0442\u043e \u0442\u043e, \u0447\u0442\u043e \u043f\u0440\u0430\u0432\u0438\u043b\u043e \u0437\u0430\u0440\u0430\u0431\u043e\u0442\u0430\u043b\u043e \u0431\u044b \u043d\u0430 \u0441\u0447\u0451\u0442\u0435 \u0432 <span id=\"btE\">$5 000</span>, \u0441 \u0440\u0430\u0437\u043c\u0435\u0440\u043e\u043c \u043f\u043e\u0437\u0438\u0446\u0438\u0438 \u0440\u043e\u0432\u043d\u043e \u043f\u043e \u043f\u0440\u0430\u0432\u0438\u043b\u0443: \u043e\u0434\u043d\u0430 \u0431\u0443\u043c\u0430\u0433\u0430 \u043f\u043e\u043b\u0443\u0447\u0430\u0435\u0442 20% \u0441\u0447\u0451\u0442\u0430, \u0434\u0432\u0435 \u2014 40%, \u0442\u0440\u0438 \u2014 60%, \u0447\u0435\u0442\u044b\u0440\u0435 \u0438 \u0431\u043e\u043b\u044c\u0448\u0435 \u2014 \u0432\u0441\u0435 75%. \u041f\u043e\u044d\u0442\u043e\u043c\u0443 \u0431\u043e\u043b\u044c\u0448\u043e\u0439 \u043f\u0440\u043e\u0446\u0435\u043d\u0442 \u043d\u0430 \u043e\u0434\u043d\u043e\u0439 \u0431\u0443\u043c\u0430\u0433\u0435 \u0432\u0441\u0451 \u0440\u0430\u0432\u043d\u043e \u0434\u0430\u0451\u0442 \u043c\u0430\u043b\u0435\u043d\u044c\u043a\u0438\u0439 \u0441\u0442\u043e\u043b\u0431\u0438\u043a \u2014 \u043f\u0440\u0430\u0432\u0438\u043b\u043e \u043d\u0438\u043a\u043e\u0433\u0434\u0430 \u043d\u0435 \u0441\u0442\u0430\u0432\u0438\u0442 \u043c\u043d\u043e\u0433\u043e \u043d\u0430 \u043e\u0434\u043d\u0443. \u0420\u0435\u0430\u043b\u044c\u043d\u044b\u0435 \u0441\u0442\u043e\u043b\u0431\u0438\u043a\u0438 \u2014 \u044d\u0442\u043e \u0442\u043e, \u0447\u0442\u043e \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0442\u0435\u043b\u044c\u043d\u043e \u0437\u0430\u0440\u0430\u0431\u043e\u0442\u0430\u043b \u043c\u043e\u0439 \u0441\u0447\u0451\u0442. 09-04 \u044f \u0432\u043e\u0448\u0451\u043b \u043d\u0430 $300 \u0442\u0430\u043c, \u0433\u0434\u0435 \u043f\u0440\u0430\u0432\u0438\u043b\u043e \u0433\u043e\u0432\u043e\u0440\u0438\u043b\u043e \u043e\u043a\u043e\u043b\u043e $1 000, \u043f\u043e\u044d\u0442\u043e\u043c\u0443 \u044d\u0442\u043e\u0442 \u0441\u0442\u043e\u043b\u0431\u0438\u043a \u043c\u0435\u043d\u044c\u0448\u0435, \u0447\u0435\u043c \u0431\u044b\u043b \u0431\u044b \u043f\u043e \u043f\u0440\u0430\u0432\u0438\u043b\u0443.","p.explain2":"\u0411\u044d\u043a\u0442\u0435\u0441\u0442 \u0432 \u0441\u0443\u043c\u043c\u0435 \u0434\u0430\u0451\u0442 <b id=\"btTotal\">+$661</b> \u0437\u0430 \u0434\u0432\u0430\u0434\u0446\u0430\u0442\u044c \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0445 \u2014 <b id=\"btAvgUsd\">+$33</b> \u0437\u0430 \u043e\u0434\u043d\u0438 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0435, \u043e\u043a\u043e\u043b\u043e <span id=\"btAvgPct\">+0,66%</span> \u0441\u0447\u0451\u0442\u0430 \u043a\u0430\u0436\u0434\u044b\u0439 \u0440\u0430\u0437. \u041d\u0430 \u043f\u0440\u0430\u043a\u0442\u0438\u043a\u0435 \u0442\u043e\u043d\u043a\u0438\u0439 \u0440\u044b\u043d\u043e\u043a \u0441\u0440\u0435\u0437\u0430\u043b \u0431\u044b \u043f\u0440\u0438\u043c\u0435\u0440\u043d\u043e \u0432\u043e\u0441\u044c\u043c\u0443\u044e \u0447\u0430\u0441\u0442\u044c \u043f\u0440\u0438 \u0442\u0430\u043a\u043e\u043c \u0440\u0430\u0437\u043c\u0435\u0440\u0435, \u0442\u0430\u043a \u0447\u0442\u043e \u0447\u0438\u0442\u0430\u0439\u0442\u0435 \u0441\u0443\u043c\u043c\u0443 \u0441\u043a\u043e\u0440\u0435\u0435 \u043a\u0430\u043a <span id=\"btTrim\">+$575</span>, \u0447\u0435\u043c <span id=\"btTotal2\">+$661</span>. \u042d\u0442\u043e \u0434\u0432\u0430\u0434\u0446\u0430\u0442\u044c \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0445, \u0438 \u044d\u0442\u043e \u043c\u043e\u0436\u0435\u0442 \u0431\u044b\u0442\u044c \u0432\u0435\u0437\u0435\u043d\u0438\u0435\u043c \u2014 \u0441\u0442\u0430\u043d\u0434\u0430\u0440\u0442\u043d\u044b\u0439 \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u0447\u0435\u0441\u043a\u0438\u0439 \u0442\u0435\u0441\u0442 \u043e\u0446\u0435\u043d\u0438\u0432\u0430\u0435\u0442 \u0432\u0435\u0440\u043e\u044f\u0442\u043d\u043e\u0441\u0442\u044c \u043f\u0440\u0438\u043c\u0435\u0440\u043d\u043e \u043a\u0430\u043a \u043e\u0434\u0438\u043d \u0448\u0430\u043d\u0441 \u0438\u0437 \u0434\u0432\u0435\u043d\u0430\u0434\u0446\u0430\u0442\u0438. \u0422\u0440\u043e\u0435 \u0440\u0435\u0430\u043b\u044c\u043d\u044b\u0445 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0445 \u043d\u0435 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0430\u044e\u0442 \u0438 \u043d\u0435 \u043e\u043f\u0440\u043e\u0432\u0435\u0440\u0433\u0430\u044e\u0442. \u042d\u0442\u043e \u043d\u0430\u0447\u0430\u043b\u043e \u043e\u0442\u0432\u0435\u0442\u0430, \u0430 \u043d\u0435 \u043e\u0442\u0432\u0435\u0442.","summary.table":"\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0442\u0430\u0431\u043b\u0438\u0446\u0435\u0439","h2.why":"\u041f\u043e\u0447\u0435\u043c\u0443 \u044d\u0442\u043e \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u0435\u0442? \u041f\u043e\u0447\u0435\u043c\u0443 \u044d\u0442\u0438\u043c \u043d\u0435 \u0437\u0430\u043d\u044f\u043b\u0441\u044f \u043a\u0442\u043e-\u0442\u043e \u043a\u0440\u0443\u043f\u043d\u0435\u0435?","p.why1":"\u041f\u043e\u0442\u043e\u043c\u0443 \u0447\u0442\u043e \u043e\u043d\u043e \u043c\u0430\u043b\u0435\u043d\u044c\u043a\u043e\u0435. \u0412\u0441\u0451 \u044d\u0442\u043e \u0441\u043f\u043e\u0441\u043e\u0431\u043d\u043e \u043f\u0440\u0438\u043d\u044f\u0442\u044c, \u043c\u043e\u0436\u0435\u0442 \u0431\u044b\u0442\u044c, $300\u2013500 \u0442\u044b\u0441\u044f\u0447, \u043f\u0440\u0435\u0436\u0434\u0435 \u0447\u0435\u043c \u0434\u043e\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0434\u0435\u043d\u044c\u0433\u0438 \u043f\u0435\u0440\u0435\u0441\u0442\u0430\u043d\u0443\u0442 \u0447\u0442\u043e-\u043b\u0438\u0431\u043e \u0437\u0430\u0440\u0430\u0431\u0430\u0442\u044b\u0432\u0430\u0442\u044c. \u0424\u043e\u043d\u0434 \u0440\u0430\u0434\u0438 \u0442\u0430\u043a\u043e\u0433\u043e \u043d\u0435 \u0432\u0441\u0442\u0430\u043d\u0435\u0442 \u0441 \u043a\u0440\u043e\u0432\u0430\u0442\u0438.","p.why2":"\u0418 \u043e\u043d\u043e \u043d\u0435\u0443\u0434\u043e\u0431\u043d\u043e\u0435. \u0420\u0435\u0448\u0435\u043d\u0438\u0435 \u043d\u0443\u0436\u043d\u043e \u043f\u0440\u0438\u043d\u044f\u0442\u044c \u0432 \u043e\u0434\u043d\u0443 \u043a\u043e\u043d\u043a\u0440\u0435\u0442\u043d\u0443\u044e \u043c\u0438\u043d\u0443\u0442\u0443 \u0432\u0435\u0447\u0435\u0440\u043e\u043c \u0432 \u0432\u043e\u0441\u043a\u0440\u0435\u0441\u0435\u043d\u044c\u0435, \u0441\u0440\u0430\u0437\u0443 \u043f\u043e \u043c\u043d\u043e\u0433\u0438\u043c \u0431\u0443\u043c\u0430\u0433\u0430\u043c, \u0438 \u0437\u0430\u043a\u0440\u044b\u0442\u044c \u0432 \u0434\u0440\u0443\u0433\u0443\u044e \u043a\u043e\u043d\u043a\u0440\u0435\u0442\u043d\u0443\u044e \u043c\u0438\u043d\u0443\u0442\u0443 \u0432 \u043f\u043e\u043d\u0435\u0434\u0435\u043b\u044c\u043d\u0438\u043a \u2014 \u043a\u0430\u0436\u0434\u0443\u044e \u043d\u0435\u0434\u0435\u043b\u044e, \u0431\u0435\u0437 \u0438\u0441\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0439. \u0418 \u0436\u0438\u0432\u0451\u0442 \u043e\u043d\u043e \u0432 \u0441\u0442\u0440\u0430\u043d\u043d\u043e\u043c \u0443\u0433\u043b\u0443 \u2014 \u043a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b \u043d\u0430 \u0430\u043a\u0446\u0438\u0438 \u043d\u0430 \u043a\u0440\u0438\u043f\u0442\u043e\u0431\u0438\u0440\u0436\u0435 \u2014 \u043a\u0443\u0434\u0430 \u0431\u043e\u043b\u044c\u0448\u0438\u043d\u0441\u0442\u0432\u043e \u0438\u043d\u0432\u0435\u0441\u0442\u043e\u0440\u043e\u0432 \u0432 \u0430\u043a\u0446\u0438\u0438 \u043d\u0438\u043a\u043e\u0433\u0434\u0430 \u043d\u0435 \u0437\u0430\u0433\u043b\u044f\u0434\u044b\u0432\u0430\u0435\u0442.","p.why3":"\u0422\u043e, \u0447\u0442\u043e \u043e\u0441\u0442\u0430\u0451\u0442\u0441\u044f \u043e\u0434\u043d\u043e\u043c\u0443 \u0447\u0435\u043b\u043e\u0432\u0435\u043a\u0443 \u2014 \u044d\u0442\u043e \u0440\u043e\u0432\u043d\u043e \u0442\u043e, \u0447\u0442\u043e \u0441\u043b\u0438\u0448\u043a\u043e\u043c \u043c\u0430\u043b\u043e \u0438 \u0441\u043b\u0438\u0448\u043a\u043e\u043c \u043d\u0435\u0443\u0434\u043e\u0431\u043d\u043e \u0434\u043b\u044f \u043a\u043e\u043c\u043f\u0430\u043d\u0438\u0438.","eyebrow.cap":"\u0421\u043a\u043e\u043b\u044c\u043a\u043e \u0437\u0430\u0440\u0430\u0431\u0430\u0442\u044b\u0432\u0430\u0435\u0442 \u0434\u043e\u043b\u043b\u0430\u0440 \u0432 \u0437\u0430\u0432\u0438\u0441\u0438\u043c\u043e\u0441\u0442\u0438 \u043e\u0442 \u0442\u043e\u0433\u043e, \u0441\u043a\u043e\u043b\u044c\u043a\u043e \u0434\u043e\u043b\u043b\u0430\u0440\u043e\u0432 \u0443\u0436\u0435 \u0432\u043d\u0443\u0442\u0440\u0438 \u2014 \u0433\u043e\u0434\u043e\u0432\u0430\u044f \u0441\u0442\u0430\u0432\u043a\u0430, \u043d\u0430 \u0442\u0435\u0445 \u0436\u0435 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0445","cap.capacity":"\u041e\u0446\u0435\u043d\u043a\u0430 \u043f\u043e \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u043c \u0438\u0437 \u0431\u044d\u043a\u0442\u0435\u0441\u0442\u0430 \u0438 \u043f\u043e \u0433\u043b\u0443\u0431\u0438\u043d\u0435 \u0441\u0442\u0430\u043a\u0430\u043d\u0430 Binance. \u041e\u043a\u043e\u043b\u043e $300\u2013500 \u0442\u044b\u0441\u044f\u0447 \u0434\u043e\u0431\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u0434\u0435\u043d\u0435\u0433 \u043f\u043e\u0447\u0442\u0438 \u043d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u0434\u043e\u0431\u0430\u0432\u043b\u044f\u0435\u0442.","h2.risk":"\u0427\u0442\u043e \u043c\u043e\u0436\u0435\u0442 \u043f\u043e\u0439\u0442\u0438 \u043d\u0435 \u0442\u0430\u043a","risk1":"<b>\u041e\u0434\u043d\u0430 \u0431\u0443\u043c\u0430\u0433\u0430 \u043c\u043e\u0436\u0435\u0442 \u0443\u043b\u0435\u0442\u0435\u0442\u044c.</b> AXTI \u043f\u043e\u0442\u0435\u0440\u044f\u043b 12,8% \u0437\u0430 \u043e\u0434\u043d\u0438 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0435 \u0432 \u0438\u044e\u043b\u0435. \u041f\u0440\u0430\u0432\u0438\u043b\u043e \u0432\u0441\u0451 \u0440\u0430\u0432\u043d\u043e \u0434\u0435\u0440\u0436\u0438\u0442 \u0435\u0451, \u043f\u043e\u044d\u0442\u043e\u043c\u0443 \u0443\u0431\u044b\u0442\u043e\u043a \u0440\u0435\u0430\u043b\u044c\u043d\u044b\u0439.","risk2":"<b>\u0418\u043d\u043e\u0433\u0434\u0430 \u043f\u0430\u0434\u0430\u0435\u0442 \u0432\u0441\u0451 \u0441\u0440\u0430\u0437\u0443.</b> \u0412\u043e\u0441\u0435\u043c\u044c \u0438\u0437 \u0434\u0432\u0430\u0434\u0446\u0430\u0442\u0438 \u0442\u0440\u0451\u0445 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0445 \u0431\u044b\u043b\u0438 \u0432 \u043c\u0438\u043d\u0443\u0441. \u0425\u0443\u0434\u0448\u0438\u0435 \u0441\u0442\u043e\u0438\u043b\u0438 <span id=\"rWorst\">$107,55</span> \u043d\u0430 \u0441\u0447\u0451\u0442\u0435 $5 000 \u2014 \u043e\u043a\u043e\u043b\u043e <span id=\"rWorstPct\">2,2%</span> \u043e\u0442 \u043d\u0435\u0433\u043e.","risk3":"<b>\u041e\u043d\u043e \u043c\u043e\u0436\u0435\u0442 \u0442\u0438\u0445\u043e \u043f\u0435\u0440\u0435\u0441\u0442\u0430\u0442\u044c \u0440\u0430\u0431\u043e\u0442\u0430\u0442\u044c.</b> \u0415\u0441\u043b\u0438 \u044d\u0442\u0438\u043c \u043d\u0430\u0447\u043d\u0451\u0442 \u0437\u0430\u043d\u0438\u043c\u0430\u0442\u044c\u0441\u044f \u0434\u043e\u0441\u0442\u0430\u0442\u043e\u0447\u043d\u043e \u043b\u044e\u0434\u0435\u0439, \u0432\u044b\u0445\u043e\u0434\u043d\u043e\u0439 \u0434\u0440\u0435\u0439\u0444 \u0441\u043e\u0436\u043c\u0451\u0442\u0441\u044f. \u042f \u0437\u0430\u043f\u0438\u0441\u044b\u0432\u0430\u044e \u0432\u0445\u043e\u0434\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u043a\u0430\u0436\u0434\u0443\u044e \u043d\u0435\u0434\u0435\u043b\u044e, \u0447\u0442\u043e\u0431\u044b \u044d\u0442\u043e \u043f\u043e\u0439\u043c\u0430\u0442\u044c \u2014 \u043d\u043e \u043f\u0440\u0438 \u0442\u0430\u043a\u043e\u0439 \u0432\u044b\u0431\u043e\u0440\u043a\u0435 \u044f \u0443\u0437\u043d\u0430\u044e \u043e\u0431 \u044d\u0442\u043e\u043c \u0447\u0435\u0440\u0435\u0437 \u043c\u0435\u0441\u044f\u0446\u044b \u043f\u043e\u0441\u043b\u0435 \u0442\u043e\u0433\u043e, \u043a\u0430\u043a \u044d\u0442\u043e \u0441\u043b\u0443\u0447\u0438\u0442\u0441\u044f.","risk4":"<b>\u041e\u043d\u043e \u0437\u0430\u0432\u0438\u0441\u0438\u0442 \u043e\u0442 \u043c\u0435\u043d\u044f.</b> \u041f\u0440\u0430\u0432\u0438\u043b\u043e \u0437\u0430\u0444\u0438\u043a\u0441\u0438\u0440\u043e\u0432\u0430\u043d\u043e, \u043d\u043e \u043a\u0442\u043e-\u0442\u043e \u0434\u043e\u043b\u0436\u0435\u043d \u0438\u0441\u043f\u043e\u043b\u043d\u044f\u0442\u044c \u0435\u0433\u043e \u043a\u0430\u0436\u0434\u0443\u044e \u043d\u0435\u0434\u0435\u043b\u044e, \u0438 \u044d\u0442\u043e\u0442 \u043a\u0442\u043e-\u0442\u043e \u2014 \u044f.","risk5":"<b>\u041e\u043d\u043e \u0437\u0430\u0432\u0438\u0441\u0438\u0442 \u043e\u0442 Binance.</b> \u041e\u043d\u0438 \u043c\u043e\u0433\u0443\u0442 \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u043a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b \u0438\u043b\u0438 \u0437\u0430\u043a\u0440\u044b\u0442\u044c \u0438\u0445, \u0438 \u0441 \u0434\u0440\u0443\u0433\u0438\u043c\u0438 \u0431\u0443\u043c\u0430\u0433\u0430\u043c\u0438 \u043e\u043d\u0438 \u0443\u0436\u0435 \u0434\u0435\u043b\u0430\u043b\u0438 \u0438 \u0442\u043e, \u0438 \u0434\u0440\u0443\u0433\u043e\u0435.","footer":"\u0421\u0442\u0440\u0430\u043d\u0438\u0446\u0430 \u0447\u0438\u0442\u0430\u0435\u0442 \u043d\u0435\u0431\u043e\u043b\u044c\u0448\u043e\u0439 \u0444\u0430\u0439\u043b, <code>ledger.json</code>, \u043a\u043e\u0442\u043e\u0440\u044b\u0439 \u044f \u043e\u0431\u043d\u043e\u0432\u043b\u044f\u044e \u043f\u043e\u0441\u043b\u0435 \u043a\u0430\u0436\u0434\u043e\u0433\u043e \u0437\u0430\u043a\u0440\u044b\u0442\u0438\u044f \u0432 \u043f\u043e\u043d\u0435\u0434\u0435\u043b\u044c\u043d\u0438\u043a. \u042d\u0442\u043e \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0430 \u043e \u0442\u043e\u043c, \u0447\u0442\u043e \u044f \u0434\u0435\u043b\u0430\u044e \u0441\u043e \u0441\u0432\u043e\u0438\u043c\u0438 \u0434\u0435\u043d\u044c\u0433\u0430\u043c\u0438. \u042d\u0442\u043e \u043d\u0435 \u0438\u043d\u0432\u0435\u0441\u0442\u0438\u0446\u0438\u043e\u043d\u043d\u044b\u0439 \u0441\u043e\u0432\u0435\u0442, \u0438 \u0447\u0443\u0436\u0438\u043c\u0438 \u0434\u0435\u043d\u044c\u0433\u0430\u043c\u0438 \u044f \u043d\u0435 \u0443\u043f\u0440\u0430\u0432\u043b\u044f\u044e.","t.weekends":"\u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0445","t.wonlost":"\u0432 \u043f\u043b\u044e\u0441 / \u0432 \u043c\u0438\u043d\u0443\u0441","t.average":"\u0432 \u0441\u0440\u0435\u0434\u043d\u0435\u043c","t.worst":"\u0445\u0443\u0434\u0448\u0438\u0435","t.best":"\u043b\u0443\u0447\u0448\u0438\u0435","t.total":"\u0432\u0441\u0435\u0433\u043e","t.perWeekend":"\u0437\u0430 \u043e\u0434\u043d\u0438 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0435 = %x% \u0441\u0447\u0451\u0442\u0430","t.oneWeekend":"\u043e\u0434\u043d\u0438 \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0435, %x% \u0441\u0447\u0451\u0442\u0430","t.overN":"\u0437\u0430 %n% \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0445 = %x% \u0441\u0447\u0451\u0442\u0430","t.liveTotal":"%x% \u043e\u0442 $%e%, \u0441 \u043a\u043e\u0442\u043e\u0440\u044b\u0445 \u044f \u043d\u0430\u0447\u0430\u043b, \u0437\u0430 %n% \u0432\u044b\u0445\u043e\u0434\u043d\u044b\u0445","t.ofAcct":"%p% \u043e\u0442 $%e%","t.putIn":"\u0432\u043e\u0448\u043b\u043e $%x%","t.ruleSaid":" (\u043f\u0440\u0430\u0432\u0438\u043b\u043e: $%x%)","t.ruleOn":"\u043f\u0440\u0430\u0432\u0438\u043b\u043e %p% \u043d\u0430 \u043d\u0438\u0445","t.rulePutsIn":"\u043f\u0440\u0430\u0432\u0438\u043b\u043e \u0432\u0432\u043e\u0434\u0438\u0442 $%x%","t.ofAcctRef":"%p% \u043e\u0442 \u0441\u0447\u0451\u0442\u0430 $%e%","th.friday":"\u041f\u044f\u0442\u043d\u0438\u0446\u0430","th.phase":"\u042d\u0442\u0430\u043f","th.names":"\u0411\u0443\u043c\u0430\u0433","th.putin":"\u0412\u043e\u0448\u043b\u043e","th.result":"\u0420\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442","th.ofacct":"\u041e\u0442 \u0441\u0447\u0451\u0442\u0430","th.rulepct":"\u041f\u0440\u0430\u0432\u0438\u043b\u043e, \u043e\u0442 \u0432\u043e\u0448\u0435\u0434\u0448\u0435\u0433\u043e","ph.backtest":"\u0431\u044d\u043a\u0442\u0435\u0441\u0442","ph.live":"\u0440\u0435\u0430\u043b\u044c\u043d\u043e","chart.live":"\u0420\u0415\u0410\u041b\u042c\u041d\u041e","hero.closed":"\u0420\u042b\u041d\u041e\u041a \u0421\u0428\u0410 \u0417\u0410\u041a\u0420\u042b\u0422","hero.stock":"\u041d\u0430\u0441\u0442\u043e\u044f\u0449\u0430\u044f \u0430\u043a\u0446\u0438\u044f","hero.perp":"\u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442 \u043d\u0430 Binance","hero.m1":"\u0417\u0430\u043a\u0440\u044b\u0442\u0438\u0435 \u043f\u044f\u0442\u043d\u0438\u0446\u044b \u2014 \u043e\u0440\u0438\u0435\u043d\u0442\u0438\u0440","hero.m2":"\u0412\u0441 20:00 UTC \u2014 \u043d\u0430 1,4% \u043d\u0438\u0436\u0435, \u043f\u043e\u043a\u0443\u043f\u0430\u0435\u043c","hero.m3":"\u041f\u043d 11:00 \u2014 \u043f\u0440\u043e\u0434\u0430\u0451\u043c","hero.fri":"\u041f\u0442","hero.sat":"\u0421\u0431","hero.sun":"\u0412\u0441","hero.mon":"\u041f\u043d"};
+const EN={"t.weekends":"weekends","t.wonlost":"won / lost","t.average":"average","t.worst":"worst","t.best":"best","t.total":"total","t.perWeekend":"per weekend = %x% of the account","t.oneWeekend":"one weekend, %x% of the account","t.overN":"over %n% weekends = %x% of the account","t.liveTotal":"%x% of the $%e% I started with, over %n% weekends","t.ofAcct":"%p% of my $%e%","t.putIn":"put in $%x%","t.ruleSaid":" (rule said $%x%)","t.ruleOn":"rule %p% on it","t.rulePutsIn":"rule puts in $%x%","t.ofAcctRef":"%p% of a $%e% account","th.friday":"Friday","th.phase":"Phase","th.names":"Names","th.putin":"Put in","th.result":"Result","th.ofacct":"Of the account","th.rulepct":"Rule, on money in","ph.backtest":"backtest","ph.live":"live","chart.live":"LIVE","hero.closed":"US MARKET CLOSED","hero.stock":"The real stock","hero.perp":"The Binance contract","hero.m1":"Friday close \u2014 the reference","hero.m2":"Sunday 8pm UTC \u2014 it's 1.4% below, so buy","hero.m3":"Monday 11am \u2014 sell","hero.fri":"Fri","hero.sat":"Sat","hero.sun":"Sun","hero.mon":"Mon","asof.label":"Data as of"};
+let LANG="en";
+try{const v=localStorage.getItem("wf-lang");LANG=v||((navigator.language||"").slice(0,2)==="ru"?"ru":"en");}catch(e){}
+const tr=k=>(LANG==="ru"&&RU[k])||EN[k]||k;
+const f=(s,o)=>s.replace(/%(\w+)%/g,(m,k)=>o[k]!==undefined?o[k]:m);
+const NL=()=>LANG==="ru"?"ru-RU":"en-US";
+const nf=(v,d)=>Number(v).toLocaleString(NL(),{minimumFractionDigits:d,maximumFractionDigits:d});
+const EN_HTML={};
+function applyLang(){
+  document.documentElement.lang=LANG;
+  document.querySelectorAll("[data-i18n],[data-i18n-html]").forEach(n=>{
+    const html=n.hasAttribute("data-i18n-html"), k=n.getAttribute(html?"data-i18n-html":"data-i18n");
+    if(EN_HTML[k]===undefined) EN_HTML[k]=html?n.innerHTML:n.textContent;
+    const v=LANG==="ru"&&RU[k]?RU[k]:EN_HTML[k];
+    if(html) n.innerHTML=v; else n.textContent=v;
+  });
+  $("#lang-en").classList.toggle("on",LANG==="en"); $("#lang-ru").classList.toggle("on",LANG==="ru");
+}
+
+const NS="http://www.w3.org/2000/svg";
+const el=(n,a,p)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;};
+const pct=bp=>nf(bp/100,2);
+const sign=v=>{const n=+v;return (n>0?"+":n<0?"\u2212":"")+String(v).replace(/^-/,"");};
+const usd=v=>(v<0?"\u2212$":"+$")+nf(Math.abs(v),2);
+const roe=w=>nf(w.own_realized_usd/w.own_equity_usd*100,2);
+
+/* ---------- hero: one weekend drawn ---------- */
+function hero(){
+  const svg=$("#heroSvg"); svg.innerHTML="";
+  const W=1000,H=380,L=56,R=24,T=28,B=52;
+  const x0=12, x1=12+72+1;           // Fri 12:00 -> Mon 13:00 NY, in hours since Fri 00:00
+  const X=h=>L+(h-x0)/(x1-x0)*(W-L-R);
+  const Y=p=>T+(101.5-p)/(101.5-98)*(H-T-B);   // price index 98..101.5
+  const closeH=16, entryH=12+48+4, openH=12+72+ -2.5, exitH=12+72-1;  // entry Sun 16:00 NY = h 64; open Mon 09:30 = h 81.5; exit Mon 11:00 = h 83
+  const closeX=X(closeH), entryX=X(64), openX=X(81.5), exitX=X(83);
+  // closed band
+  el("rect",{x:closeX,y:T,width:openX-closeX,height:H-T-B,fill:"var(--closed)"},svg);
+  el("text",{x:(closeX+openX)/2,y:T+16,"text-anchor":"middle",style:"font-size:12px;letter-spacing:.1em;text-transform:uppercase;fill:var(--muted);font-weight:700"},svg).textContent=tr("hero.closed");
+  // day ticks
+  const days=[[tr("hero.fri"),12],[tr("hero.sat"),36],[tr("hero.sun"),60],[tr("hero.mon"),84]];
+  days.forEach(([d,h])=>{const t=el("text",{x:X(h),y:H-B+22,"text-anchor":"middle",style:"fill:var(--muted)"},svg);t.textContent=d;});
+  [16,64,81.5,83].forEach(h=>el("line",{x1:X(h),x2:X(h),y1:T,y2:H-B,stroke:"var(--axis)","stroke-dasharray":"2 4"},svg));
+  el("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,stroke:"var(--axis)"},svg);
+  // stock path: Fri 12-16 moves, flat (dashed) through weekend, moves from 09:30
+  const stock=[],perp=[];
+  const seed=(i)=>Math.sin(i*12.9898)*43758.5453%1;
+  let p=100;
+  for(let h=12;h<=16;h+=.5){p+= (Math.sin(h*1.7)*0.12); stock.push([h,p]); perp.push([h,p]);}
+  const closeP=p;
+  // perp drifts down over the weekend to ~ -1.4% by Sunday evening, wobbling
+  let q=closeP;
+  for(let h=16.5;h<=81.5;h+=.5){
+    const prog=(h-16)/(64-16);
+    const target= h<=64 ? closeP*(1-0.014*Math.min(1,prog)) : closeP*(1-0.014+0.002*Math.sin((h-64)*0.4));
+    q+= (target-q)*0.18 + Math.sin(h*2.3)*0.05;
+    perp.push([h,q]);
+  }
+  // after open: stock resumes near closeP*1.001, perp converges to stock over 90 min
+  let s=closeP*1.001, r=q;
+  for(let h=81.5;h<=85;h+=.25){
+    s+= Math.sin(h*3.1)*0.03; stock.push([h,s]);
+    r+= (s-r)*0.35; perp.push([h,r]);
+  }
+  const path=pts=>pts.map((d,i)=>(i?"L":"M")+X(d[0]).toFixed(1)+" "+Y(d[1]).toFixed(1)).join(" ");
+  // dashed "no price" segment for the stock over the weekend
+  el("line",{x1:closeX,x2:openX,y1:Y(closeP),y2:Y(closeP),stroke:"var(--ink-2)","stroke-width":2,"stroke-dasharray":"3 6",opacity:.6},svg);
+  const stockPath=el("path",{d:path(stock.filter(d=>d[0]<=16))+" "+path(stock.filter(d=>d[0]>=81.5)).replace(/^M/,"M"),fill:"none",stroke:"var(--ink)","stroke-width":2.5,"stroke-linejoin":"round","stroke-linecap":"round"},svg);
+  const perpPath=el("path",{d:path(perp),fill:"none",stroke:"var(--accent)","stroke-width":2.5,"stroke-linejoin":"round","stroke-linecap":"round"},svg);
+  // markers + labels
+  const mark=(x,y,label,dy,anchor)=>{
+    el("circle",{cx:x,cy:y,r:6,fill:"var(--accent)",stroke:"var(--surface)","stroke-width":2,class:"mk"},svg);
+    const t=el("text",{x:x,y:y+dy,"text-anchor":anchor||"middle",style:"fill:var(--ink);font-weight:700;font-size:13px",class:"mk"},svg);
+    t.textContent=label;
+  };
+  const entryP=perp.find(d=>Math.abs(d[0]-64)<1e-6)[1], exitP=perp.find(d=>Math.abs(d[0]-83)<0.01)[1];
+  mark(closeX,Y(closeP),tr("hero.m1"),-14,"start");
+  mark(entryX,Y(entryP),tr("hero.m2"),20,"middle");
+  mark(exitX,Y(exitP),tr("hero.m3"),22,"end");
+  // series labels
+  const sl=stock[stock.length-1];
+  el("text",{x:X(sl[0])-2,y:Y(sl[1])-14,"text-anchor":"end",style:"fill:var(--ink);font-weight:700"},svg).textContent=tr("hero.stock");
+  el("text",{x:X(40),y:Y(closeP*0.9905)+18,style:"fill:var(--accent);font-weight:700"},svg).textContent=tr("hero.perp");
+  // replay animation via dash
+  const anim=()=>{
+    if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+    [stockPath,perpPath].forEach(pth=>{const len=pth.getTotalLength();pth.style.transition="none";pth.style.strokeDasharray=len;pth.style.strokeDashoffset=len;void pth.getBoundingClientRect();pth.style.transition="stroke-dashoffset 2.6s ease-in-out";pth.style.strokeDashoffset=0;});
+    svg.querySelectorAll(".mk").forEach((m,i)=>{m.style.transition="none";m.style.opacity=0;void m.getBoundingClientRect();m.style.transition="opacity .4s "+(0.8+i*0.45)+"s";m.style.opacity=1;});
+  };
+  $("#replay").onclick=anim;
+}
+
+/* ---------- record chart ---------- */
+function record(data){
+  const svg=$("#recSvg"); svg.innerHTML="";
+  const wk=data.weekends, E=data.headline.reference_equity_usd;
+  const val=w=>w.phase==="live"?w.own_realized_usd:w.usd;
+  const W=1000,H=400,L=62,R=18,T=26,B=46;
+  const step=50, vals=wk.map(val);
+  const ymin=Math.min(-100,Math.floor(Math.min(...vals)/step)*step), ymax=Math.max(100,Math.ceil(Math.max(...vals)/step)*step);
+  const Y=v=>T+(ymax-v)/(ymax-ymin)*(H-T-B);
+  const n=wk.length, pw=(W-L-R)/n, bw=Math.max(6,pw-4);
+  const money=v=>(v>0?"+$":v<0?"\u2212$":"$")+Number(Math.abs(v)).toLocaleString(NL());
+  const fmt=v=>Number(v).toLocaleString(NL());
+  for(let v=ymin;v<=ymax;v+=step){
+    el("line",{x1:L,x2:W-R,y1:Y(v),y2:Y(v),stroke:v===0?"var(--axis)":"var(--line)"},svg);
+    el("text",{x:L-8,y:Y(v)+4,"text-anchor":"end",style:"fill:var(--muted);font-variant-numeric:tabular-nums"},svg).textContent=money(v);
+  }
+  const firstLive=wk.findIndex(w=>w.phase==="live");
+  if(firstLive>=0){
+    const bx=L+firstLive*pw-2;
+    el("rect",{x:bx,y:T-4,width:(n-firstLive)*pw+2,height:H-T-B+4,fill:"var(--accent-wash)",rx:4},svg);
+    el("text",{x:bx+((n-firstLive)*pw)/2,y:T-8,"text-anchor":"middle",style:"fill:var(--accent);font-weight:700;letter-spacing:.1em;font-size:11px"},svg).textContent=tr("chart.live");
+  }
+  let lastM="";
+  wk.forEach((w,i)=>{
+    const m=w.friday.slice(0,7);
+    if(m!==lastM){lastM=m;const d=new Date(w.friday+"T00:00Z");
+      const t=el("text",{x:L+i*pw+bw/2,y:H-B+20,"text-anchor":"middle",style:"fill:var(--muted)"},svg);
+      t.textContent=d.toLocaleString(NL(),{month:"short",timeZone:"UTC"})+(m.endsWith("-01")?" "+d.getUTCFullYear():"");}
+  });
+  const tip=$("#tip");
+  wk.forEach((w,i)=>{
+    const v=val(w), x=L+i*pw+(pw-bw)/2, y0=Y(0), y1=Y(v);
+    const top=Math.min(y0,y1), h=Math.abs(y1-y0);
+    const cls=(v>=0?"pos":"neg")+(w.phase==="backtest"?" bt":"");
+    const r=el("path",{class:cls,d:v>=0
+      ? `M${x} ${y0} V${top+4} a4 4 0 0 1 4 -4 h${bw-8} a4 4 0 0 1 4 4 V${y0} Z`
+      : `M${x} ${y0} V${y0+h-4} a4 4 0 0 0 4 4 h${bw-8} a4 4 0 0 0 4 -4 V${y0} Z`},svg);
+    const hit=el("rect",{x:L+i*pw,y:T,width:pw,height:H-T-B,fill:"transparent"},svg);
+    const show=ev=>{
+      let s=`<b>${w.friday}</b> \u00b7 ${w.names} ${namesWord(w.names)}`;
+      if(w.phase==="live"){
+        const dev=w.rule_deployed_usd&&Math.abs(w.rule_deployed_usd-w.own_notional_usd)>0.05*w.rule_deployed_usd;
+        s+=`<br><b>${usd(v)} = ${f(tr("t.ofAcct"),{p:sign(roe(w))+"%",e:fmt(w.own_equity_usd)})}</b><br><span style="opacity:.75">${f(tr("t.putIn"),{x:fmt(w.own_notional_usd)})}${dev?f(tr("t.ruleSaid"),{x:fmt(Math.round(w.rule_deployed_usd))}):""} \u00b7 ${f(tr("t.ruleOn"),{p:sign(pct(w.net_bp))+"%"})}</span>`;
+      } else {
+        s+=`<br><b>${f(tr("t.ofAcctRef"),{p:sign(nf(v/E*100,2))+"%",e:fmt(E)})}</b>: ${usd(v)}<br><span style="opacity:.75">${f(tr("t.rulePutsIn"),{x:fmt(Math.round(w.deployed_usd))})} \u00b7 ${f(tr("t.ruleOn"),{p:sign(pct(w.net_bp))+"%"})}</span>`;
+      }
+      if(w.names_list) s+=`<br><span style="opacity:.75">${w.names_list.join(", ")}</span>`;
+      if(w.note) s+=`<br><span style="opacity:.75">${w.note}</span>`;
+      tip.innerHTML=s; tip.classList.add("on");
+      const pad=12, tw=tip.offsetWidth, th=tip.offsetHeight;
+      let tx=ev.clientX+pad, ty=ev.clientY+pad;
+      if(tx+tw>innerWidth-8) tx=ev.clientX-tw-pad; if(ty+th>innerHeight-8) ty=ev.clientY-th-pad;
+      tip.style.left=tx+"px"; tip.style.top=ty+"px";
+      r.style.filter="brightness(.85)";
+    };
+    hit.addEventListener("mousemove",show); hit.addEventListener("mouseenter",show);
+    hit.addEventListener("mouseleave",()=>{tip.classList.remove("on");r.style.filter="";});
+    hit.addEventListener("touchstart",e=>show(e.touches[0]),{passive:true});
+  });
+}
+
+/* ---------- tiles + table ---------- */
+function tiles(data){
+  const h=data.headline, E=h.reference_equity_usd, live=data.weekends.filter(w=>w.phase==="live");
+  const fmt=v=>Number(v).toLocaleString(NL()), apct=v=>sign(nf(v/E*100,2))+"%";
+  const bt=[[tr("t.weekends"),h.backtest_weekends,""],[tr("t.wonlost"),h.backtest_won+" / "+h.backtest_lost,""],
+            [tr("t.average"),usd(h.backtest_mean_usd),f(tr("t.perWeekend"),{x:apct(h.backtest_mean_usd)})],
+            [tr("t.worst"),usd(h.backtest_worst_usd),f(tr("t.oneWeekend"),{x:apct(h.backtest_worst_usd)})],
+            [tr("t.best"),usd(h.backtest_best_usd),f(tr("t.oneWeekend"),{x:apct(h.backtest_best_usd)})],
+            [tr("t.total"),usd(h.backtest_total_usd),f(tr("t.overN"),{n:h.backtest_weekends,x:apct(h.backtest_total_usd)})]];
+  $("#tilesBT").innerHTML=bt.map(([k,v,s])=>`<div class="tile"><div class="k">${k}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:""}</div>`).join("");
+  const won=live.filter(w=>w.own_realized_usd>0).length;
+  const tot=live.reduce((a,w)=>a+w.own_realized_usd,0), eq0=live.length?live[0].own_equity_usd:E;
+  const lv=[[tr("t.weekends"),live.length,""],[tr("t.wonlost"),won+" / "+(live.length-won),""],
+    ...live.map(w=>{const dev=w.rule_deployed_usd&&Math.abs(w.rule_deployed_usd-w.own_notional_usd)>0.05*w.rule_deployed_usd;
+      return [w.friday.slice(5),usd(w.own_realized_usd),f(tr("t.ofAcct"),{p:sign(roe(w))+"%",e:fmt(w.own_equity_usd)})+" \u00b7 "+f(tr("t.putIn"),{x:fmt(w.own_notional_usd)})+(dev?f(tr("t.ruleSaid"),{x:fmt(Math.round(w.rule_deployed_usd))}):"")];}),
+    [tr("t.total"),usd(tot),f(tr("t.liveTotal"),{x:sign(nf(tot/eq0*100,2))+"%",e:fmt(eq0),n:live.length})]];
+  $("#tilesLive").innerHTML=lv.map(([k,v,s])=>`<div class="tile"><div class="k">${k}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:""}</div>`).join("");
+  $("#btAvgUsd").textContent=usd(h.backtest_mean_usd); $("#btAvgPct").textContent=apct(h.backtest_mean_usd);
+  $("#btE").textContent="$"+fmt(E); $("#btTotal").textContent=usd(h.backtest_total_usd);
+  $("#btTotal2").textContent=(h.backtest_total_usd<0?"\u2212$":"+$")+Math.round(Math.abs(h.backtest_total_usd)); const trim=h.backtest_total_usd*(h.liquidity_fill_fraction||0.87); $("#btTrim").textContent=(trim<0?"\u2212$":"+$")+Math.round(Math.abs(trim));
+  $("#rWorst").textContent="$"+Math.abs(h.backtest_worst_usd).toFixed(2); $("#rWorstPct").textContent=Math.abs(h.backtest_worst_usd/E*100).toFixed(1)+"%";
+  const rows=data.weekends.map(w=>{const L=w.phase==="live";
+    return `<tr><td>${w.friday}</td><td>${tr("ph."+w.phase)}</td><td>${w.names}</td><td>$${fmt(Math.round(L?w.own_notional_usd:w.deployed_usd))}</td><td>${usd(L?w.own_realized_usd:w.usd)}</td><td>${L?sign(roe(w))+"%":apct(w.usd)}</td><td>${sign(pct(w.net_bp))}%</td></tr>`;}).join("");
+  $("#tbl").innerHTML=`<thead><tr><th>${tr("th.friday")}</th><th>${tr("th.phase")}</th><th>${tr("th.names")}</th><th>${tr("th.putin")}</th><th>${tr("th.result")}</th><th>${tr("th.ofacct")}</th><th>${tr("th.rulepct")}</th></tr></thead><tbody>${rows}</tbody>`;
+}
+
+/* ---------- capacity ---------- */
+function capacity(data){
+  const svg=$("#capSvg"); svg.innerHTML="";
+  const c=data.capacity, W=1000,H=260,L=48,R=24,T=22,B=44;
+  const lx=v=>Math.log10(v), xmin=lx(5000), xmax=lx(1000000);
+  const X=v=>L+(lx(v)-xmin)/(xmax-xmin)*(W-L-R);
+  const Y=v=>T+(25-v)/25*(H-T-B);
+  [0,5,10,15,20,25].forEach(v=>{el("line",{x1:L,x2:W-R,y1:Y(v),y2:Y(v),stroke:v===0?"var(--axis)":"var(--line)"},svg);
+    el("text",{x:L-8,y:Y(v)+4,"text-anchor":"end",style:"fill:var(--muted)"},svg).textContent=v+"%";});
+  [5000,10000,50000,100000,500000,1000000].forEach(v=>{const t=el("text",{x:X(v),y:H-B+20,"text-anchor":"middle",style:"fill:var(--muted)"},svg);t.textContent="$"+(v>=1e6?"1M":v/1000+"k");});
+  const d=c.map((p,i)=>(i?"L":"M")+X(p.equity_usd).toFixed(1)+" "+Y(p.annualised_pct).toFixed(1)).join(" ");
+  el("path",{d:d+` L${X(1000000)} ${Y(0)} L${X(5000)} ${Y(0)} Z`,fill:"var(--accent-wash)"},svg);
+  el("path",{d,fill:"none",stroke:"var(--accent)","stroke-width":2.5,"stroke-linejoin":"round"},svg);
+  c.forEach(p=>{ if([5000,50000,100000,500000,1000000].includes(p.equity_usd)){
+    el("circle",{cx:X(p.equity_usd),cy:Y(p.annualised_pct),r:5,fill:"var(--accent)",stroke:"var(--surface)","stroke-width":2},svg);
+    el("text",{x:X(p.equity_usd),y:Y(p.annualised_pct)-12,"text-anchor":"middle",style:"fill:var(--ink);font-weight:700"},svg).textContent=p.annualised_pct+"%";}});
+}
+
+function namesWord(n){
+  if(LANG!=="ru") return n===1?"name":"names";
+  const m=n%10,h=n%100;
+  return (m===1&&h!==11)?"\u0431\u0443\u043c\u0430\u0433\u0430":(m>=2&&m<=4&&(h<12||h>14))?"\u0431\u0443\u043c\u0430\u0433\u0438":"\u0431\u0443\u043c\u0430\u0433";
+}
+let DATA=null;
+function render(data){
+  DATA=data; applyLang();
+  $("#asof").textContent=tr("asof.label")+" "+data.as_of_utc.replace("T"," ").replace("Z"," UTC");
+  hero(); record(data); tiles(data); capacity(data);
+}
+function setLang(l){ LANG=l; try{localStorage.setItem("wf-lang",l);}catch(e){} if(DATA) render(DATA); }
+$("#lang-en").onclick=()=>setLang("en"); $("#lang-ru").onclick=()=>setLang("ru");
+const fallback=JSON.parse($("#fallback").textContent);
+fetch("ledger.json",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject()).catch(()=>fallback).then(render);
+})();
+</script>

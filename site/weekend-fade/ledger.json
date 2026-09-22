@@ -1,0 +1,291 @@
+{
+ "as_of_utc": "2026-09-22T17:48Z",
+ "currency": "USDT",
+ "headline": {
+  "backtest_weekends": 20,
+  "backtest_mean_bp": 143.9,
+  "backtest_t": 1.86,
+  "backtest_won": 13,
+  "backtest_lost": 7,
+  "backtest_worst_bp": -427.7,
+  "backtest_best_bp": 956.0,
+  "live_weekends": 3,
+  "live_won": 2,
+  "live_lost": 1,
+  "reference_equity_usd": 5000,
+  "basket_fraction": 0.75,
+  "per_name_cap_fraction": 0.2,
+  "backtest_total_usd": 661.26,
+  "backtest_mean_usd": 33.06,
+  "backtest_worst_usd": -107.55,
+  "backtest_best_usd": 156.3,
+  "liquidity_fill_fraction": 0.87
+ },
+ "capacity": [
+  {
+   "equity_usd": 5000,
+   "annualised_pct": 21
+  },
+  {
+   "equity_usd": 10000,
+   "annualised_pct": 20
+  },
+  {
+   "equity_usd": 20000,
+   "annualised_pct": 17
+  },
+  {
+   "equity_usd": 50000,
+   "annualised_pct": 15
+  },
+  {
+   "equity_usd": 100000,
+   "annualised_pct": 14
+  },
+  {
+   "equity_usd": 200000,
+   "annualised_pct": 12
+  },
+  {
+   "equity_usd": 300000,
+   "annualised_pct": 10
+  },
+  {
+   "equity_usd": 500000,
+   "annualised_pct": 7
+  },
+  {
+   "equity_usd": 1000000,
+   "annualised_pct": 4
+  }
+ ],
+ "weekends": [
+  {
+   "friday": "2026-01-30",
+   "phase": "backtest",
+   "names": 1,
+   "net_bp": -156.4,
+   "deployed_usd": 1000.0,
+   "usd": -15.64
+  },
+  {
+   "friday": "2026-02-20",
+   "phase": "backtest",
+   "names": 2,
+   "net_bp": -427.7,
+   "deployed_usd": 2000.0,
+   "usd": -85.54
+  },
+  {
+   "friday": "2026-02-27",
+   "phase": "backtest",
+   "names": 3,
+   "net_bp": 140.5,
+   "deployed_usd": 3000.0,
+   "usd": 42.15
+  },
+  {
+   "friday": "2026-03-06",
+   "phase": "backtest",
+   "names": 6,
+   "net_bp": 353.8,
+   "deployed_usd": 3750.0,
+   "usd": 132.68
+  },
+  {
+   "friday": "2026-03-20",
+   "phase": "backtest",
+   "names": 2,
+   "net_bp": 467.4,
+   "deployed_usd": 2000.0,
+   "usd": 93.48
+  },
+  {
+   "friday": "2026-03-27",
+   "phase": "backtest",
+   "names": 6,
+   "net_bp": 72.7,
+   "deployed_usd": 3750.0,
+   "usd": 27.26
+  },
+  {
+   "friday": "2026-04-10",
+   "phase": "backtest",
+   "names": 12,
+   "net_bp": 400.4,
+   "deployed_usd": 3750.0,
+   "usd": 150.15
+  },
+  {
+   "friday": "2026-04-17",
+   "phase": "backtest",
+   "names": 17,
+   "net_bp": -69.8,
+   "deployed_usd": 3750.0,
+   "usd": -26.18
+  },
+  {
+   "friday": "2026-05-08",
+   "phase": "backtest",
+   "names": 1,
+   "net_bp": 956.0,
+   "deployed_usd": 1000.0,
+   "usd": 95.6
+  },
+  {
+   "friday": "2026-05-15",
+   "phase": "backtest",
+   "names": 5,
+   "net_bp": -244.5,
+   "deployed_usd": 3750.0,
+   "usd": -91.69
+  },
+  {
+   "friday": "2026-06-05",
+   "phase": "backtest",
+   "names": 11,
+   "net_bp": 416.8,
+   "deployed_usd": 3750.0,
+   "usd": 156.3
+  },
+  {
+   "friday": "2026-06-12",
+   "phase": "backtest",
+   "names": 2,
+   "net_bp": 227.9,
+   "deployed_usd": 2000.0,
+   "usd": 45.58
+  },
+  {
+   "friday": "2026-06-26",
+   "phase": "backtest",
+   "names": 3,
+   "net_bp": 306.1,
+   "deployed_usd": 3000.0,
+   "usd": 91.83
+  },
+  {
+   "friday": "2026-07-10",
+   "phase": "backtest",
+   "names": 4,
+   "net_bp": -286.8,
+   "deployed_usd": 3750.0,
+   "usd": -107.55
+  },
+  {
+   "friday": "2026-07-17",
+   "phase": "backtest",
+   "names": 7,
+   "net_bp": 79.1,
+   "deployed_usd": 3750.0,
+   "usd": 29.66
+  },
+  {
+   "friday": "2026-07-24",
+   "phase": "backtest",
+   "names": 2,
+   "net_bp": 145.9,
+   "deployed_usd": 2000.0,
+   "usd": 29.18
+  },
+  {
+   "friday": "2026-07-31",
+   "phase": "backtest",
+   "names": 1,
+   "net_bp": -208.0,
+   "deployed_usd": 1000.0,
+   "usd": -20.8
+  },
+  {
+   "friday": "2026-08-07",
+   "phase": "backtest",
+   "names": 1,
+   "net_bp": 97.9,
+   "deployed_usd": 1000.0,
+   "usd": 9.79
+  },
+  {
+   "friday": "2026-08-14",
+   "phase": "backtest",
+   "names": 2,
+   "net_bp": 700.7,
+   "deployed_usd": 2000.0,
+   "usd": 140.14
+  },
+  {
+   "friday": "2026-08-21",
+   "phase": "backtest",
+   "names": 6,
+   "net_bp": -93.7,
+   "deployed_usd": 3750.0,
+   "usd": -35.14
+  },
+  {
+   "friday": "2026-09-04",
+   "phase": "live",
+   "names": 1,
+   "net_bp": 603.0,
+   "own_notional_usd": 300,
+   "own_equity_usd": 5074,
+   "own_realized_usd": 18.49,
+   "usd": 18.49,
+   "rule_deployed_usd": 1014.8,
+   "names_list": [
+    "PAYP"
+   ],
+   "note": "Labor Day weekend: entry Monday 20:00 UTC, exit Tuesday. One extra leg (MSTR) was entered before the rule's decision time and lost $9.05; it is not in the number above."
+  },
+  {
+   "friday": "2026-09-11",
+   "phase": "live",
+   "names": 20,
+   "net_bp": -85.4,
+   "own_notional_usd": 3767,
+   "own_equity_usd": 5077,
+   "own_realized_usd": -31.35,
+   "usd": -31.35,
+   "rule_deployed_usd": 3807.75,
+   "names_list": [
+    "COIN",
+    "HOOD",
+    "MSTR",
+    "PLTR",
+    "META",
+    "SPY",
+    "QQQ",
+    "EWJ",
+    "AMZN",
+    "QCOM",
+    "JPM",
+    "TSLA",
+    "SNDK",
+    "TSM",
+    "MU",
+    "INTC",
+    "AXTI",
+    "EWY",
+    "AAOI",
+    "NOK"
+   ]
+  },
+  {
+   "friday": "2026-09-18",
+   "phase": "live",
+   "names": 6,
+   "net_bp": 423.4,
+   "own_notional_usd": 3767,
+   "own_equity_usd": 5046,
+   "own_realized_usd": 159.22,
+   "usd": 159.22,
+   "rule_deployed_usd": 3784.5,
+   "names_list": [
+    "AXTI",
+    "HOOD",
+    "MU",
+    "PAYP",
+    "TSM",
+    "SNDK"
+   ]
+  }
+ ]
+}
