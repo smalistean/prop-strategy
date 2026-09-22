@@ -112,9 +112,17 @@ admitted cohort is still inside its confirmation period.
 
 | Test | Declared | Population | Looks (m) | Boundaries | Backstop | State |
 |---|---|---|---|---|---|---|
-| Newcomer cohort N1 (A8) | 2026-09-12 07:36 UTC | 20 names listed 2026-08-06 → 09-03 | 6, 9, 12 | t ≥ 2.55 / 2.08 / 1.80 | 2027-04-30 | window opens 2026-09-18, zero observations |
+| Newcomer cohort N1 (A8) | 2026-09-12 07:36 UTC | 20 names listed 2026-08-06 → 09-03 | 6, 9, 12 | t ≥ 2.55 / 2.08 / 1.80 | 2027-04-30 | window open since 2026-09-18, m = 1 |
+| Edge-decay record | 2026-09-22 04:15 UTC | 24-name live fade universe | none — record only | none — alarm withdrawn | re-open at 35 blind weekends (≈ 2027-05-21) | 17 pre-declaration rows, 0 blind |
 
-Only one test runs at full budget at a time; N1 is it.
+Only one test runs at full budget at a time; N1 is it. **The edge-decay record is not a test and has no boundary.**
+Its 2026-09-21 alarm declaration was withdrawn on 2026-09-22 after adversarial review (3 critics, 21 findings, 8
+confirmed by 3-refuter majority): at 17 baseline weekends no boundary held a 10% family-wise false-alarm rate once
+holiday weekends were included and the baseline's own parameter uncertainty was propagated — marginalised FA ≈ 0.24
+at the declared C, not the 0.076 stated. The script now records the corrected statistic weekly, blind, so that a
+boundary can be declared at 35 post-declaration weekends on data collected before any boundary existed — see
+`EDGE_DECAY_MONITOR_PREREGISTRATION.md`. The argument that an input monitor needs far fewer observations than a
+returns monitor stands; the number it needs is ~35, not 12.
 
 Operating the N1 test: run `python3 scripts/analysis-sequential-test.py count <friday>` after each weekend to
 advance the bookkeeping. `count` reads only the anchor and entry bars, computes **no outcome** and prints **no
