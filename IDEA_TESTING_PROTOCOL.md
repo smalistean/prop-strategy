@@ -114,6 +114,8 @@ admitted cohort is still inside its confirmation period.
 |---|---|---|---|---|---|---|
 | Newcomer cohort N1 (A8) | 2026-09-12 07:36 UTC | 20 names listed 2026-08-06 → 09-03 | 6, 9, 12 | t ≥ 2.55 / 2.08 / 1.80 | 2027-04-30 | window open since 2026-09-18, m = 1 |
 | Edge-decay record | 2026-09-22 04:15 UTC | 24-name live fade universe | none — record only | none — alarm withdrawn | re-open at 35 blind weekends (≈ 2027-05-21) | 17 pre-declaration rows, 0 blind |
+| Liquidity cap (LIQUIDITY_CAP_MEASUREMENT.md) | 2026-09-23 10:07 UTC | 24 names × 33 weekends of Binance bookDepth ladders (Labor Day archive excluded as corrupt) | one look, done 2026-09-23 10:51 UTC | marginal tranche ≤ 48 bp on ≥ 75% of binding cells | — | measured: 15% and 20% pass (99%), cap → 20% by the rule; overflow admissible; **not adopted** — Plan S and FadeOrderApplication unchanged until the user edits the spec |
+| Venue × name eligibility (GATE_SECOND_VENUE_STUDY.md, 2026-09-23 10:47 UTC addendum) | 2026-09-23 10:47 UTC | any venue × name not yet admitted | rolling, last 8 weekends | median \|entry gap\| ≤ 10 bp, ≥ 80% same trigger, venue-only ≤ 20%, bar clears the cap | — | standing rule; on today's data six venues pass on deep names + EWJ QCOM AXTI AAOI NOK, JPM and PAYP on MEXC only; fees measured for Gate only |
 
 Only one test runs at full budget at a time; N1 is it. **The edge-decay record is not a test and has no boundary.**
 Its 2026-09-21 alarm declaration was withdrawn on 2026-09-22 after adversarial review (3 critics, 21 findings, 8

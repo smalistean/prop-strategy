@@ -1,6 +1,47 @@
 # Project Status
 
-Last updated: 2026-09-14
+Last updated: 2026-09-23 12:00 UTC
+
+## Weekend fade at $100k: venues, the 10% cap and overflow measured (2026-09-23 12:00 UTC)
+
+Question (user, 2026-09-23): can other exchanges add names and volume to the fade, can a new listing borrow Binance's
+history, should the money be spread over venues, and is the 10%-of-bar cap right. Assumed book: $100k.
+Documents: `GATE_SECOND_VENUE_STUDY.md` (addenda 08:27 and 10:47 UTC), `LIQUIDITY_CAP_MEASUREMENT.md`, registry rows in
+`IDEA_TESTING_PROTOCOL.md` §6; data under `research/`.
+
+- **Other venues add fill, not names.** All 24 names trade on at least four other venues (MEXC lists all 24). At $100k,
+  aggregating seven venues raises filled allocation from 61% to 72% on the three live weekends (all-24 case 78% → 91%).
+  That takes five or six venues; Gate alone gives 64%, Gate + MEXC 66%. A one-name PAYP weekend stays at 1–2% on any set
+  of venues. The 270 tickers listed elsewhere but not on Binance are index duplicates of SPY/QQQ or thin names, and any of
+  them enters only through the newcomer route. The 2026-09-09 "second venue not built" decision's re-open condition is
+  met at $100k, not at the current $5k book.
+- **A venue earns Binance's history by measurement, not by listing.** Since June, Bybit, OKX, MEXC, Bitget, Hyperliquid
+  and Gate track Binance's decision bar within 3–6 bp median, 91–98% same trigger, return correlation 0.999–1.000.
+  In their first weeks the same venues were 100–185 bp off. Kraken does not track (stale candles). Transfer runs Binance →
+  others only, name by name. Volume share is not the criterion (above ~2% of the combined bar the gap is flat).
+  Eligibility rule declared: last 8 weekends, median |entry gap| ≤ 10 bp, ≥ 80% same trigger, venue-only triggers ≤ 20%.
+- **Spreading the book over venues is price-neutral and operationally costly.** Every tracking venue exits within ~5 bp of
+  Binance since June. The case against a split for its own sake is operational: Gate force-settled 11 of these names'
+  predecessors in September, fees are unmeasured on four venues, and each venue adds a manual exit in the same minute.
+- **The 10% cap measured from Binance's order book: it moves to 20% by the declared rule.** 586 name-weekends of order book
+  snapshots taken ~30 s before the bar close. The 10→15% and 15→20% tranches cost ≤ 48 bp on 99% of the cells where the cap binds,
+  with a +5 bp error bar. The declared cross-check against the six live fills failed: the ladder misses the spread and the
+  4m48s order delay. The cost model became walk + half-spread; the ladder misses the walk itself by ≤ 1.4 bp. The bar is
+  a weak yardstick: 10% of PAYP's bar is $260 at 1.5 bp, $20,000 of PAYP costs 69 bp.
+- **Overflow (a capped name's remainder to other triggered names) is admissible.** Marginal cost 1.9 bp median, 24 bp max
+  on the receiving legs. On the 26 recorded weekends at $100k: current rule $9,649, overflow at 10% $11,877, 20% cap +
+  overflow $12,005. Cost: legs at the 20%-of-equity cap go from 3 to 15, worst weekend −$1,454 → −$2,114.
+  **Neither the 20% cap nor overflow is adopted:** Plan S (`WEEKEND_FADE_LIVE_SPEC.md`) and `FadeOrderApplication` are
+  unchanged until the user decides.
+- **The frozen headline's funding part has disappeared.** +143.9 bp/weekend = price +130.8, funding +22.1, cost −9.0.
+  Funding was +30 to +143 bp per weekend January–April and between −8 and +2 bp every weekend since May (Binance, 116
+  triggered events; other venues the same since June). Price-only net is +121.8 bp, t = 1.60. Recorded as a fact about
+  the edge's composition; the pre-registered headline is not restated and the edge-decay record is not re-opened.
+- **Data lesson:** Binance's public bookDepth archive had a frozen, crossed ask side for the whole of 2026-09-07/08; it
+  parsed cleanly and was caught by the adversarial review (87 agents, 28 findings, 17 confirmed, all fixed).
+
+Open decisions for the user: adopt the 20% cap and/or overflow in Plan S; whether a second venue is worth building before
+the book is near $100k.
 
 ## Two new assistant-originated mechanisms survived pre-screening (2026-09-14)
 
