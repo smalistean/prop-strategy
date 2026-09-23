@@ -1,0 +1,2992 @@
+{
+ "pulled_utc": "2026-09-23T08:14Z",
+ "bars_utc": [
+  "2026-08-30T19:00Z",
+  "2026-09-07T19:00Z",
+  "2026-09-13T19:00Z",
+  "2026-09-20T19:00Z"
+ ],
+ "note": "quote volume in USD of the single 1h decision bar (open 19:00 UTC the evening before the next US session). -1 = bar absent. Binance from binance_perp_kline; others from each venue's public kline endpoint via the inventory agents.",
+ "binance": {
+  "AAOI": {
+   "2026-08-30": 168289.0,
+   "2026-09-07": 40509.0,
+   "2026-09-13": 114696.0,
+   "2026-09-20": 76555.0
+  },
+  "AAPL": {
+   "2026-08-30": 131435.0,
+   "2026-09-07": 222159.0,
+   "2026-09-13": 61153.0,
+   "2026-09-20": 235357.0
+  },
+  "AMZN": {
+   "2026-08-30": 34410.0,
+   "2026-09-07": 283947.0,
+   "2026-09-13": 45634.0,
+   "2026-09-20": 62044.0
+  },
+  "AXTI": {
+   "2026-08-30": 36262.0,
+   "2026-09-07": 34337.0,
+   "2026-09-13": 36112.0,
+   "2026-09-20": 22482.0
+  },
+  "COIN": {
+   "2026-08-30": 325989.0,
+   "2026-09-07": 220694.0,
+   "2026-09-13": 96509.0,
+   "2026-09-20": 136570.0
+  },
+  "CRCL": {
+   "2026-08-30": 520200.0,
+   "2026-09-07": 617535.0,
+   "2026-09-13": 524307.0,
+   "2026-09-20": 1125581.0
+  },
+  "EWJ": {
+   "2026-08-30": 3287.0,
+   "2026-09-07": 2582.0,
+   "2026-09-13": 2171.0,
+   "2026-09-20": 477.0
+  },
+  "EWY": {
+   "2026-08-30": 594057.0,
+   "2026-09-07": 1668504.0,
+   "2026-09-13": 256180.0,
+   "2026-09-20": 122416.0
+  },
+  "HOOD": {
+   "2026-08-30": 118930.0,
+   "2026-09-07": 176915.0,
+   "2026-09-13": 201585.0,
+   "2026-09-20": 170171.0
+  },
+  "INTC": {
+   "2026-08-30": 143656.0,
+   "2026-09-07": 2503018.0,
+   "2026-09-13": 173053.0,
+   "2026-09-20": 537461.0
+  },
+  "JPM": {
+   "2026-08-30": 585.0,
+   "2026-09-07": 8211.0,
+   "2026-09-13": 1442.0,
+   "2026-09-20": 4209.0
+  },
+  "LLY": {
+   "2026-08-30": 1000.0,
+   "2026-09-07": 23082.0,
+   "2026-09-13": 5670.0,
+   "2026-09-20": 5853.0
+  },
+  "META": {
+   "2026-08-30": 122359.0,
+   "2026-09-07": 163750.0,
+   "2026-09-13": 58181.0,
+   "2026-09-20": 366128.0
+  },
+  "MSTR": {
+   "2026-08-30": 3335908.0,
+   "2026-09-07": 2141660.0,
+   "2026-09-13": 1398618.0,
+   "2026-09-20": 2105670.0
+  },
+  "MU": {
+   "2026-08-30": 779188.0,
+   "2026-09-07": 1696408.0,
+   "2026-09-13": 2386750.0,
+   "2026-09-20": 648904.0
+  },
+  "NOK": {
+   "2026-08-30": 1083.0,
+   "2026-09-07": 4660.0,
+   "2026-09-13": 20444.0,
+   "2026-09-20": 16668.0
+  },
+  "PAYP": {
+   "2026-08-30": 2480.0,
+   "2026-09-07": 1043.0,
+   "2026-09-13": 761.0,
+   "2026-09-20": 1386.0
+  },
+  "PLTR": {
+   "2026-08-30": 131636.0,
+   "2026-09-07": 39099.0,
+   "2026-09-13": 17409.0,
+   "2026-09-20": 99304.0
+  },
+  "QCOM": {
+   "2026-08-30": 8649.0,
+   "2026-09-07": 48662.0,
+   "2026-09-13": 55431.0,
+   "2026-09-20": 8973.0
+  },
+  "QQQ": {
+   "2026-08-30": 805872.0,
+   "2026-09-07": 1713487.0,
+   "2026-09-13": 649668.0,
+   "2026-09-20": 1126994.0
+  },
+  "SNDK": {
+   "2026-08-30": 2498710.0,
+   "2026-09-07": 4214686.0,
+   "2026-09-13": 20723221.0,
+   "2026-09-20": 2719724.0
+  },
+  "SPY": {
+   "2026-08-30": 1060572.0,
+   "2026-09-07": 288330.0,
+   "2026-09-13": 141760.0,
+   "2026-09-20": 355276.0
+  },
+  "TSLA": {
+   "2026-08-30": 374381.0,
+   "2026-09-07": 262559.0,
+   "2026-09-13": 348780.0,
+   "2026-09-20": 102278.0
+  },
+  "TSM": {
+   "2026-08-30": 13627.0,
+   "2026-09-07": 14834.0,
+   "2026-09-13": 14427.0,
+   "2026-09-20": 16229.0
+  }
+ },
+ "venues": {
+  "bybit": {
+   "kline_endpoint": "GET https://api.bybit.com/v5/market/kline?category=linear&symbol={SYMBOL}&interval=60&start={open_ms}&end={open_ms}&limit=5",
+   "caveats": "1) Scope: I fetched all 23 symbols x 4 bars = 92 rows. Every requested candle exists. None is -1.\n2) Timestamps: Bybit v5 kline startTime (list[0]) is in milliseconds. interval=60 means a 1-hour bar. For each row the script kept only the candle whose startTime is exactly the requested instant in ms, and it records that value in the note (for example 1788116400000 = 2026-08-30T19:00:00Z).\n3) Volume field: quote_volume_usd is Bybit's own 'turnover' field (list[6]). That is the notional traded in USDT, summed from the fills. No conversion with close or a multiplier was applied. Linear contracts have a multiplier of 1 base unit. 'volume' (list[5]) is in base units (shares) and appears in the note as base_vol. As a check, base_vol x close is close to turnover. The rows treat USDT as equal to USD without adjusting for the USDT/USD rate.\n4) Eight bars have a real candle with 0 volume and 0 turnover: LLY 08-30 and 09-20, JPM 09-13, EWJ 08-30 and 09-07, NOK(NOKIAUSDT) 09-13. These are hours with no trades, so the rows report 0, not -1.\n5) NOK maps to Bybit symbol NOKIAUSDT, as given in venue_symbols.json.\n6) Fetched 2026-09-23 around 08:20 UTC. Raw results: /private/tmp/claude-501/-Users-stas-workspace-other-prop-strategy/8264e0b6-3c34-4ace-8fc7-ffdb42610a75/scratchpad/bybit_bars.json. Script: .../scratchpad/bybit_k.py. No repo changes.",
+   "bars": {
+    "SNDK": {
+     "2026-08-30": {
+      "symbol": "SNDKUSDT",
+      "usd": 93836.9325
+     },
+     "2026-09-07": {
+      "symbol": "SNDKUSDT",
+      "usd": 182755.9802
+     },
+     "2026-09-13": {
+      "symbol": "SNDKUSDT",
+      "usd": 1704321.0798
+     },
+     "2026-09-20": {
+      "symbol": "SNDKUSDT",
+      "usd": 334008.5352
+     }
+    },
+    "AAPL": {
+     "2026-08-30": {
+      "symbol": "AAPLUSDT",
+      "usd": 113604.5268
+     },
+     "2026-09-07": {
+      "symbol": "AAPLUSDT",
+      "usd": 20701.4775
+     },
+     "2026-09-13": {
+      "symbol": "AAPLUSDT",
+      "usd": 14570.9175
+     },
+     "2026-09-20": {
+      "symbol": "AAPLUSDT",
+      "usd": 105410.8627
+     }
+    },
+    "MU": {
+     "2026-08-30": {
+      "symbol": "MUUSDT",
+      "usd": 22030.878
+     },
+     "2026-09-07": {
+      "symbol": "MUUSDT",
+      "usd": 125169.7676
+     },
+     "2026-09-13": {
+      "symbol": "MUUSDT",
+      "usd": 212182.5314
+     },
+     "2026-09-20": {
+      "symbol": "MUUSDT",
+      "usd": 97921.3856
+     }
+    },
+    "CRCL": {
+     "2026-08-30": {
+      "symbol": "CRCLUSDT",
+      "usd": 48552.6979
+     },
+     "2026-09-07": {
+      "symbol": "CRCLUSDT",
+      "usd": 18823.7902
+     },
+     "2026-09-13": {
+      "symbol": "CRCLUSDT",
+      "usd": 45354.2734
+     },
+     "2026-09-20": {
+      "symbol": "CRCLUSDT",
+      "usd": 220308.6508
+     }
+    },
+    "MSTR": {
+     "2026-08-30": {
+      "symbol": "MSTRUSDT",
+      "usd": 797766.0138
+     },
+     "2026-09-07": {
+      "symbol": "MSTRUSDT",
+      "usd": 720462.5161
+     },
+     "2026-09-13": {
+      "symbol": "MSTRUSDT",
+      "usd": 2363544.0531
+     },
+     "2026-09-20": {
+      "symbol": "MSTRUSDT",
+      "usd": 519929.0421
+     }
+    },
+    "INTC": {
+     "2026-08-30": {
+      "symbol": "INTCUSDT",
+      "usd": 15926.6153
+     },
+     "2026-09-07": {
+      "symbol": "INTCUSDT",
+      "usd": 361939.9407
+     },
+     "2026-09-13": {
+      "symbol": "INTCUSDT",
+      "usd": 30066.4848
+     },
+     "2026-09-20": {
+      "symbol": "INTCUSDT",
+      "usd": 113234.3813
+     }
+    },
+    "META": {
+     "2026-08-30": {
+      "symbol": "METAUSDT",
+      "usd": 8821.77
+     },
+     "2026-09-07": {
+      "symbol": "METAUSDT",
+      "usd": 7410.574
+     },
+     "2026-09-13": {
+      "symbol": "METAUSDT",
+      "usd": 4374.4445
+     },
+     "2026-09-20": {
+      "symbol": "METAUSDT",
+      "usd": 52826.5568
+     }
+    },
+    "TSLA": {
+     "2026-08-30": {
+      "symbol": "TSLAUSDT",
+      "usd": 47859.0438
+     },
+     "2026-09-07": {
+      "symbol": "TSLAUSDT",
+      "usd": 21157.2145
+     },
+     "2026-09-13": {
+      "symbol": "TSLAUSDT",
+      "usd": 100491.9816
+     },
+     "2026-09-20": {
+      "symbol": "TSLAUSDT",
+      "usd": 25165.1471
+     }
+    },
+    "EWY": {
+     "2026-08-30": {
+      "symbol": "EWYUSDT",
+      "usd": 13521.2968
+     },
+     "2026-09-07": {
+      "symbol": "EWYUSDT",
+      "usd": 40372.7648
+     },
+     "2026-09-13": {
+      "symbol": "EWYUSDT",
+      "usd": 23995.2463
+     },
+     "2026-09-20": {
+      "symbol": "EWYUSDT",
+      "usd": 12670.9649
+     }
+    },
+    "QQQ": {
+     "2026-08-30": {
+      "symbol": "QQQUSDT",
+      "usd": 30542.63
+     },
+     "2026-09-07": {
+      "symbol": "QQQUSDT",
+      "usd": 16556.7687
+     },
+     "2026-09-13": {
+      "symbol": "QQQUSDT",
+      "usd": 57618.3607
+     },
+     "2026-09-20": {
+      "symbol": "QQQUSDT",
+      "usd": 9214.8322
+     }
+    },
+    "AMZN": {
+     "2026-08-30": {
+      "symbol": "AMZNUSDT",
+      "usd": 2228.2495
+     },
+     "2026-09-07": {
+      "symbol": "AMZNUSDT",
+      "usd": 36499.629
+     },
+     "2026-09-13": {
+      "symbol": "AMZNUSDT",
+      "usd": 1802.1055
+     },
+     "2026-09-20": {
+      "symbol": "AMZNUSDT",
+      "usd": 1998.9854
+     }
+    },
+    "COIN": {
+     "2026-08-30": {
+      "symbol": "COINUSDT",
+      "usd": 2073.8545
+     },
+     "2026-09-07": {
+      "symbol": "COINUSDT",
+      "usd": 1851.1966
+     },
+     "2026-09-13": {
+      "symbol": "COINUSDT",
+      "usd": 5744.4556
+     },
+     "2026-09-20": {
+      "symbol": "COINUSDT",
+      "usd": 34876.289
+     }
+    },
+    "HOOD": {
+     "2026-08-30": {
+      "symbol": "HOODUSDT",
+      "usd": 7594.2167
+     },
+     "2026-09-07": {
+      "symbol": "HOODUSDT",
+      "usd": 57518.2766
+     },
+     "2026-09-13": {
+      "symbol": "HOODUSDT",
+      "usd": 12474.1161
+     },
+     "2026-09-20": {
+      "symbol": "HOODUSDT",
+      "usd": 60510.8882
+     }
+    },
+    "AAOI": {
+     "2026-08-30": {
+      "symbol": "AAOIUSDT",
+      "usd": 3264.8656
+     },
+     "2026-09-07": {
+      "symbol": "AAOIUSDT",
+      "usd": 2954.5042
+     },
+     "2026-09-13": {
+      "symbol": "AAOIUSDT",
+      "usd": 29948.9214
+     },
+     "2026-09-20": {
+      "symbol": "AAOIUSDT",
+      "usd": 2317.7203
+     }
+    },
+    "SPY": {
+     "2026-08-30": {
+      "symbol": "SPYUSDT",
+      "usd": 9426.1712
+     },
+     "2026-09-07": {
+      "symbol": "SPYUSDT",
+      "usd": 13659.8593
+     },
+     "2026-09-13": {
+      "symbol": "SPYUSDT",
+      "usd": 2174.5706
+     },
+     "2026-09-20": {
+      "symbol": "SPYUSDT",
+      "usd": 8071.1684
+     }
+    },
+    "PLTR": {
+     "2026-08-30": {
+      "symbol": "PLTRUSDT",
+      "usd": 9414.8966
+     },
+     "2026-09-07": {
+      "symbol": "PLTRUSDT",
+      "usd": 6108.1148
+     },
+     "2026-09-13": {
+      "symbol": "PLTRUSDT",
+      "usd": 1801.9593
+     },
+     "2026-09-20": {
+      "symbol": "PLTRUSDT",
+      "usd": 6198.2262
+     }
+    },
+    "AXTI": {
+     "2026-08-30": {
+      "symbol": "AXTIUSDT",
+      "usd": 2461.6574
+     },
+     "2026-09-07": {
+      "symbol": "AXTIUSDT",
+      "usd": 5629.64
+     },
+     "2026-09-13": {
+      "symbol": "AXTIUSDT",
+      "usd": 4748.2809
+     },
+     "2026-09-20": {
+      "symbol": "AXTIUSDT",
+      "usd": 11748.7006
+     }
+    },
+    "LLY": {
+     "2026-08-30": {
+      "symbol": "LLYUSDT",
+      "usd": 0
+     },
+     "2026-09-07": {
+      "symbol": "LLYUSDT",
+      "usd": 792.9339
+     },
+     "2026-09-13": {
+      "symbol": "LLYUSDT",
+      "usd": 1360.5111
+     },
+     "2026-09-20": {
+      "symbol": "LLYUSDT",
+      "usd": 0
+     }
+    },
+    "TSM": {
+     "2026-08-30": {
+      "symbol": "TSMUSDT",
+      "usd": 84.0746
+     },
+     "2026-09-07": {
+      "symbol": "TSMUSDT",
+      "usd": 113.2172
+     },
+     "2026-09-13": {
+      "symbol": "TSMUSDT",
+      "usd": 577.2692
+     },
+     "2026-09-20": {
+      "symbol": "TSMUSDT",
+      "usd": 440.8165
+     }
+    },
+    "QCOM": {
+     "2026-08-30": {
+      "symbol": "QCOMUSDT",
+      "usd": 704.3252
+     },
+     "2026-09-07": {
+      "symbol": "QCOMUSDT",
+      "usd": 829.9871
+     },
+     "2026-09-13": {
+      "symbol": "QCOMUSDT",
+      "usd": 680.8159
+     },
+     "2026-09-20": {
+      "symbol": "QCOMUSDT",
+      "usd": 399.3248
+     }
+    },
+    "JPM": {
+     "2026-08-30": {
+      "symbol": "JPMUSDT",
+      "usd": 46.3822
+     },
+     "2026-09-07": {
+      "symbol": "JPMUSDT",
+      "usd": 93.5017
+     },
+     "2026-09-13": {
+      "symbol": "JPMUSDT",
+      "usd": 0
+     },
+     "2026-09-20": {
+      "symbol": "JPMUSDT",
+      "usd": 788.4308
+     }
+    },
+    "EWJ": {
+     "2026-08-30": {
+      "symbol": "EWJUSDT",
+      "usd": 0
+     },
+     "2026-09-07": {
+      "symbol": "EWJUSDT",
+      "usd": 0
+     },
+     "2026-09-13": {
+      "symbol": "EWJUSDT",
+      "usd": 394.6982
+     },
+     "2026-09-20": {
+      "symbol": "EWJUSDT",
+      "usd": 38.5962
+     }
+    },
+    "NOK": {
+     "2026-08-30": {
+      "symbol": "NOKIAUSDT",
+      "usd": 1477.003
+     },
+     "2026-09-07": {
+      "symbol": "NOKIAUSDT",
+      "usd": 50.3916
+     },
+     "2026-09-13": {
+      "symbol": "NOKIAUSDT",
+      "usd": 0
+     },
+     "2026-09-20": {
+      "symbol": "NOKIAUSDT",
+      "usd": 249.1145
+     }
+    }
+   }
+  },
+  "okx": {
+   "kline_endpoint": "GET https://www.okx.com/api/v5/market/history-candles?instId={SYM}&bar=1H&after={T_ms+3600000}&before={T_ms-1}&limit=5 (public, no keys)",
+   "caveats": "All 88 rows (22 symbols x 4 bars) exist. For every row, the candle ts field (OKX uses milliseconds since epoch, candle OPEN time; interval name \"1H\") matched the requested instant exactly: 1788116400000=2026-08-30T19:00Z, 1788807600000=2026-09-07T19:00Z, 1789326000000=2026-09-13T19:00Z, 1789930800000=2026-09-20T19:00Z. Every candle had confirm=1 (closed). quote_volume_usd is OKX's native volCcyQuote field (candle index 7), which is quote-currency volume in USDT; USDT is counted 1:1 as USD, with no conversion applied. I did not convert from contracts. As a cross-check I computed contracts x ctVal (ctVal=1 share for all 22 SWAPs, from /api/v5/public/instruments?instType=SWAP) x bar close. That product is within about 0.5% of volCcyQuote on every row; the gap is expected, since volCcyQuote is summed per trade while the check uses one close price. OKX volume counts one side only, not buys plus sells added together. Raw responses are saved in /private/tmp/claude-501/-Users-stas-workspace-other-prop-strategy/8264e0b6-3c34-4ace-8fc7-ffdb42610a75/scratchpad/okx_bars.json and the script is okx_bars.py in the same folder. No repo changes.",
+   "bars": {
+    "SNDK": {
+     "2026-08-30": {
+      "symbol": "SNDK-USDT-SWAP",
+      "usd": 1207429.41565
+     },
+     "2026-09-07": {
+      "symbol": "SNDK-USDT-SWAP",
+      "usd": 808915.65728
+     },
+     "2026-09-13": {
+      "symbol": "SNDK-USDT-SWAP",
+      "usd": 15722787.43772
+     },
+     "2026-09-20": {
+      "symbol": "SNDK-USDT-SWAP",
+      "usd": 2632575.0939
+     }
+    },
+    "MU": {
+     "2026-08-30": {
+      "symbol": "MU-USDT-SWAP",
+      "usd": 256352.4331
+     },
+     "2026-09-07": {
+      "symbol": "MU-USDT-SWAP",
+      "usd": 304312.9743
+     },
+     "2026-09-13": {
+      "symbol": "MU-USDT-SWAP",
+      "usd": 529541.2504
+     },
+     "2026-09-20": {
+      "symbol": "MU-USDT-SWAP",
+      "usd": 644969.1229
+     }
+    },
+    "CRCL": {
+     "2026-08-30": {
+      "symbol": "CRCL-USDT-SWAP",
+      "usd": 109272.832
+     },
+     "2026-09-07": {
+      "symbol": "CRCL-USDT-SWAP",
+      "usd": 90221.245
+     },
+     "2026-09-13": {
+      "symbol": "CRCL-USDT-SWAP",
+      "usd": 53436.227
+     },
+     "2026-09-20": {
+      "symbol": "CRCL-USDT-SWAP",
+      "usd": 308424.606
+     }
+    },
+    "MSTR": {
+     "2026-08-30": {
+      "symbol": "MSTR-USDT-SWAP",
+      "usd": 570353.5417
+     },
+     "2026-09-07": {
+      "symbol": "MSTR-USDT-SWAP",
+      "usd": 952524.3528
+     },
+     "2026-09-13": {
+      "symbol": "MSTR-USDT-SWAP",
+      "usd": 194605.1556
+     },
+     "2026-09-20": {
+      "symbol": "MSTR-USDT-SWAP",
+      "usd": 303362.8596
+     }
+    },
+    "INTC": {
+     "2026-08-30": {
+      "symbol": "INTC-USDT-SWAP",
+      "usd": 37201.06
+     },
+     "2026-09-07": {
+      "symbol": "INTC-USDT-SWAP",
+      "usd": 460489.289
+     },
+     "2026-09-13": {
+      "symbol": "INTC-USDT-SWAP",
+      "usd": 132178.293
+     },
+     "2026-09-20": {
+      "symbol": "INTC-USDT-SWAP",
+      "usd": 189006.013
+     }
+    },
+    "QQQ": {
+     "2026-08-30": {
+      "symbol": "QQQ-USDT-SWAP",
+      "usd": 375811.6857
+     },
+     "2026-09-07": {
+      "symbol": "QQQ-USDT-SWAP",
+      "usd": 129730.8183
+     },
+     "2026-09-13": {
+      "symbol": "QQQ-USDT-SWAP",
+      "usd": 147902.6422
+     },
+     "2026-09-20": {
+      "symbol": "QQQ-USDT-SWAP",
+      "usd": 215678.322
+     }
+    },
+    "AAOI": {
+     "2026-08-30": {
+      "symbol": "AAOI-USDT-SWAP",
+      "usd": 86964.5131
+     },
+     "2026-09-07": {
+      "symbol": "AAOI-USDT-SWAP",
+      "usd": 44389.4528
+     },
+     "2026-09-13": {
+      "symbol": "AAOI-USDT-SWAP",
+      "usd": 29282.5533
+     },
+     "2026-09-20": {
+      "symbol": "AAOI-USDT-SWAP",
+      "usd": 62539.3179
+     }
+    },
+    "TSLA": {
+     "2026-08-30": {
+      "symbol": "TSLA-USDT-SWAP",
+      "usd": 106229.6574
+     },
+     "2026-09-07": {
+      "symbol": "TSLA-USDT-SWAP",
+      "usd": 35358.7542
+     },
+     "2026-09-13": {
+      "symbol": "TSLA-USDT-SWAP",
+      "usd": 208995.6518
+     },
+     "2026-09-20": {
+      "symbol": "TSLA-USDT-SWAP",
+      "usd": 53401.7859
+     }
+    },
+    "META": {
+     "2026-08-30": {
+      "symbol": "META-USDT-SWAP",
+      "usd": 3736.1097
+     },
+     "2026-09-07": {
+      "symbol": "META-USDT-SWAP",
+      "usd": 8972.1112
+     },
+     "2026-09-13": {
+      "symbol": "META-USDT-SWAP",
+      "usd": 10172.0257
+     },
+     "2026-09-20": {
+      "symbol": "META-USDT-SWAP",
+      "usd": 71448.5661
+     }
+    },
+    "AXTI": {
+     "2026-08-30": {
+      "symbol": "AXTI-USDT-SWAP",
+      "usd": 28848.8428
+     },
+     "2026-09-07": {
+      "symbol": "AXTI-USDT-SWAP",
+      "usd": 37869.3068
+     },
+     "2026-09-13": {
+      "symbol": "AXTI-USDT-SWAP",
+      "usd": 7555.4879
+     },
+     "2026-09-20": {
+      "symbol": "AXTI-USDT-SWAP",
+      "usd": 6507.0907
+     }
+    },
+    "AAPL": {
+     "2026-08-30": {
+      "symbol": "AAPL-USDT-SWAP",
+      "usd": 24470.4213
+     },
+     "2026-09-07": {
+      "symbol": "AAPL-USDT-SWAP",
+      "usd": 28780.0082
+     },
+     "2026-09-13": {
+      "symbol": "AAPL-USDT-SWAP",
+      "usd": 16045.675
+     },
+     "2026-09-20": {
+      "symbol": "AAPL-USDT-SWAP",
+      "usd": 47457.0039
+     }
+    },
+    "AMZN": {
+     "2026-08-30": {
+      "symbol": "AMZN-USDT-SWAP",
+      "usd": 1679.4179
+     },
+     "2026-09-07": {
+      "symbol": "AMZN-USDT-SWAP",
+      "usd": 37114.0305
+     },
+     "2026-09-13": {
+      "symbol": "AMZN-USDT-SWAP",
+      "usd": 2067.6444
+     },
+     "2026-09-20": {
+      "symbol": "AMZN-USDT-SWAP",
+      "usd": 2781.452
+     }
+    },
+    "EWY": {
+     "2026-08-30": {
+      "symbol": "EWY-USDT-SWAP",
+      "usd": 24415.1504
+     },
+     "2026-09-07": {
+      "symbol": "EWY-USDT-SWAP",
+      "usd": 249051.2654
+     },
+     "2026-09-13": {
+      "symbol": "EWY-USDT-SWAP",
+      "usd": 24782.5843
+     },
+     "2026-09-20": {
+      "symbol": "EWY-USDT-SWAP",
+      "usd": 7079.6318
+     }
+    },
+    "HOOD": {
+     "2026-08-30": {
+      "symbol": "HOOD-USDT-SWAP",
+      "usd": 14431.257
+     },
+     "2026-09-07": {
+      "symbol": "HOOD-USDT-SWAP",
+      "usd": 28987.473
+     },
+     "2026-09-13": {
+      "symbol": "HOOD-USDT-SWAP",
+      "usd": 3599.223
+     },
+     "2026-09-20": {
+      "symbol": "HOOD-USDT-SWAP",
+      "usd": 36152.66
+     }
+    },
+    "SPY": {
+     "2026-08-30": {
+      "symbol": "SPY-USDT-SWAP",
+      "usd": 29710.6833
+     },
+     "2026-09-07": {
+      "symbol": "SPY-USDT-SWAP",
+      "usd": 7065.8373
+     },
+     "2026-09-13": {
+      "symbol": "SPY-USDT-SWAP",
+      "usd": 14524.3066
+     },
+     "2026-09-20": {
+      "symbol": "SPY-USDT-SWAP",
+      "usd": 5160.0335
+     }
+    },
+    "COIN": {
+     "2026-08-30": {
+      "symbol": "COIN-USDT-SWAP",
+      "usd": 9001.6308
+     },
+     "2026-09-07": {
+      "symbol": "COIN-USDT-SWAP",
+      "usd": 15705.8715
+     },
+     "2026-09-13": {
+      "symbol": "COIN-USDT-SWAP",
+      "usd": 11139.5863
+     },
+     "2026-09-20": {
+      "symbol": "COIN-USDT-SWAP",
+      "usd": 39389.6582
+     }
+    },
+    "QCOM": {
+     "2026-08-30": {
+      "symbol": "QCOM-USDT-SWAP",
+      "usd": 9998.3043
+     },
+     "2026-09-07": {
+      "symbol": "QCOM-USDT-SWAP",
+      "usd": 8252.569
+     },
+     "2026-09-13": {
+      "symbol": "QCOM-USDT-SWAP",
+      "usd": 56140.7266
+     },
+     "2026-09-20": {
+      "symbol": "QCOM-USDT-SWAP",
+      "usd": 21715.8604
+     }
+    },
+    "TSM": {
+     "2026-08-30": {
+      "symbol": "TSM-USDT-SWAP",
+      "usd": 15750.3536
+     },
+     "2026-09-07": {
+      "symbol": "TSM-USDT-SWAP",
+      "usd": 4718.9876
+     },
+     "2026-09-13": {
+      "symbol": "TSM-USDT-SWAP",
+      "usd": 9704.1874
+     },
+     "2026-09-20": {
+      "symbol": "TSM-USDT-SWAP",
+      "usd": 19822.5949
+     }
+    },
+    "PLTR": {
+     "2026-08-30": {
+      "symbol": "PLTR-USDT-SWAP",
+      "usd": 21894.2441
+     },
+     "2026-09-07": {
+      "symbol": "PLTR-USDT-SWAP",
+      "usd": 5660.9742
+     },
+     "2026-09-13": {
+      "symbol": "PLTR-USDT-SWAP",
+      "usd": 1549.4041
+     },
+     "2026-09-20": {
+      "symbol": "PLTR-USDT-SWAP",
+      "usd": 8524.3875
+     }
+    },
+    "NOK": {
+     "2026-08-30": {
+      "symbol": "NOK-USDT-SWAP",
+      "usd": 375.1615
+     },
+     "2026-09-07": {
+      "symbol": "NOK-USDT-SWAP",
+      "usd": 62.7726
+     },
+     "2026-09-13": {
+      "symbol": "NOK-USDT-SWAP",
+      "usd": 1114.7573
+     },
+     "2026-09-20": {
+      "symbol": "NOK-USDT-SWAP",
+      "usd": 1733.7638
+     }
+    },
+    "LLY": {
+     "2026-08-30": {
+      "symbol": "LLY-USDT-SWAP",
+      "usd": 846.2344
+     },
+     "2026-09-07": {
+      "symbol": "LLY-USDT-SWAP",
+      "usd": 287.0916
+     },
+     "2026-09-13": {
+      "symbol": "LLY-USDT-SWAP",
+      "usd": 2499.9957
+     },
+     "2026-09-20": {
+      "symbol": "LLY-USDT-SWAP",
+      "usd": 207.888
+     }
+    },
+    "EWJ": {
+     "2026-08-30": {
+      "symbol": "EWJ-USDT-SWAP",
+      "usd": 265.3149
+     },
+     "2026-09-07": {
+      "symbol": "EWJ-USDT-SWAP",
+      "usd": 376.7705
+     },
+     "2026-09-13": {
+      "symbol": "EWJ-USDT-SWAP",
+      "usd": 47.0037
+     },
+     "2026-09-20": {
+      "symbol": "EWJ-USDT-SWAP",
+      "usd": 95.5475
+     }
+    }
+   }
+  },
+  "mexc": {
+   "kline_endpoint": "GET https://contract.mexc.com/api/v1/contract/kline/{symbol}?interval=Min60&start={epoch_s-3600}&end={epoch_s+3600} (contract size from GET https://contract.mexc.com/api/v1/contract/detail?symbol={symbol})",
+   "caveats": "All 96 rows (24 symbols x 4 bars) exist; no -1 rows. For interval=Min60 the MEXC contract kline returns open times in SECONDS. I matched each bar by exact equality with the requested epoch: 1788116400 = 2026-08-30T19:00Z, 1788807600 = 2026-09-07T19:00Z, 1789326000 = 2026-09-13T19:00Z, 1789930800 = 2026-09-20T19:00Z. quote_volume_usd is the venue's own 'amount' field, which is USDT turnover per bar; USDT is taken as equal to USD. As a cross-check, 'vol' is a contract count, and contract count x contractSize (from /contract/detail) x bar close agrees with 'amount' to within 0.41% on every row. Each note shows that cross-check. Contract sizes: 0.001 for SNDK, SPY, META and LLY; 0.1 for NOK and PAYP; 0.01 for all the others. All symbols were listed before 2026-08-30. The earliest listing (createTime) is 2025-07-23 and the latest is SPY_USDT on 2026-07-10. On many thin names, bar volume sits at about $4.0k-$5.3k every week, which may reflect a fairly constant background of market-maker activity. Raw data: /private/tmp/claude-501/-Users-stas-workspace-other-prop-strategy/8264e0b6-3c34-4ace-8fc7-ffdb42610a75/scratchpad/mexc_bars.json. Script: mexc_bars.py in the same folder. Fetched 2026-09-23 UTC. No repo changes were made.",
+   "bars": {
+    "MU": {
+     "2026-08-30": {
+      "symbol": "MUSTOCK_USDT",
+      "usd": 1160371.01
+     },
+     "2026-09-07": {
+      "symbol": "MUSTOCK_USDT",
+      "usd": 4479115.08
+     },
+     "2026-09-13": {
+      "symbol": "MUSTOCK_USDT",
+      "usd": 269770.95
+     },
+     "2026-09-20": {
+      "symbol": "MUSTOCK_USDT",
+      "usd": 154202.12
+     }
+    },
+    "SNDK": {
+     "2026-08-30": {
+      "symbol": "SNDKSTOCK_USDT",
+      "usd": 346353.98
+     },
+     "2026-09-07": {
+      "symbol": "SNDKSTOCK_USDT",
+      "usd": 439697.34
+     },
+     "2026-09-13": {
+      "symbol": "SNDKSTOCK_USDT",
+      "usd": 602747.71
+     },
+     "2026-09-20": {
+      "symbol": "SNDKSTOCK_USDT",
+      "usd": 111842.28
+     }
+    },
+    "MSTR": {
+     "2026-08-30": {
+      "symbol": "MSTRSTOCK_USDT",
+      "usd": 920576.75
+     },
+     "2026-09-07": {
+      "symbol": "MSTRSTOCK_USDT",
+      "usd": 179645.63
+     },
+     "2026-09-13": {
+      "symbol": "MSTRSTOCK_USDT",
+      "usd": 764052.79
+     },
+     "2026-09-20": {
+      "symbol": "MSTRSTOCK_USDT",
+      "usd": 496646.12
+     }
+    },
+    "SPY": {
+     "2026-08-30": {
+      "symbol": "SPY_USDT",
+      "usd": 125492.24
+     },
+     "2026-09-07": {
+      "symbol": "SPY_USDT",
+      "usd": 4165.95
+     },
+     "2026-09-13": {
+      "symbol": "SPY_USDT",
+      "usd": 24691.24
+     },
+     "2026-09-20": {
+      "symbol": "SPY_USDT",
+      "usd": 461686.67
+     }
+    },
+    "INTC": {
+     "2026-08-30": {
+      "symbol": "INTCSTOCK_USDT",
+      "usd": 5552.83
+     },
+     "2026-09-07": {
+      "symbol": "INTCSTOCK_USDT",
+      "usd": 270629.61
+     },
+     "2026-09-13": {
+      "symbol": "INTCSTOCK_USDT",
+      "usd": 5367.7
+     },
+     "2026-09-20": {
+      "symbol": "INTCSTOCK_USDT",
+      "usd": 15746.91
+     }
+    },
+    "CRCL": {
+     "2026-08-30": {
+      "symbol": "CRCLSTOCK_USDT",
+      "usd": 6337.57
+     },
+     "2026-09-07": {
+      "symbol": "CRCLSTOCK_USDT",
+      "usd": 267956.83
+     },
+     "2026-09-13": {
+      "symbol": "CRCLSTOCK_USDT",
+      "usd": 87108.64
+     },
+     "2026-09-20": {
+      "symbol": "CRCLSTOCK_USDT",
+      "usd": 54802.55
+     }
+    },
+    "TSLA": {
+     "2026-08-30": {
+      "symbol": "TESLA_USDT",
+      "usd": 646181.84
+     },
+     "2026-09-07": {
+      "symbol": "TESLA_USDT",
+      "usd": 297204.58
+     },
+     "2026-09-13": {
+      "symbol": "TESLA_USDT",
+      "usd": 95417.18
+     },
+     "2026-09-20": {
+      "symbol": "TESLA_USDT",
+      "usd": 42874.58
+     }
+    },
+    "EWY": {
+     "2026-08-30": {
+      "symbol": "EWY_USDT",
+      "usd": 5335.3
+     },
+     "2026-09-07": {
+      "symbol": "EWY_USDT",
+      "usd": 24287.65
+     },
+     "2026-09-13": {
+      "symbol": "EWY_USDT",
+      "usd": 6124.73
+     },
+     "2026-09-20": {
+      "symbol": "EWY_USDT",
+      "usd": 4291.34
+     }
+    },
+    "AAPL": {
+     "2026-08-30": {
+      "symbol": "AAPLSTOCK_USDT",
+      "usd": 4459.09
+     },
+     "2026-09-07": {
+      "symbol": "AAPLSTOCK_USDT",
+      "usd": 9081.75
+     },
+     "2026-09-13": {
+      "symbol": "AAPLSTOCK_USDT",
+      "usd": 14447.47
+     },
+     "2026-09-20": {
+      "symbol": "AAPLSTOCK_USDT",
+      "usd": 53899.63
+     }
+    },
+    "META": {
+     "2026-08-30": {
+      "symbol": "METASTOCK_USDT",
+      "usd": 15141.78
+     },
+     "2026-09-07": {
+      "symbol": "METASTOCK_USDT",
+      "usd": 6973.09
+     },
+     "2026-09-13": {
+      "symbol": "METASTOCK_USDT",
+      "usd": 4938.57
+     },
+     "2026-09-20": {
+      "symbol": "METASTOCK_USDT",
+      "usd": 8854.78
+     }
+    },
+    "PLTR": {
+     "2026-08-30": {
+      "symbol": "PLTRSTOCK_USDT",
+      "usd": 9121.11
+     },
+     "2026-09-07": {
+      "symbol": "PLTRSTOCK_USDT",
+      "usd": 6106.75
+     },
+     "2026-09-13": {
+      "symbol": "PLTRSTOCK_USDT",
+      "usd": 6350.04
+     },
+     "2026-09-20": {
+      "symbol": "PLTRSTOCK_USDT",
+      "usd": 4077.01
+     }
+    },
+    "COIN": {
+     "2026-08-30": {
+      "symbol": "COINBASE_USDT",
+      "usd": 4223.92
+     },
+     "2026-09-07": {
+      "symbol": "COINBASE_USDT",
+      "usd": 34484.78
+     },
+     "2026-09-13": {
+      "symbol": "COINBASE_USDT",
+      "usd": 4586.12
+     },
+     "2026-09-20": {
+      "symbol": "COINBASE_USDT",
+      "usd": 13558.82
+     }
+    },
+    "QQQ": {
+     "2026-08-30": {
+      "symbol": "QQQSTOCK_USDT",
+      "usd": 4414.78
+     },
+     "2026-09-07": {
+      "symbol": "QQQSTOCK_USDT",
+      "usd": 5011.55
+     },
+     "2026-09-13": {
+      "symbol": "QQQSTOCK_USDT",
+      "usd": 4524.77
+     },
+     "2026-09-20": {
+      "symbol": "QQQSTOCK_USDT",
+      "usd": 4805.07
+     }
+    },
+    "AMZN": {
+     "2026-08-30": {
+      "symbol": "AMZNSTOCK_USDT",
+      "usd": 31223.73
+     },
+     "2026-09-07": {
+      "symbol": "AMZNSTOCK_USDT",
+      "usd": 4842.72
+     },
+     "2026-09-13": {
+      "symbol": "AMZNSTOCK_USDT",
+      "usd": 4154.68
+     },
+     "2026-09-20": {
+      "symbol": "AMZNSTOCK_USDT",
+      "usd": 4070.81
+     }
+    },
+    "TSM": {
+     "2026-08-30": {
+      "symbol": "TSMSTOCK_USDT",
+      "usd": 5220.45
+     },
+     "2026-09-07": {
+      "symbol": "TSMSTOCK_USDT",
+      "usd": 4012.06
+     },
+     "2026-09-13": {
+      "symbol": "TSMSTOCK_USDT",
+      "usd": 5258.14
+     },
+     "2026-09-20": {
+      "symbol": "TSMSTOCK_USDT",
+      "usd": 4958.5
+     }
+    },
+    "AAOI": {
+     "2026-08-30": {
+      "symbol": "AAOISTOCK_USDT",
+      "usd": 5090.87
+     },
+     "2026-09-07": {
+      "symbol": "AAOISTOCK_USDT",
+      "usd": 5265.43
+     },
+     "2026-09-13": {
+      "symbol": "AAOISTOCK_USDT",
+      "usd": 34929.64
+     },
+     "2026-09-20": {
+      "symbol": "AAOISTOCK_USDT",
+      "usd": 4702.26
+     }
+    },
+    "HOOD": {
+     "2026-08-30": {
+      "symbol": "ROBINHOOD_USDT",
+      "usd": 13268.56
+     },
+     "2026-09-07": {
+      "symbol": "ROBINHOOD_USDT",
+      "usd": 22824.06
+     },
+     "2026-09-13": {
+      "symbol": "ROBINHOOD_USDT",
+      "usd": 17989.56
+     },
+     "2026-09-20": {
+      "symbol": "ROBINHOOD_USDT",
+      "usd": 8069.94
+     }
+    },
+    "EWJ": {
+     "2026-08-30": {
+      "symbol": "EWJ_USDT",
+      "usd": 4250.14
+     },
+     "2026-09-07": {
+      "symbol": "EWJ_USDT",
+      "usd": 4108.67
+     },
+     "2026-09-13": {
+      "symbol": "EWJ_USDT",
+      "usd": 4119.89
+     },
+     "2026-09-20": {
+      "symbol": "EWJ_USDT",
+      "usd": 4270.16
+     }
+    },
+    "AXTI": {
+     "2026-08-30": {
+      "symbol": "AXTISTOCK_USDT",
+      "usd": 4078.8
+     },
+     "2026-09-07": {
+      "symbol": "AXTISTOCK_USDT",
+      "usd": 9804.43
+     },
+     "2026-09-13": {
+      "symbol": "AXTISTOCK_USDT",
+      "usd": 4147.32
+     },
+     "2026-09-20": {
+      "symbol": "AXTISTOCK_USDT",
+      "usd": 4599.05
+     }
+    },
+    "LLY": {
+     "2026-08-30": {
+      "symbol": "LLYSTOCK_USDT",
+      "usd": 3995.96
+     },
+     "2026-09-07": {
+      "symbol": "LLYSTOCK_USDT",
+      "usd": 4541.52
+     },
+     "2026-09-13": {
+      "symbol": "LLYSTOCK_USDT",
+      "usd": 4108.44
+     },
+     "2026-09-20": {
+      "symbol": "LLYSTOCK_USDT",
+      "usd": 4211.32
+     }
+    },
+    "QCOM": {
+     "2026-08-30": {
+      "symbol": "QCOMSTOCK_USDT",
+      "usd": 4063.23
+     },
+     "2026-09-07": {
+      "symbol": "QCOMSTOCK_USDT",
+      "usd": 4743.31
+     },
+     "2026-09-13": {
+      "symbol": "QCOMSTOCK_USDT",
+      "usd": 4230.83
+     },
+     "2026-09-20": {
+      "symbol": "QCOMSTOCK_USDT",
+      "usd": 9168.05
+     }
+    },
+    "NOK": {
+     "2026-08-30": {
+      "symbol": "NOKSTOCK_USDT",
+      "usd": 5797.91
+     },
+     "2026-09-07": {
+      "symbol": "NOKSTOCK_USDT",
+      "usd": 3993.09
+     },
+     "2026-09-13": {
+      "symbol": "NOKSTOCK_USDT",
+      "usd": 4005.52
+     },
+     "2026-09-20": {
+      "symbol": "NOKSTOCK_USDT",
+      "usd": 4147.81
+     }
+    },
+    "PAYP": {
+     "2026-08-30": {
+      "symbol": "PAYPSTOCK_USDT",
+      "usd": 4125.57
+     },
+     "2026-09-07": {
+      "symbol": "PAYPSTOCK_USDT",
+      "usd": 3944.13
+     },
+     "2026-09-13": {
+      "symbol": "PAYPSTOCK_USDT",
+      "usd": 4214.44
+     },
+     "2026-09-20": {
+      "symbol": "PAYPSTOCK_USDT",
+      "usd": 4039.08
+     }
+    },
+    "JPM": {
+     "2026-08-30": {
+      "symbol": "JPMSTOCK_USDT",
+      "usd": 4125.11
+     },
+     "2026-09-07": {
+      "symbol": "JPMSTOCK_USDT",
+      "usd": 4223.38
+     },
+     "2026-09-13": {
+      "symbol": "JPMSTOCK_USDT",
+      "usd": 4277.65
+     },
+     "2026-09-20": {
+      "symbol": "JPMSTOCK_USDT",
+      "usd": 3999.71
+     }
+    }
+   }
+  },
+  "bitget": {
+   "kline_endpoint": "GET https://api.bitget.com/api/v2/mix/market/candles (and /history-candles, cross-checked) ?symbol=<SYM>&productType=USDT-FUTURES&granularity=1H&startTime=<T-1h ms>&endTime=<T+1h ms>&limit=10",
+   "caveats": "All 92 bars (23 symbols x 4 instants) exist. No -1 rows. Bitget v2 mix candle rows have the form [ts_ms, open, high, low, close, baseVolume, quoteVolume]. The timestamp is in milliseconds and is the bar's open time. The interval code is granularity=1H. For each bar, the row's ts equals the requested instant exactly: 1788116400000, 1788807600000, 1789326000000 and 1789930800000 ms. The /candles and /history-candles endpoints returned identical rows for every bar. quote_volume_usd is Bitget's own quoteVolume field in USDT, with USDT taken as USD 1:1. No base-to-USD conversion was needed. As a sanity check, baseVolume x price matches quoteVolume (for example SNDK on 08-30: 87.098 x about 1496 = 130.3k). Contract sizeMultiplier is 0.01 for every symbol except SNDK, which is 0.001. baseVolume is reported in underlying units (shares), not contracts. The close field is that bar's close. Scratch files: /private/tmp/claude-501/-Users-stas-workspace-other-prop-strategy/8264e0b6-3c34-4ace-8fc7-ffdb42610a75/scratchpad/bitget_bars.py, bitget_bars.json, bitget_rows.json. No repo changes.",
+   "bars": {
+    "SNDK": {
+     "2026-08-30": {
+      "symbol": "SNDKUSDT",
+      "usd": 130357.65577
+     },
+     "2026-09-07": {
+      "symbol": "SNDKUSDT",
+      "usd": 149913.63376
+     },
+     "2026-09-13": {
+      "symbol": "SNDKUSDT",
+      "usd": 867231.63418
+     },
+     "2026-09-20": {
+      "symbol": "SNDKUSDT",
+      "usd": 83237.86024
+     }
+    },
+    "MSTR": {
+     "2026-08-30": {
+      "symbol": "MSTRUSDT",
+      "usd": 668801.6328
+     },
+     "2026-09-07": {
+      "symbol": "MSTRUSDT",
+      "usd": 1369486.2083
+     },
+     "2026-09-13": {
+      "symbol": "MSTRUSDT",
+      "usd": 481869.9327
+     },
+     "2026-09-20": {
+      "symbol": "MSTRUSDT",
+      "usd": 893564.079
+     }
+    },
+    "MU": {
+     "2026-08-30": {
+      "symbol": "MUUSDT",
+      "usd": 183093.4277
+     },
+     "2026-09-07": {
+      "symbol": "MUUSDT",
+      "usd": 1459018.6323
+     },
+     "2026-09-13": {
+      "symbol": "MUUSDT",
+      "usd": 187458.755
+     },
+     "2026-09-20": {
+      "symbol": "MUUSDT",
+      "usd": 15492.4721
+     }
+    },
+    "CRCL": {
+     "2026-08-30": {
+      "symbol": "CRCLUSDT",
+      "usd": 62589.0253
+     },
+     "2026-09-07": {
+      "symbol": "CRCLUSDT",
+      "usd": 39853.7986
+     },
+     "2026-09-13": {
+      "symbol": "CRCLUSDT",
+      "usd": 80245.9562
+     },
+     "2026-09-20": {
+      "symbol": "CRCLUSDT",
+      "usd": 122109.4766
+     }
+    },
+    "INTC": {
+     "2026-08-30": {
+      "symbol": "INTCUSDT",
+      "usd": 128101.6751
+     },
+     "2026-09-07": {
+      "symbol": "INTCUSDT",
+      "usd": 116418.2606
+     },
+     "2026-09-13": {
+      "symbol": "INTCUSDT",
+      "usd": 39020.8191
+     },
+     "2026-09-20": {
+      "symbol": "INTCUSDT",
+      "usd": 61442.7704
+     }
+    },
+    "TSLA": {
+     "2026-08-30": {
+      "symbol": "TSLAUSDT",
+      "usd": 28413.551
+     },
+     "2026-09-07": {
+      "symbol": "TSLAUSDT",
+      "usd": 29594.3372
+     },
+     "2026-09-13": {
+      "symbol": "TSLAUSDT",
+      "usd": 59873.4631
+     },
+     "2026-09-20": {
+      "symbol": "TSLAUSDT",
+      "usd": 8610.8307
+     }
+    },
+    "META": {
+     "2026-08-30": {
+      "symbol": "METAUSDT",
+      "usd": 8126.4409
+     },
+     "2026-09-07": {
+      "symbol": "METAUSDT",
+      "usd": 2911.0451
+     },
+     "2026-09-13": {
+      "symbol": "METAUSDT",
+      "usd": 771.6286
+     },
+     "2026-09-20": {
+      "symbol": "METAUSDT",
+      "usd": 44340.9597
+     }
+    },
+    "AAPL": {
+     "2026-08-30": {
+      "symbol": "AAPLUSDT",
+      "usd": 6016.6338
+     },
+     "2026-09-07": {
+      "symbol": "AAPLUSDT",
+      "usd": 6543.171
+     },
+     "2026-09-13": {
+      "symbol": "AAPLUSDT",
+      "usd": 3413.6909
+     },
+     "2026-09-20": {
+      "symbol": "AAPLUSDT",
+      "usd": 22801.0324
+     }
+    },
+    "HOOD": {
+     "2026-08-30": {
+      "symbol": "HOODUSDT",
+      "usd": 12139.9551
+     },
+     "2026-09-07": {
+      "symbol": "HOODUSDT",
+      "usd": 3493.1943
+     },
+     "2026-09-13": {
+      "symbol": "HOODUSDT",
+      "usd": 4424.8092
+     },
+     "2026-09-20": {
+      "symbol": "HOODUSDT",
+      "usd": 23951.4727
+     }
+    },
+    "COIN": {
+     "2026-08-30": {
+      "symbol": "COINUSDT",
+      "usd": 94922.287
+     },
+     "2026-09-07": {
+      "symbol": "COINUSDT",
+      "usd": 23104.0301
+     },
+     "2026-09-13": {
+      "symbol": "COINUSDT",
+      "usd": 3198.6594
+     },
+     "2026-09-20": {
+      "symbol": "COINUSDT",
+      "usd": 3111.0518
+     }
+    },
+    "QQQ": {
+     "2026-08-30": {
+      "symbol": "QQQUSDT",
+      "usd": 64067.628
+     },
+     "2026-09-07": {
+      "symbol": "QQQUSDT",
+      "usd": 47373.8805
+     },
+     "2026-09-13": {
+      "symbol": "QQQUSDT",
+      "usd": 93471.7443
+     },
+     "2026-09-20": {
+      "symbol": "QQQUSDT",
+      "usd": 66264.4222
+     }
+    },
+    "AMZN": {
+     "2026-08-30": {
+      "symbol": "AMZNUSDT",
+      "usd": 2440.1581
+     },
+     "2026-09-07": {
+      "symbol": "AMZNUSDT",
+      "usd": 19518.3682
+     },
+     "2026-09-13": {
+      "symbol": "AMZNUSDT",
+      "usd": 6789.1012
+     },
+     "2026-09-20": {
+      "symbol": "AMZNUSDT",
+      "usd": 810.4183
+     }
+    },
+    "AAOI": {
+     "2026-08-30": {
+      "symbol": "AAOIUSDT",
+      "usd": 9290.3344
+     },
+     "2026-09-07": {
+      "symbol": "AAOIUSDT",
+      "usd": 4382.179
+     },
+     "2026-09-13": {
+      "symbol": "AAOIUSDT",
+      "usd": 18693.0265
+     },
+     "2026-09-20": {
+      "symbol": "AAOIUSDT",
+      "usd": 500.3441
+     }
+    },
+    "EWY": {
+     "2026-08-30": {
+      "symbol": "EWYUSDT",
+      "usd": 5832.4702
+     },
+     "2026-09-07": {
+      "symbol": "EWYUSDT",
+      "usd": 56977.575
+     },
+     "2026-09-13": {
+      "symbol": "EWYUSDT",
+      "usd": 1929.1559
+     },
+     "2026-09-20": {
+      "symbol": "EWYUSDT",
+      "usd": 2357.4405
+     }
+    },
+    "PLTR": {
+     "2026-08-30": {
+      "symbol": "PLTRUSDT",
+      "usd": 38908.4962
+     },
+     "2026-09-07": {
+      "symbol": "PLTRUSDT",
+      "usd": 3487.9995
+     },
+     "2026-09-13": {
+      "symbol": "PLTRUSDT",
+      "usd": 609.0448
+     },
+     "2026-09-20": {
+      "symbol": "PLTRUSDT",
+      "usd": 590.729
+     }
+    },
+    "AXTI": {
+     "2026-08-30": {
+      "symbol": "AXTIUSDT",
+      "usd": 24101.2689
+     },
+     "2026-09-07": {
+      "symbol": "AXTIUSDT",
+      "usd": 4886.5743
+     },
+     "2026-09-13": {
+      "symbol": "AXTIUSDT",
+      "usd": 12125.0354
+     },
+     "2026-09-20": {
+      "symbol": "AXTIUSDT",
+      "usd": 9692.8984
+     }
+    },
+    "TSM": {
+     "2026-08-30": {
+      "symbol": "TSMUSDT",
+      "usd": 676.9241
+     },
+     "2026-09-07": {
+      "symbol": "TSMUSDT",
+      "usd": 61536.2561
+     },
+     "2026-09-13": {
+      "symbol": "TSMUSDT",
+      "usd": 2633.8049
+     },
+     "2026-09-20": {
+      "symbol": "TSMUSDT",
+      "usd": 4598.0796
+     }
+    },
+    "SPY": {
+     "2026-08-30": {
+      "symbol": "SPYUSDT",
+      "usd": 36605.9648
+     },
+     "2026-09-07": {
+      "symbol": "SPYUSDT",
+      "usd": 34529.7301
+     },
+     "2026-09-13": {
+      "symbol": "SPYUSDT",
+      "usd": 9323.217
+     },
+     "2026-09-20": {
+      "symbol": "SPYUSDT",
+      "usd": 29614.0599
+     }
+    },
+    "QCOM": {
+     "2026-08-30": {
+      "symbol": "QCOMUSDT",
+      "usd": 3928.7737
+     },
+     "2026-09-07": {
+      "symbol": "QCOMUSDT",
+      "usd": 2523.5794
+     },
+     "2026-09-13": {
+      "symbol": "QCOMUSDT",
+      "usd": 6085.8194
+     },
+     "2026-09-20": {
+      "symbol": "QCOMUSDT",
+      "usd": 196.211
+     }
+    },
+    "NOK": {
+     "2026-08-30": {
+      "symbol": "NOKSTOCKUSDT",
+      "usd": 121.24689
+     },
+     "2026-09-07": {
+      "symbol": "NOKSTOCKUSDT",
+      "usd": 1382.10593
+     },
+     "2026-09-13": {
+      "symbol": "NOKSTOCKUSDT",
+      "usd": 309.58733
+     },
+     "2026-09-20": {
+      "symbol": "NOKSTOCKUSDT",
+      "usd": 179.22832
+     }
+    },
+    "LLY": {
+     "2026-08-30": {
+      "symbol": "LLYUSDT",
+      "usd": 305.8089
+     },
+     "2026-09-07": {
+      "symbol": "LLYUSDT",
+      "usd": 287.2044
+     },
+     "2026-09-13": {
+      "symbol": "LLYUSDT",
+      "usd": 189.9015
+     },
+     "2026-09-20": {
+      "symbol": "LLYUSDT",
+      "usd": 288.8711
+     }
+    },
+    "EWJ": {
+     "2026-08-30": {
+      "symbol": "EWJUSDT",
+      "usd": 282.4132
+     },
+     "2026-09-07": {
+      "symbol": "EWJUSDT",
+      "usd": 112.9995
+     },
+     "2026-09-13": {
+      "symbol": "EWJUSDT",
+      "usd": 110.5513
+     },
+     "2026-09-20": {
+      "symbol": "EWJUSDT",
+      "usd": 154.5228
+     }
+    },
+    "JPM": {
+     "2026-08-30": {
+      "symbol": "JPMUSDT",
+      "usd": 264.5054
+     },
+     "2026-09-07": {
+      "symbol": "JPMUSDT",
+      "usd": 172.8831
+     },
+     "2026-09-13": {
+      "symbol": "JPMUSDT",
+      "usd": 195.3105
+     },
+     "2026-09-20": {
+      "symbol": "JPMUSDT",
+      "usd": 97.9938
+     }
+    }
+   }
+  },
+  "hyperliquid": {
+   "kline_endpoint": "POST https://api.hyperliquid.xyz/info {\"type\":\"candleSnapshot\",\"req\":{\"coin\":\"xyz:<TICKER>\",\"interval\":\"1h\",\"startTime\":<ms>,\"endTime\":<ms>}}; I asked for the window [target-1h, target+2h] and kept only the candle with t == target ms",
+   "caveats": "The USD values are computed, not reported by the venue. Hyperliquid candleSnapshot returns only base-asset volume \"v\", in units of the underlying, with no quote-volume field. quote_volume_usd = v \u00d7 that bar's close. The contract multiplier is 1: an HL perp is sized in units of the asset, and xyz perps settle in USDC, which I treat as USD. Because the conversion uses the close, not a VWAP, each value is off by roughly the hour's intrabar price range, well under 1% for these bars.\n\nI checked the timestamps against the exact requested instants. \"t\" is the open time in milliseconds, and each kept candle has t equal to the requested instant in ms. Each also has i == \"1h\" and T \u2212 t == 3599999 ms. The four opens are 1788116400000, 1788807600000, 1789326000000 and 1789930800000. All 76 rows (19 symbols \u00d7 4 bars) exist. None is -1.\n\nTwo bars have zero volume: xyz:NOK on 2026-08-30 and xyz:EWJ on 2026-09-20. In both the candle exists with n=0 trades and v=0.0, so 0 is the true volume, not a missing bar.\n\nEvery symbol is on the HIP-3 builder dex \"xyz\", so these volumes cover that dex only.\n\nI made no repo changes. The raw output and the script are in the scratchpad: /private/tmp/claude-501/-Users-stas-workspace-other-prop-strategy/8264e0b6-3c34-4ace-8fc7-ffdb42610a75/scratchpad/hl_bars.json, hl_rows.json and hl_bars.py. I fetched the data on 2026-09-23.",
+   "bars": {
+    "SNDK": {
+     "2026-08-30": {
+      "symbol": "xyz:SNDK",
+      "usd": 257389.31
+     },
+     "2026-09-07": {
+      "symbol": "xyz:SNDK",
+      "usd": 218684.26
+     },
+     "2026-09-13": {
+      "symbol": "xyz:SNDK",
+      "usd": 2557130.8
+     },
+     "2026-09-20": {
+      "symbol": "xyz:SNDK",
+      "usd": 179395.22
+     }
+    },
+    "META": {
+     "2026-08-30": {
+      "symbol": "xyz:META",
+      "usd": 49776.96
+     },
+     "2026-09-07": {
+      "symbol": "xyz:META",
+      "usd": 136665.42
+     },
+     "2026-09-13": {
+      "symbol": "xyz:META",
+      "usd": 58588.39
+     },
+     "2026-09-20": {
+      "symbol": "xyz:META",
+      "usd": 788289.86
+     }
+    },
+    "MU": {
+     "2026-08-30": {
+      "symbol": "xyz:MU",
+      "usd": 140514.38
+     },
+     "2026-09-07": {
+      "symbol": "xyz:MU",
+      "usd": 1010878.83
+     },
+     "2026-09-13": {
+      "symbol": "xyz:MU",
+      "usd": 687563.22
+     },
+     "2026-09-20": {
+      "symbol": "xyz:MU",
+      "usd": 413025.33
+     }
+    },
+    "CRCL": {
+     "2026-08-30": {
+      "symbol": "xyz:CRCL",
+      "usd": 42345.35
+     },
+     "2026-09-07": {
+      "symbol": "xyz:CRCL",
+      "usd": 303013.96
+     },
+     "2026-09-13": {
+      "symbol": "xyz:CRCL",
+      "usd": 155974.57
+     },
+     "2026-09-20": {
+      "symbol": "xyz:CRCL",
+      "usd": 109194.91
+     }
+    },
+    "INTC": {
+     "2026-08-30": {
+      "symbol": "xyz:INTC",
+      "usd": 72637.79
+     },
+     "2026-09-07": {
+      "symbol": "xyz:INTC",
+      "usd": 3623354.22
+     },
+     "2026-09-13": {
+      "symbol": "xyz:INTC",
+      "usd": 83691.93
+     },
+     "2026-09-20": {
+      "symbol": "xyz:INTC",
+      "usd": 192128.41
+     }
+    },
+    "AAPL": {
+     "2026-08-30": {
+      "symbol": "xyz:AAPL",
+      "usd": 49048.91
+     },
+     "2026-09-07": {
+      "symbol": "xyz:AAPL",
+      "usd": 114309.36
+     },
+     "2026-09-13": {
+      "symbol": "xyz:AAPL",
+      "usd": 32877.84
+     },
+     "2026-09-20": {
+      "symbol": "xyz:AAPL",
+      "usd": 46372.15
+     }
+    },
+    "MSTR": {
+     "2026-08-30": {
+      "symbol": "xyz:MSTR",
+      "usd": 667033.02
+     },
+     "2026-09-07": {
+      "symbol": "xyz:MSTR",
+      "usd": 235481.88
+     },
+     "2026-09-13": {
+      "symbol": "xyz:MSTR",
+      "usd": 234434.4
+     },
+     "2026-09-20": {
+      "symbol": "xyz:MSTR",
+      "usd": 90801.42
+     }
+    },
+    "EWY": {
+     "2026-08-30": {
+      "symbol": "xyz:EWY",
+      "usd": 393812.74
+     },
+     "2026-09-07": {
+      "symbol": "xyz:EWY",
+      "usd": 386572.59
+     },
+     "2026-09-13": {
+      "symbol": "xyz:EWY",
+      "usd": 343511.79
+     },
+     "2026-09-20": {
+      "symbol": "xyz:EWY",
+      "usd": 13806.47
+     }
+    },
+    "TSLA": {
+     "2026-08-30": {
+      "symbol": "xyz:TSLA",
+      "usd": 365276.9
+     },
+     "2026-09-07": {
+      "symbol": "xyz:TSLA",
+      "usd": 100515.6
+     },
+     "2026-09-13": {
+      "symbol": "xyz:TSLA",
+      "usd": 254303.82
+     },
+     "2026-09-20": {
+      "symbol": "xyz:TSLA",
+      "usd": 108318.17
+     }
+    },
+    "HOOD": {
+     "2026-08-30": {
+      "symbol": "xyz:HOOD",
+      "usd": 129779.16
+     },
+     "2026-09-07": {
+      "symbol": "xyz:HOOD",
+      "usd": 129480.92
+     },
+     "2026-09-13": {
+      "symbol": "xyz:HOOD",
+      "usd": 53798.2
+     },
+     "2026-09-20": {
+      "symbol": "xyz:HOOD",
+      "usd": 117235.85
+     }
+    },
+    "AMZN": {
+     "2026-08-30": {
+      "symbol": "xyz:AMZN",
+      "usd": 44519.96
+     },
+     "2026-09-07": {
+      "symbol": "xyz:AMZN",
+      "usd": 342595.15
+     },
+     "2026-09-13": {
+      "symbol": "xyz:AMZN",
+      "usd": 19344.13
+     },
+     "2026-09-20": {
+      "symbol": "xyz:AMZN",
+      "usd": 29738.4
+     }
+    },
+    "COIN": {
+     "2026-08-30": {
+      "symbol": "xyz:COIN",
+      "usd": 17061.58
+     },
+     "2026-09-07": {
+      "symbol": "xyz:COIN",
+      "usd": 109793.85
+     },
+     "2026-09-13": {
+      "symbol": "xyz:COIN",
+      "usd": 47172.31
+     },
+     "2026-09-20": {
+      "symbol": "xyz:COIN",
+      "usd": 107132.57
+     }
+    },
+    "PLTR": {
+     "2026-08-30": {
+      "symbol": "xyz:PLTR",
+      "usd": 41014.28
+     },
+     "2026-09-07": {
+      "symbol": "xyz:PLTR",
+      "usd": 53661.62
+     },
+     "2026-09-13": {
+      "symbol": "xyz:PLTR",
+      "usd": 8809.31
+     },
+     "2026-09-20": {
+      "symbol": "xyz:PLTR",
+      "usd": 32851.45
+     }
+    },
+    "NOK": {
+     "2026-08-30": {
+      "symbol": "xyz:NOK",
+      "usd": 0
+     },
+     "2026-09-07": {
+      "symbol": "xyz:NOK",
+      "usd": 180.67
+     },
+     "2026-09-13": {
+      "symbol": "xyz:NOK",
+      "usd": 520.33
+     },
+     "2026-09-20": {
+      "symbol": "xyz:NOK",
+      "usd": 386.56
+     }
+    },
+    "QCOM": {
+     "2026-08-30": {
+      "symbol": "xyz:QCOM",
+      "usd": 3504.29
+     },
+     "2026-09-07": {
+      "symbol": "xyz:QCOM",
+      "usd": 20935.27
+     },
+     "2026-09-13": {
+      "symbol": "xyz:QCOM",
+      "usd": 353.62
+     },
+     "2026-09-20": {
+      "symbol": "xyz:QCOM",
+      "usd": 1887.03
+     }
+    },
+    "TSM": {
+     "2026-08-30": {
+      "symbol": "xyz:TSM",
+      "usd": 2163.97
+     },
+     "2026-09-07": {
+      "symbol": "xyz:TSM",
+      "usd": 3766.21
+     },
+     "2026-09-13": {
+      "symbol": "xyz:TSM",
+      "usd": 1717.82
+     },
+     "2026-09-20": {
+      "symbol": "xyz:TSM",
+      "usd": 17461.24
+     }
+    },
+    "LLY": {
+     "2026-08-30": {
+      "symbol": "xyz:LLY",
+      "usd": 214.87
+     },
+     "2026-09-07": {
+      "symbol": "xyz:LLY",
+      "usd": 4330.94
+     },
+     "2026-09-13": {
+      "symbol": "xyz:LLY",
+      "usd": 13242.34
+     },
+     "2026-09-20": {
+      "symbol": "xyz:LLY",
+      "usd": 106.77
+     }
+    },
+    "AAOI": {
+     "2026-08-30": {
+      "symbol": "xyz:AAOI",
+      "usd": 2176.62
+     },
+     "2026-09-07": {
+      "symbol": "xyz:AAOI",
+      "usd": 5689.39
+     },
+     "2026-09-13": {
+      "symbol": "xyz:AAOI",
+      "usd": 7490.23
+     },
+     "2026-09-20": {
+      "symbol": "xyz:AAOI",
+      "usd": 4317.09
+     }
+    },
+    "EWJ": {
+     "2026-08-30": {
+      "symbol": "xyz:EWJ",
+      "usd": 1438.56
+     },
+     "2026-09-07": {
+      "symbol": "xyz:EWJ",
+      "usd": 665.85
+     },
+     "2026-09-13": {
+      "symbol": "xyz:EWJ",
+      "usd": 543.41
+     },
+     "2026-09-20": {
+      "symbol": "xyz:EWJ",
+      "usd": 0
+     }
+    }
+   }
+  },
+  "gate": {
+   "kline_endpoint": "GET https://api.gateio.ws/api/v4/futures/usdt/candlesticks?contract={SYMBOL}&interval=1h&from={unix_s}&to={unix_s} (public, no keys). Also GET /api/v4/futures/usdt/contracts/{SYMBOL} for quanto_multiplier and launch_time.",
+   "caveats": "All 92 rows are here: 23 symbols times 4 bars. 81 bars exist and 11 do not. The 11 missing ones are all the 2026-08-30T19:00:00Z bar. For 10 of those symbols (CRCL, MSTR, QQQ, AAPL, META, HOOD, COIN, TSLA, SPY, PLTR), Gate's launch_time for the contract is 2026-09-03T06:00:00Z. For AMZN it is 2026-08-31T10:00:00Z. Both are after the requested bar, so Gate returned an empty array and those rows are set to -1.\n\nTimestamps: Gate's candle field t is in unix SECONDS, and the interval is named \"1h\". I set from and to to the same instant: 1788116400 (2026-08-30 19:00Z), 1788807600 (09-07), 1789326000 (09-13) and 1789930800 (09-20). The script kept a candle only when int(t) exactly equalled the requested instant. Every returned candle matched.\n\nVolume units: quote_volume_usd is Gate's own \"sum\" field, which is the traded amount in USDT for that bar. It is USDT, treated as USD, with no peg adjustment. The \"v\" field is a count of contracts. As a cross-check I computed v x quanto_multiplier x close. The multiplier is 0.01 for most symbols, 0.1 for CRCL, INTC and NOK, and 0.001 for LLY. The check agrees with sum within about 0.3% on every bar. The small gap is expected because sum uses the actual fill prices, not the bar close. Each note records the v, multiplier and cross-check value.\n\nFetched on 2026-09-23 from the public endpoint with no keys. No repo changes were made. Scratch files are gate_bars.py, gate_bars.json and gate_rows.json in /private/tmp/claude-501/-Users-stas-workspace-other-prop-strategy/8264e0b6-3c34-4ace-8fc7-ffdb42610a75/scratchpad/.",
+   "bars": {
+    "SNDK": {
+     "2026-08-30": {
+      "symbol": "SNDK_USDT",
+      "usd": 1575373.64
+     },
+     "2026-09-07": {
+      "symbol": "SNDK_USDT",
+      "usd": 1848413.82
+     },
+     "2026-09-13": {
+      "symbol": "SNDK_USDT",
+      "usd": 3822299.27
+     },
+     "2026-09-20": {
+      "symbol": "SNDK_USDT",
+      "usd": 649426.84
+     }
+    },
+    "MU": {
+     "2026-08-30": {
+      "symbol": "MU_USDT",
+      "usd": 77711.62
+     },
+     "2026-09-07": {
+      "symbol": "MU_USDT",
+      "usd": 1049039.23
+     },
+     "2026-09-13": {
+      "symbol": "MU_USDT",
+      "usd": 547023.31
+     },
+     "2026-09-20": {
+      "symbol": "MU_USDT",
+      "usd": 48897.67
+     }
+    },
+    "CRCL": {
+     "2026-08-30": {
+      "symbol": "CRCL_USDT",
+      "usd": -1
+     },
+     "2026-09-07": {
+      "symbol": "CRCL_USDT",
+      "usd": 25344.03
+     },
+     "2026-09-13": {
+      "symbol": "CRCL_USDT",
+      "usd": 151615.12
+     },
+     "2026-09-20": {
+      "symbol": "CRCL_USDT",
+      "usd": 241503.87
+     }
+    },
+    "MSTR": {
+     "2026-08-30": {
+      "symbol": "MSTR_USDT",
+      "usd": -1
+     },
+     "2026-09-07": {
+      "symbol": "MSTR_USDT",
+      "usd": 97368.9
+     },
+     "2026-09-13": {
+      "symbol": "MSTR_USDT",
+      "usd": 135884.39
+     },
+     "2026-09-20": {
+      "symbol": "MSTR_USDT",
+      "usd": 148867.56
+     }
+    },
+    "QQQ": {
+     "2026-08-30": {
+      "symbol": "QQQ_USDT",
+      "usd": -1
+     },
+     "2026-09-07": {
+      "symbol": "QQQ_USDT",
+      "usd": 3372.11
+     },
+     "2026-09-13": {
+      "symbol": "QQQ_USDT",
+      "usd": 37412.85
+     },
+     "2026-09-20": {
+      "symbol": "QQQ_USDT",
+      "usd": 282142.84
+     }
+    },
+    "AAOI": {
+     "2026-08-30": {
+      "symbol": "AAOI_USDT",
+      "usd": 44969.74
+     },
+     "2026-09-07": {
+      "symbol": "AAOI_USDT",
+      "usd": 6274.9
+     },
+     "2026-09-13": {
+      "symbol": "AAOI_USDT",
+      "usd": 113942.6
+     },
+     "2026-09-20": {
+      "symbol": "AAOI_USDT",
+      "usd": 120420.52
+     }
+    },
+    "INTC": {
+     "2026-08-30": {
+      "symbol": "INTC_USDT",
+      "usd": 95619.95
+     },
+     "2026-09-07": {
+      "symbol": "INTC_USDT",
+      "usd": 176962.47
+     },
+     "2026-09-13": {
+      "symbol": "INTC_USDT",
+      "usd": 180799.17
+     },
+     "2026-09-20": {
+      "symbol": "INTC_USDT",
+      "usd": 55767.4
+     }
+    },
+    "AAPL": {
+     "2026-08-30": {
+      "symbol": "AAPL_USDT",
+      "usd": -1
+     },
+     "2026-09-07": {
+      "symbol": "AAPL_USDT",
+      "usd": 9059.81
+     },
+     "2026-09-13": {
+      "symbol": "AAPL_USDT",
+      "usd": 6112.3
+     },
+     "2026-09-20": {
+      "symbol": "AAPL_USDT",
+      "usd": 79067.19
+     }
+    },
+    "META": {
+     "2026-08-30": {
+      "symbol": "META_USDT",
+      "usd": -1
+     },
+     "2026-09-07": {
+      "symbol": "META_USDT",
+      "usd": 6130.22
+     },
+     "2026-09-13": {
+      "symbol": "META_USDT",
+      "usd": 7875.33
+     },
+     "2026-09-20": {
+      "symbol": "META_USDT",
+      "usd": 8258.17
+     }
+    },
+    "AXTI": {
+     "2026-08-30": {
+      "symbol": "AXTI_USDT",
+      "usd": 60929.28
+     },
+     "2026-09-07": {
+      "symbol": "AXTI_USDT",
+      "usd": 9931.43
+     },
+     "2026-09-13": {
+      "symbol": "AXTI_USDT",
+      "usd": 41107.27
+     },
+     "2026-09-20": {
+      "symbol": "AXTI_USDT",
+      "usd": 13050.13
+     }
+    },
+    "EWY": {
+     "2026-08-30": {
+      "symbol": "EWY_USDT",
+      "usd": 341077.92
+     },
+     "2026-09-07": {
+      "symbol": "EWY_USDT",
+      "usd": 115018.23
+     },
+     "2026-09-13": {
+      "symbol": "EWY_USDT",
+      "usd": 35883.6
+     },
+     "2026-09-20": {
+      "symbol": "EWY_USDT",
+      "usd": 12395.04
+     }
+    },
+    "HOOD": {
+     "2026-08-30": {
+      "symbol": "HOOD_USDT",
+      "usd": -1
+     },
+     "2026-09-07": {
+      "symbol": "HOOD_USDT",
+      "usd": 9100.19
+     },
+     "2026-09-13": {
+      "symbol": "HOOD_USDT",
+      "usd": 10504.17
+     },
+     "2026-09-20": {
+      "symbol": "HOOD_USDT",
+      "usd": 13412.46
+     }
+    },
+    "COIN": {
+     "2026-08-30": {
+      "symbol": "COIN_USDT",
+      "usd": -1
+     },
+     "2026-09-07": {
+      "symbol": "COIN_USDT",
+      "usd": 9134.77
+     },
+     "2026-09-13": {
+      "symbol": "COIN_USDT",
+      "usd": 22307.93
+     },
+     "2026-09-20": {
+      "symbol": "COIN_USDT",
+      "usd": 35089.87
+     }
+    },
+    "TSLA": {
+     "2026-08-30": {
+      "symbol": "TSLA_USDT",
+      "usd": -1
+     },
+     "2026-09-07": {
+      "symbol": "TSLA_USDT",
+      "usd": 35081.85
+     },
+     "2026-09-13": {
+      "symbol": "TSLA_USDT",
+      "usd": 104771.67
+     },
+     "2026-09-20": {
+      "symbol": "TSLA_USDT",
+      "usd": 11208.62
+     }
+    },
+    "AMZN": {
+     "2026-08-30": {
+      "symbol": "AMZN_USDT",
+      "usd": -1
+     },
+     "2026-09-07": {
+      "symbol": "AMZN_USDT",
+      "usd": 6016.7
+     },
+     "2026-09-13": {
+      "symbol": "AMZN_USDT",
+      "usd": 9971.83
+     },
+     "2026-09-20": {
+      "symbol": "AMZN_USDT",
+      "usd": 7687.84
+     }
+    },
+    "SPY": {
+     "2026-08-30": {
+      "symbol": "SPY_USDT",
+      "usd": -1
+     },
+     "2026-09-07": {
+      "symbol": "SPY_USDT",
+      "usd": 4546.43
+     },
+     "2026-09-13": {
+      "symbol": "SPY_USDT",
+      "usd": 6894.34
+     },
+     "2026-09-20": {
+      "symbol": "SPY_USDT",
+      "usd": 6135.93
+     }
+    },
+    "QCOM": {
+     "2026-08-30": {
+      "symbol": "QCOM_USDT",
+      "usd": 12419.45
+     },
+     "2026-09-07": {
+      "symbol": "QCOM_USDT",
+      "usd": 16624.91
+     },
+     "2026-09-13": {
+      "symbol": "QCOM_USDT",
+      "usd": 25256.81
+     },
+     "2026-09-20": {
+      "symbol": "QCOM_USDT",
+      "usd": 3279.96
+     }
+    },
+    "TSM": {
+     "2026-08-30": {
+      "symbol": "TSM_USDT",
+      "usd": 27452.61
+     },
+     "2026-09-07": {
+      "symbol": "TSM_USDT",
+      "usd": 9791.49
+     },
+     "2026-09-13": {
+      "symbol": "TSM_USDT",
+      "usd": 5629.33
+     },
+     "2026-09-20": {
+      "symbol": "TSM_USDT",
+      "usd": 5873.84
+     }
+    },
+    "PLTR": {
+     "2026-08-30": {
+      "symbol": "PLTR_USDT",
+      "usd": -1
+     },
+     "2026-09-07": {
+      "symbol": "PLTR_USDT",
+      "usd": 8505.27
+     },
+     "2026-09-13": {
+      "symbol": "PLTR_USDT",
+      "usd": 9403.98
+     },
+     "2026-09-20": {
+      "symbol": "PLTR_USDT",
+      "usd": 7186.87
+     }
+    },
+    "NOK": {
+     "2026-08-30": {
+      "symbol": "NOK_USDT",
+      "usd": 14952.33
+     },
+     "2026-09-07": {
+      "symbol": "NOK_USDT",
+      "usd": 30968.93
+     },
+     "2026-09-13": {
+      "symbol": "NOK_USDT",
+      "usd": 5093.52
+     },
+     "2026-09-20": {
+      "symbol": "NOK_USDT",
+      "usd": 11188.64
+     }
+    },
+    "LLY": {
+     "2026-08-30": {
+      "symbol": "LLY_USDT",
+      "usd": 12109.82
+     },
+     "2026-09-07": {
+      "symbol": "LLY_USDT",
+      "usd": 6635.49
+     },
+     "2026-09-13": {
+      "symbol": "LLY_USDT",
+      "usd": 5847.43
+     },
+     "2026-09-20": {
+      "symbol": "LLY_USDT",
+      "usd": 5780.17
+     }
+    },
+    "JPM": {
+     "2026-08-30": {
+      "symbol": "JPM_USDT",
+      "usd": 10512.2
+     },
+     "2026-09-07": {
+      "symbol": "JPM_USDT",
+      "usd": 5751.53
+     },
+     "2026-09-13": {
+      "symbol": "JPM_USDT",
+      "usd": 7736.71
+     },
+     "2026-09-20": {
+      "symbol": "JPM_USDT",
+      "usd": 9594.77
+     }
+    },
+    "EWJ": {
+     "2026-08-30": {
+      "symbol": "EWJ_USDT",
+      "usd": 10520.05
+     },
+     "2026-09-07": {
+      "symbol": "EWJ_USDT",
+      "usd": 7187.71
+     },
+     "2026-09-13": {
+      "symbol": "EWJ_USDT",
+      "usd": 3753.86
+     },
+     "2026-09-20": {
+      "symbol": "EWJ_USDT",
+      "usd": 7838.78
+     }
+    }
+   }
+  },
+  "kraken": {
+   "kline_endpoint": "GET https://futures.kraken.com/api/charts/v1/trade/{symbol}/1h?from={unix_s}&to={unix_s} (public, no keys; tick type 'trade' = traded-price candles; response 'time' is open time in MILLISECONDS)",
+   "caveats": "Kraken Futures candles report volume in base units (contracts). All 11 instruments have contractSize 1 (from /derivatives/api/v3/instruments), so quote_volume_usd = volume x 1 x that bar's close. This is an approximation: it prices the whole hour at the closing price, not a true VWAP notional. Candle 'time' is in milliseconds. Every returned row was matched exactly on time == requested epoch_s*1000 (for example 2026-08-30T19:00Z = 1788116400000). The interval is named '1h'. The 'trade' tick type was used; the 'spot' and 'mark' series report volume 0. The value 0 means Kraken returned a candle for that hour with zero traded volume and a carried-over close. That is different from -1, which means no candle exists. The only -1 is SNDK on 2026-08-30: PF_SNDKUSD openingDate is 2026-09-03T11:58:28Z and the API returned an empty candle list. The script and raw rows are in /private/tmp/claude-501/-Users-stas-workspace-other-prop-strategy/8264e0b6-3c34-4ace-8fc7-ffdb42610a75/scratchpad/kraken_bars.py and kraken_rows.json. No repo changes were made.",
+   "bars": {
+    "AAPL": {
+     "2026-08-30": {
+      "symbol": "PF_AAPLXUSD",
+      "usd": 1171.32
+     },
+     "2026-09-07": {
+      "symbol": "PF_AAPLXUSD",
+      "usd": 1183.38
+     },
+     "2026-09-13": {
+      "symbol": "PF_AAPLXUSD",
+      "usd": 1474.34
+     },
+     "2026-09-20": {
+      "symbol": "PF_AAPLXUSD",
+      "usd": 983.02
+     }
+    },
+    "CRCL": {
+     "2026-08-30": {
+      "symbol": "PF_CRCLXUSD",
+      "usd": 31.34
+     },
+     "2026-09-07": {
+      "symbol": "PF_CRCLXUSD",
+      "usd": 4074.83
+     },
+     "2026-09-13": {
+      "symbol": "PF_CRCLXUSD",
+      "usd": 5911.9
+     },
+     "2026-09-20": {
+      "symbol": "PF_CRCLXUSD",
+      "usd": 4694.5
+     }
+    },
+    "MSTR": {
+     "2026-08-30": {
+      "symbol": "PF_MSTRXUSD",
+      "usd": 78.57
+     },
+     "2026-09-07": {
+      "symbol": "PF_MSTRXUSD",
+      "usd": 453.34
+     },
+     "2026-09-13": {
+      "symbol": "PF_MSTRXUSD",
+      "usd": 3611.58
+     },
+     "2026-09-20": {
+      "symbol": "PF_MSTRXUSD",
+      "usd": 7.8
+     }
+    },
+    "SNDK": {
+     "2026-08-30": {
+      "symbol": "PF_SNDKUSD",
+      "usd": -1
+     },
+     "2026-09-07": {
+      "symbol": "PF_SNDKUSD",
+      "usd": 498.63
+     },
+     "2026-09-13": {
+      "symbol": "PF_SNDKUSD",
+      "usd": 1196.26
+     },
+     "2026-09-20": {
+      "symbol": "PF_SNDKUSD",
+      "usd": 21.27
+     }
+    },
+    "SPY": {
+     "2026-08-30": {
+      "symbol": "PF_SPYXUSD",
+      "usd": 0
+     },
+     "2026-09-07": {
+      "symbol": "PF_SPYXUSD",
+      "usd": 2745.95
+     },
+     "2026-09-13": {
+      "symbol": "PF_SPYXUSD",
+      "usd": 0
+     },
+     "2026-09-20": {
+      "symbol": "PF_SPYXUSD",
+      "usd": 26165.94
+     }
+    },
+    "META": {
+     "2026-08-30": {
+      "symbol": "PF_METAXUSD",
+      "usd": 0
+     },
+     "2026-09-07": {
+      "symbol": "PF_METAXUSD",
+      "usd": 92.1
+     },
+     "2026-09-13": {
+      "symbol": "PF_METAXUSD",
+      "usd": 2026.99
+     },
+     "2026-09-20": {
+      "symbol": "PF_METAXUSD",
+      "usd": 0
+     }
+    },
+    "QQQ": {
+     "2026-08-30": {
+      "symbol": "PF_QQQXUSD",
+      "usd": 0.72
+     },
+     "2026-09-07": {
+      "symbol": "PF_QQQXUSD",
+      "usd": 79.91
+     },
+     "2026-09-13": {
+      "symbol": "PF_QQQXUSD",
+      "usd": 0
+     },
+     "2026-09-20": {
+      "symbol": "PF_QQQXUSD",
+      "usd": 0
+     }
+    },
+    "COIN": {
+     "2026-08-30": {
+      "symbol": "PF_COINXUSD",
+      "usd": 18.17
+     },
+     "2026-09-07": {
+      "symbol": "PF_COINXUSD",
+      "usd": 0
+     },
+     "2026-09-13": {
+      "symbol": "PF_COINXUSD",
+      "usd": 10.39
+     },
+     "2026-09-20": {
+      "symbol": "PF_COINXUSD",
+      "usd": 4314.45
+     }
+    },
+    "TSLA": {
+     "2026-08-30": {
+      "symbol": "PF_TSLAXUSD",
+      "usd": 0
+     },
+     "2026-09-07": {
+      "symbol": "PF_TSLAXUSD",
+      "usd": 0
+     },
+     "2026-09-13": {
+      "symbol": "PF_TSLAXUSD",
+      "usd": 25.35
+     },
+     "2026-09-20": {
+      "symbol": "PF_TSLAXUSD",
+      "usd": 98.39
+     }
+    },
+    "AMZN": {
+     "2026-08-30": {
+      "symbol": "PF_AMZNXUSD",
+      "usd": 0
+     },
+     "2026-09-07": {
+      "symbol": "PF_AMZNXUSD",
+      "usd": 1570.85
+     },
+     "2026-09-13": {
+      "symbol": "PF_AMZNXUSD",
+      "usd": 0
+     },
+     "2026-09-20": {
+      "symbol": "PF_AMZNXUSD",
+      "usd": 50.66
+     }
+    },
+    "HOOD": {
+     "2026-08-30": {
+      "symbol": "PF_HOODXUSD",
+      "usd": 0
+     },
+     "2026-09-07": {
+      "symbol": "PF_HOODXUSD",
+      "usd": 0
+     },
+     "2026-09-13": {
+      "symbol": "PF_HOODXUSD",
+      "usd": 31.65
+     },
+     "2026-09-20": {
+      "symbol": "PF_HOODXUSD",
+      "usd": 4014.08
+     }
+    }
+   }
+  }
+ },
+ "symbols": {
+  "bybit": {
+   "endpoint_hint": "GET https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000 (paginated by cursor; 885 instruments in total) + GET https://api.bybit.com/v5/market/tickers?category=linear (891 rows). Queried 2026-09-23 about 08:14 UTC. Selected instruments where symbolType is 'stock' (196) or 'ETF",
+   "symbols": {
+    "SNDK": "SNDKUSDT",
+    "AAPL": "AAPLUSDT",
+    "MU": "MUUSDT",
+    "CRCL": "CRCLUSDT",
+    "MSTR": "MSTRUSDT",
+    "INTC": "INTCUSDT",
+    "META": "METAUSDT",
+    "TSLA": "TSLAUSDT",
+    "EWY": "EWYUSDT",
+    "QQQ": "QQQUSDT",
+    "AMZN": "AMZNUSDT",
+    "COIN": "COINUSDT",
+    "HOOD": "HOODUSDT",
+    "AAOI": "AAOIUSDT",
+    "SPY": "SPYUSDT",
+    "PLTR": "PLTRUSDT",
+    "AXTI": "AXTIUSDT",
+    "LLY": "LLYUSDT",
+    "TSM": "TSMUSDT",
+    "QCOM": "QCOMUSDT",
+    "JPM": "JPMUSDT",
+    "EWJ": "EWJUSDT",
+    "NOK": "NOKIAUSDT"
+   }
+  },
+  "okx": {
+   "endpoint_hint": "GET https://www.okx.com/api/v5/public/instruments?instType=SWAP and ?instType=FUTURES; GET https://www.okx.com/api/v5/market/tickers?instType=SWAP and ?instType=FUTURES; GET https://www.okx.com/api/v5/public/open-interest?instType=SWAP and ?instType=FUTURES; GET https://www.okx.com/api/v5/market/his",
+   "symbols": {
+    "SNDK": "SNDK-USDT-SWAP",
+    "MU": "MU-USDT-SWAP",
+    "CRCL": "CRCL-USDT-SWAP",
+    "MSTR": "MSTR-USDT-SWAP",
+    "INTC": "INTC-USDT-SWAP",
+    "QQQ": "QQQ-USDT-SWAP",
+    "AAOI": "AAOI-USDT-SWAP",
+    "TSLA": "TSLA-USDT-SWAP",
+    "META": "META-USDT-SWAP",
+    "AXTI": "AXTI-USDT-SWAP",
+    "AAPL": "AAPL-USDT-SWAP",
+    "AMZN": "AMZN-USDT-SWAP",
+    "EWY": "EWY-USDT-SWAP",
+    "HOOD": "HOOD-USDT-SWAP",
+    "SPY": "SPY-USDT-SWAP",
+    "COIN": "COIN-USDT-SWAP",
+    "QCOM": "QCOM-USDT-SWAP",
+    "TSM": "TSM-USDT-SWAP",
+    "PLTR": "PLTR-USDT-SWAP",
+    "NOK": "NOK-USDT-SWAP",
+    "LLY": "LLY-USDT-SWAP",
+    "EWJ": "EWJ-USDT-SWAP"
+   }
+  },
+  "gate": {
+   "endpoint_hint": "GET https://api.gateio.ws/api/v4/futures/usdt/contracts (1003 contracts; filtered on field contract_type in {stocks, indices}, plus IAU_USDT and SLV_USDT which Gate tags contract_type=metals but are US ETFs); GET https://api.gateio.ws/api/v4/futures/usdt/tickers (volume_24h_quote); GET https://api.g",
+   "symbols": {
+    "SNDK": "SNDK_USDT",
+    "MU": "MU_USDT",
+    "CRCL": "CRCL_USDT",
+    "MSTR": "MSTR_USDT",
+    "QQQ": "QQQ_USDT",
+    "AAOI": "AAOI_USDT",
+    "INTC": "INTC_USDT",
+    "AAPL": "AAPL_USDT",
+    "META": "META_USDT",
+    "AXTI": "AXTI_USDT",
+    "EWY": "EWY_USDT",
+    "HOOD": "HOOD_USDT",
+    "COIN": "COIN_USDT",
+    "TSLA": "TSLA_USDT",
+    "AMZN": "AMZN_USDT",
+    "SPY": "SPY_USDT",
+    "QCOM": "QCOM_USDT",
+    "TSM": "TSM_USDT",
+    "PLTR": "PLTR_USDT",
+    "NOK": "NOK_USDT",
+    "LLY": "LLY_USDT",
+    "JPM": "JPM_USDT",
+    "EWJ": "EWJ_USDT"
+   }
+  },
+  "mexc": {
+   "endpoint_hint": "GET https://contract.mexc.com/api/v1/contract/detail (1185 contracts) + GET https://contract.mexc.com/api/v1/contract/ticker (1193 rows); weekend check via GET https://contract.mexc.com/api/v1/contract/kline/{symbol}?interval=Hour4 for 2026-09-19..21 UTC. Snapshot taken 2026-09-23 ~07:33 UTC (ticker",
+   "symbols": {
+    "MU": "MUSTOCK_USDT",
+    "SNDK": "SNDKSTOCK_USDT",
+    "MSTR": "MSTRSTOCK_USDT",
+    "SPY": "SPY_USDT",
+    "INTC": "INTCSTOCK_USDT",
+    "CRCL": "CRCLSTOCK_USDT",
+    "TSLA": "TESLA_USDT",
+    "EWY": "EWY_USDT",
+    "AAPL": "AAPLSTOCK_USDT",
+    "META": "METASTOCK_USDT",
+    "PLTR": "PLTRSTOCK_USDT",
+    "COIN": "COINBASE_USDT",
+    "QQQ": "QQQSTOCK_USDT",
+    "AMZN": "AMZNSTOCK_USDT",
+    "TSM": "TSMSTOCK_USDT",
+    "AAOI": "AAOISTOCK_USDT",
+    "HOOD": "ROBINHOOD_USDT",
+    "EWJ": "EWJ_USDT",
+    "AXTI": "AXTISTOCK_USDT",
+    "LLY": "LLYSTOCK_USDT",
+    "QCOM": "QCOMSTOCK_USDT",
+    "NOK": "NOKSTOCK_USDT",
+    "PAYP": "PAYPSTOCK_USDT",
+    "JPM": "JPMSTOCK_USDT"
+   }
+  },
+  "bitget": {
+   "endpoint_hint": "GET https://api.bitget.com/api/v2/mix/market/contracts?productType=USDT-FUTURES (802 contracts, all symbolType=perpetual; filtered isRwa=YES -> 336) joined with GET https://api.bitget.com/api/v2/mix/market/tickers?productType=USDT-FUTURES (quoteVolume, holdingAmount, markPrice). Also checked product",
+   "symbols": {
+    "SNDK": "SNDKUSDT",
+    "MSTR": "MSTRUSDT",
+    "MU": "MUUSDT",
+    "CRCL": "CRCLUSDT",
+    "INTC": "INTCUSDT",
+    "TSLA": "TSLAUSDT",
+    "META": "METAUSDT",
+    "AAPL": "AAPLUSDT",
+    "HOOD": "HOODUSDT",
+    "COIN": "COINUSDT",
+    "QQQ": "QQQUSDT",
+    "AMZN": "AMZNUSDT",
+    "AAOI": "AAOIUSDT",
+    "EWY": "EWYUSDT",
+    "PLTR": "PLTRUSDT",
+    "AXTI": "AXTIUSDT",
+    "TSM": "TSMUSDT",
+    "SPY": "SPYUSDT",
+    "QCOM": "QCOMUSDT",
+    "NOK": "NOKSTOCKUSDT",
+    "LLY": "LLYUSDT",
+    "EWJ": "EWJUSDT",
+    "JPM": "JPMUSDT"
+   }
+  },
+  "hyperliquid": {
+   "endpoint_hint": "POST https://api.hyperliquid.xyz/info with {\"type\":\"perpDexs\"}, then {\"type\":\"metaAndAssetCtxs\"} (main) and {\"type\":\"metaAndAssetCtxs\",\"dex\":\"<name>\"} for xyz, flx, vntl, hyna, km, abcd, cash, para, mkts, io; also {\"type\":\"meta\",\"dex\":\"xyz\"} to inspect fields. Queried 2026-09-23 ~08:14 UTC.",
+   "symbols": {
+    "SNDK": "xyz:SNDK",
+    "META": "xyz:META",
+    "MU": "xyz:MU",
+    "CRCL": "xyz:CRCL",
+    "INTC": "xyz:INTC",
+    "AAPL": "xyz:AAPL",
+    "MSTR": "xyz:MSTR",
+    "EWY": "xyz:EWY",
+    "TSLA": "xyz:TSLA",
+    "HOOD": "xyz:HOOD",
+    "AMZN": "xyz:AMZN",
+    "COIN": "xyz:COIN",
+    "PLTR": "xyz:PLTR",
+    "NOK": "xyz:NOK",
+    "QCOM": "xyz:QCOM",
+    "TSM": "xyz:TSM",
+    "LLY": "xyz:LLY",
+    "AAOI": "xyz:AAOI",
+    "EWJ": "xyz:EWJ"
+   }
+  },
+  "kraken": {
+   "endpoint_hint": "GET https://futures.kraken.com/derivatives/api/v3/instruments (296 instruments) and GET https://futures.kraken.com/derivatives/api/v3/tickers (296 tickers), serverTime 2026-09-23T08:13:42Z UTC",
+   "symbols": {
+    "AAPL": "PF_AAPLXUSD",
+    "CRCL": "PF_CRCLXUSD",
+    "MSTR": "PF_MSTRXUSD",
+    "SNDK": "PF_SNDKUSD",
+    "SPY": "PF_SPYXUSD",
+    "META": "PF_METAXUSD",
+    "QQQ": "PF_QQQXUSD",
+    "COIN": "PF_COINXUSD",
+    "TSLA": "PF_TSLAXUSD",
+    "AMZN": "PF_AMZNXUSD",
+    "HOOD": "PF_HOODXUSD"
+   }
+  }
+ }
+}

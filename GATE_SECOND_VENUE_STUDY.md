@@ -112,3 +112,148 @@ capital earns 3–6%/yr and total dollar P/L plateaus near **$22–24k per 21 tr
 (≈ $35–40k/yr)**. At $50k the cap already binds on 39 of 95 events (PAYP 8, OPENAI 4, HOOD 3, EWJ 3,
 AXTI 3, …). Aggregating venues moves the knee out by roughly $20–30k of equity and adds ~1–2 points of
 ROE in the $20k–$150k range; it does not change the ceiling.
+
+## Addendum (2026-09-23 08:27 UTC) — re-measured on today's listings: seven venues, four decision bars, fill at $50k / $100k / $200k
+
+The 2026-09-09 aggregate was measured on June–August bars, before Gate and OKX relisted the deep names, before
+MEXC listed PAYP, and before Hyperliquid's HIP-3 dexes carried most of the universe. Re-measured 2026-09-23
+08:14 UTC on public endpoints: inventory of every stock/ETF perpetual on Bybit (250), OKX (186), Gate (409),
+MEXC (402), Bitget (320), Hyperliquid (129), Kraken (23); then the single 1h decision bar (open 19:00 UTC the
+evening before the next US session) for the 24 fade names on each venue, four weekends: 2026-08-30, 09-07
+(Labor Day, Monday bar), 09-13, 09-20. Binance bars from `binance_perp_kline`. Raw data:
+`research/venue-decision-bars-2026-09-23.json` (145 symbol series, per-venue endpoints and caveats inside).
+Bitstamp has no perpetuals and was not queried.
+
+**Coverage.** Every one of the 24 is now on at least four other venues; MEXC lists all 24 including PAYP. Of the
+270 tickers that exist elsewhere and not on Binance, the two large ones are SPX and NDX index perps ($266M and
+$233M/day, mostly Hyperliquid), which duplicate SPY/QQQ exposure; 146 of the 270 trade under $100k/day. No
+candidate is admissible without its own history (A8 route).
+
+**Decision-bar volume, median of the four bars, the thin names (USD):**
+
+| name | Binance | all other venues | ratio | largest others |
+|---|---:|---:|---:|---|
+| PAYP | 1,214 | 4,082 | 3.4× | MEXC 4,082 (only venue) |
+| EWJ | 2,376 | 12,895 | 5.4× | Gate 7,513, MEXC 4,185 |
+| JPM | 2,826 | 13,118 | 4.6× | Gate 8,666, MEXC 4,174 |
+| LLY | 5,762 | 14,606 | 2.5× | Gate 6,241, MEXC 4,160, HL 2,273 |
+| NOK | 10,664 | 18,772 | 1.8× | Gate 13,070, MEXC 4,077 |
+| TSM | 14,630 | 32,507 | 2.2× | OKX 12,727, Gate 7,833, MEXC 5,089 |
+| QCOM | 28,818 | 41,481 | 1.4× | OKX 15,857, Gate 14,522 |
+| AXTI | 35,224 | 65,752 | 1.9× | Gate 27,079, OKX 18,202, Bitget 10,909 |
+
+The other venues now carry more decision-bar volume than Binance on every thin name — but the absolute
+numbers stay small: EWJ's 5.4× is $12.9k, a $1.3k cap.
+
+**Fill under Plan S (basket 75%, cap 20%/name, ≤ 10% of each venue's own bar), Binance-only → all seven venues:**
+
+| book | 09-07 (1 name, PAYP) | 09-13 (20 names) | 09-20 (6 names) | three traded weekends | all-24 case, four-bar mean |
+|---|---|---|---|---|---|
+| $50k | 1% → 5% | 89% → 97% | 61% → 85% | **66% → 81%** | 85% → 97% |
+| $100k | 1% → 2% | 82% → 93% | 55% → 69% | **61% → 72%** | 78% → 91% |
+| $200k | 0% → 1% | 72% → 84% | 47% → 60% | **53% → 64%** | 71% → 85% |
+
+At $100k with Gate only: 61% → 64% on the traded pattern; Gate + MEXC: 61% → 66%. On the all-24 case the
+recovered dollars come 52% from Gate, 23% MEXC, 11% Bitget, 8% Hyperliquid, 3% OKX, 2% Bybit, 0% Kraken —
+but on the weekends actually traded, AXTI's and TSM's headroom is filled by OKX and Bitget, so two venues
+capture only about half of what seven do.
+
+**Reading.**
+1. At $100k, aggregation lifts deployed capital by about 18% relative (61% → 72% of allocation on the traded
+   pattern; 78% → 91% on all-24). That is the same order as the 2026-09-09 estimate (14% → 17% annualised);
+   the new listings did not change the conclusion, they confirmed it on fresh bars.
+2. The single-thin-name weekend is not fixable by any venue: PAYP alone fills 1% → 2% at $100k. That is the
+   20% per-name cap meeting a name that trades $1–5k per bar across all venues combined.
+3. Getting the full benefit needs five or six venues, not one or two. The 2026-09-09 operational objection
+   (4–6 accounts, simultaneous manual exits at 11:00 NY, per-venue tracking studies, per-venue announcement
+   reading) is unchanged. Tracking is still measured only for Gate (corr 0.98) and Bybit; MEXC, OKX, Bitget,
+   Hyperliquid and Kraken are assumed to track. Gate force-settled 11 of these names' predecessors in August.
+4. **The standing re-open condition — "when the per-name cap is routinely bound by Binance's bar on names
+   other than PAYP" — is met at $100k** (AXTI, TSM, NOK, JPM, EWJ, QCOM, LLY bind on every bar at six-name
+   sizing) **and is not met at $5k** (only EWJ and PAYP bind, and only in small baskets). The decision
+   therefore stays *not built* for the current book and is *open* for a $100k book, where the first step
+   would be a Gate second account (the one venue with a tracking study) and a pre-registered tracking
+   measurement for MEXC and OKX before either is added.
+5. The lever nobody has measured is the 10%-of-bar cap itself. It is a guess, not a slippage study; at $100k
+   a pre-registered measurement of realised fill cost at 15% and 20% of bar on the deep names is worth more
+   than any single venue, because it applies to all 24 names at once.
+
+Four bars is the minimum for a median and thin-name bars vary tenfold weekend to weekend (JPM $585–8,211,
+LLY $1,000–23,082 on Binance alone); treat every ratio above as a rough estimate, not a measurement.
+
+## Addendum (2026-09-23 10:47 UTC) — does a venue's perp carry Binance's weekend history? Seven venues, every weekend since listing
+
+**Question (user, 2026-09-23 09:5x UTC):** a symbol that is new on another CEX — can it be treated as having Binance's history,
+because arbitrage keeps the prices together? If so, does the transfer run only Binance → others? What share of the aggregated
+volume should a venue have to be eligible? And: is it better to spread the money over several venues?
+
+**What was measured.** Hourly candles for the 24 names from each venue's public API, from listing to 2026-09-22 (one agent per
+venue; an independent agent re-fetched 20–28 cells per venue, all exact; Gate's 23 pre-listing placeholder rows were re-fetched
+and replaced). Binance from `binance_perp_kline`. For every (venue, name, weekend) where both sides have the three fade bars
+(anchor = last US close bar, entry = the 19:00 UTC bar the evening before the next US session, exit = the 10:00 NY bar; live
+shifted form, holiday weekends included): **entry gap** = venue deviation from anchor at the entry close minus Binance's (bp);
+**trigger agreement** on Binance-triggered events (≤ −50 bp); **venue-only triggers** (venue ≤ −50 bp, Binance not);
+**return** = entry→exit price return, correlation and gap; **funding** over the hold where the venue publishes it.
+Rows and both summaries: `research/venue-tracking-2026-09-23.json`; 602,899 hourly rows stay in the session scratchpad.
+
+| venue | listed (24 names) | rows · names · weekends | \|entry gap\| median · p90 (bp) | trigger agreement | venue-only | return corr · \|gap\| median | zero-volume entry bars |
+|---|---|---|---|---|---|---|---|
+| **all weekends 2026-01-30 → 09-18** | | | | | | | |
+| MEXC | Jan (15), Mar–Jul (9) | 597 · 24 · 34 | 3.9 · 15.0 | 110/116 = 95% | 11 | 1.000 · 4.7 | 1 |
+| OKX | Feb–Jun | 543 · 22 · 30 | 4.7 · 42.6 | 97/99 = 98% | 18 | 0.996 · 7.8 | 4 |
+| Bybit | Apr 21 → Jul 31 | 440 · 23 · 22 | 5.2 · 20.7 | 54/58 = 93% | 4 | 1.000 · 9.5 | 14 |
+| Bitget | Jan (12), Feb–Jun (11) | 576 · 23 · 34 | 6.2 · 34.0 | 96/104 = 92% | 13 | 0.995 · 10.6 | 1 |
+| Gate | Jan–Jun (13), **Sep 3 (10 deep names)** | 292 · 23 · 33 | 7.7 · 33.4 | 55/60 = 92% | 8 | 0.999 · 7.4 | 0 |
+| Hyperliquid | ≤ Feb 27 (retention cut), Mar–Aug | 464 · 19 · 30 | 8.2 · 68.6 | 86/87 = 99% | 24 | 0.986 · 15.0 | 5 |
+| Kraken | Jan–Feb (7), Aug–Sep (4) | 220 · 11 · 31 | **30.0 · 152** | 26/35 = 74% | 14 | 0.749 · 78 | **137** |
+| **weekends since 2026-06-01 (16)** | | | | | | | |
+| OKX | | 349 · 22 · 16 | **3.2 · 10.4** | 49/51 = 96% | 3 | 1.000 · 3.6 | 4 |
+| Bitget | | 363 · 23 · 16 | 4.1 · 14.7 | 48/53 = 91% | 4 | 1.000 · 5.1 | 0 |
+| MEXC | | 377 · 24 · 16 | 4.2 · 15.5 | 60/63 = 95% | 6 | 1.000 · 5.3 | 0 |
+| Bybit | | 357 · 23 · 16 | 4.5 · 18.5 | 49/53 = 92% | 4 | 1.000 · 6.8 | 12 |
+| Hyperliquid | | 288 · 19 · 16 | 5.7 · 15.9 | 39/40 = 98% | 6 | 1.000 · 5.2 | 4 |
+| Gate | | 223 · 23 · 16 | 6.3 · 18.7 | 39/43 = 91% | 3 | 0.999 · 4.5 | 0 |
+| Kraken | | 136 · 11 · 16 | 18.9 · 88 | 13/17 = 76% | 9 | 0.974 · 14 | 74 |
+
+Thin names since June, \|entry gap\| median (n) and agreement: EWJ 2.1–8.4 bp (16) 4/4 on all six; QCOM 4.2–7.5 (16) 4/4;
+AXTI 4.5–13.7 (14–15) 5/6 or 6/6; AAOI 5.7–9.9 3/3; NOK 9.3–24.3 3/3; LLY 3.7–11.4 (no events); JPM 4.6 on MEXC (2/3), 16–23 bp
+on Bybit, Bitget and Gate (0–1 of 2–3 events); PAYP exists only on MEXC: 12.4 bp (16), 8/9.
+
+### Reading
+
+1. **Since June, six venues carry Binance's weekend path.** Median entry gap 3–6 bp, p90 10–19 bp, 91–98% of Binance's
+   triggers fire on the venue's own bar, and the entry→exit return correlates 0.999–1.000 with a 4–7 bp median gap. The 2026-09-09
+   criteria (a) tracking and (b) same trigger, declared for Gate, pass on this window for Bybit, OKX, MEXC, Bitget, Hyperliquid
+   and Gate. Kraken does not: its traded candles carry the last print through hours with no trades (137 zero-volume entry bars of
+   220), so its "price" at 20:00 UTC is often stale by hours.
+2. **"Same history" is earned, not inherited.** Where a venue is young the gap is not 5 bp but 100–185 bp: OKX in April (TSM
+   −29 vs −215 bp on 04-10, SNDK −39 vs −198, MU −144 vs −295), MEXC's SNDK in April–May (+40 vs +192 on 05-01), Bitget and
+   Hyperliquid on their early weekends (whole-period return-gap means +22 and +43 bp against −1 since June). The same venues are
+   the best trackers today. Arbitrage does the work only once market makers quote the contract; on this evidence that takes weeks
+   to a few months after listing, and it is not visible in the listing itself. So a new contract on another venue is admitted by
+   measuring it — the declared rule below — not by assumption.
+3. **Direction.** The pre-registered numbers are Binance bars. A second venue inherits them to the degree measured here, for the
+   names it tracks. The reverse — a name Binance does not list, with history only on MEXC or Gate — is not a transfer question:
+   that name was never in the pre-registered universe, and it enters through the newcomer route (A7/A8 cohort, its own recorded
+   weekends) whichever venue's bars are used. No tracking number shortens that.
+4. **Volume share is not the criterion.** (venue, name) pairs with ≥ 8 weekends, bucketed by the venue's median share of the
+   combined (Binance + venue) decision bar, since June: share 0–2% → median gap 8.1 bp (p75 20); 2–5% → 4.7; 5–10% → 3.9;
+   10–20% → 4.1; ≥ 20% → 4.6. Above about 2% of the combined bar the gap is flat; below it, it depends on whether anyone quotes.
+   **Eligibility rule, declared now for any venue × name not yet admitted:** over its last 8 weekends, median \|entry gap\| ≤ 10 bp,
+   ≥ 80% of Binance-triggered events also trigger on the venue, venue-only triggers ≤ 20% of Binance's, and the decision bar's median
+   volume large enough that the intended order sits inside the cap. On today's data that admits the six venues on the deep names
+   and on EWJ, QCOM, AXTI, AAOI, NOK; JPM only on MEXC; PAYP only on MEXC. Fees (criterion (d)) remain measured for Gate only.
+5. **Funding has stopped being a transfer problem.** Binance's own funding over the hold on triggered events: +30/+21/+66/+79 bp
+   per event in Jan/Feb/Mar/Apr, then −1, −3, +2, −4, +1 bp from May to September (−0.2 bp mean since June, 63 events). Other
+   venues since June: −0.2 to −1.7 bp. MEXC's funding mirrored Binance's over the whole period (+26.5 vs +27.2 bp per event);
+   Bybit, Gate, Hyperliquid, Kraken never paid it. The +143.9 bp headline includes those spring funding prints; the price
+   component is what any venue, Binance included, pays now. Recorded here as a fact about the edge's composition; the edge-decay
+   ledger is record-only and is not re-opened by this.
+6. **Spreading the money.** On price, the data says a position on any of the six venues exits within ~5 bp of the Binance exit
+   since June, so a split costs nothing at 11:00 NY. What the data cannot price is why one would split: Gate force-settled the
+   predecessors of 11 of these names three weeks ago; the ten deep names on Gate are twenty days old; Bybit's are 8–22 weeks old;
+   Hyperliquid serves only ~5,000 hours of history and had one-sided books on thin names; fees are unmeasured on four venues; and
+   every added venue is one more manual exit in the same minute. The 08:27 addendum's split (Binance 61% of the k allocation,
+   the rest across five venues) is the split that the *fill* justifies. A split for its own sake — half the book away from Binance
+   — puts deep-name orders into books that carry 5–35% of the combined decision bar and would need to be re-priced with the cap
+   measurement (LIQUIDITY_CAP_MEASUREMENT.md) on each venue's own ladder, which was not done here.
