@@ -19,10 +19,16 @@ if [ -f "$REPO/.env" ]; then
 fi
 
 say "=== curve monitor start ==="
-if python3 "$REPO/scripts/curve-composition-monitor.py" "$@" >>"$LOG" 2>&1; then
+python3 "$REPO/scripts/curve-composition-monitor.py" "$@" >>"$LOG" 2>&1
+rc=$?
+if [ "$rc" -eq 0 ]; then
     say "wrote $REPO/CURVE_COMPOSITION_MONITOR.md"
+elif [ "$rc" -eq 2 ]; then
+    # The report was written, headlined DATA FAILURE: too few reads to call the level (see the lines above).
+    say "!! DATA FAILURE (exit 2): report written but NOT a valid reading; rerun when the network is up"
+    exit 2
 else
-    say "!! monitor failed, see $LOG"
+    say "!! monitor failed (exit $rc), see $LOG"
     exit 1
 fi
 say "=== curve monitor done ==="

@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-09-23 12:00 UTC
+Last updated: 2026-09-23 13:30 UTC
 
 ## Weekend fade at $100k: venues, the 10% cap and overflow measured (2026-09-23 12:00 UTC)
 
@@ -277,6 +277,14 @@ the book is near $100k.
   DOLA-sUSDe / DOLA-sUSDS LP (leverage loop), $3.4M 2022 bad debt still being repaid. The raw A3 reading
   (+19.6 bp sUSDe premium) becomes **−8.2 bp** priced through DOLA→sUSDS×NAV; the level now uses the dollar
   number, and a counter >100 bp off par flags the reading unreliable. DOLA kept as the A4 exception, written down.
+- **Empty run now fails loudly (2026-09-23 13:30 UTC).** The 2026-09-23 06:15 UTC launchd run fired inside a 45 s DarkWake
+  on battery with no network: every Curve-API and RPC lookup failed DNS (Errno 8), 0 of 23 pools were read, and the report
+  still said NORMAL because failures were caught per pool and a reading of level 0 was indistinguishable from no reading.
+  The run was suspended during sleep and advanced only in later dark wakes, so it ended at 07:39 UTC. Now: fewer than 90%
+  of admitted pools read, a tracked coin with no pool read, any wrapper, A6 or PegKeeper read failure, or a failed PG
+  write → headline **DATA FAILURE**, the level shown as a lower bound, and exit 2 (`curve-monitor.sh` logs
+  `!! DATA FAILURE`). No committed run from 2026-09-02 to 2026-09-22 had a single failed pool. Rerun 2026-09-23 13:28 UTC:
+  23 of 23 pools, 47 rows, LEVEL 1 from the 7-day share-change trigger (3pool USDT 64.0% on 2026-09-16 06:15 UTC → 36.2%).
 
 - **Weekend fade ledger restated (2026-09-08 09:15 UTC, prereg A6):** an independent API recomputation (launched to
   verify the run-up test, A5) found `binance_perp_kline` stops at 2026-07-31 for 19 of 27 fade names, so the

@@ -14,6 +14,7 @@ Usage: python3 scripts/curve-composition-monitor.py   (DB_USER/DB_NAME/DB_PASSWO
 """
 import datetime
 import json
+import math
 import os
 import subprocess
 import sys
@@ -49,6 +50,11 @@ IMP_L1, IMP_L2, IMP_L3 = 30.0, 100.0, 300.0      # bp, adverse
 D7_L1 = 10.0                                     # pp rise in a coin's share over 7 days
 NAV_L1, NAV_L2, NAV_L3 = -50.0, -200.0, -500.0   # bp discount to NAV (A3)
 MIN_TVL_FOR_LEVEL = 10_000_000                   # thinner pools are informational only
+# Data failure: a run that read too little must not headline NORMAL. Below this fraction of admitted composition
+# pools read (or any wrapper / PegKeeper / PG-write failure, or a tracked coin whose admitted pools all failed)
+# the report says DATA FAILURE and the script exits 2. No committed run through 2026-09-22 06:15 UTC had a failed pool.
+MIN_READ_FRACTION = 0.9
+EXIT_DATA_FAILURE = 2
 # A5: crvUSD PegKeepers - the Regulator's own contrary-coin test, relative gap in bp above the highest other PK pool
 PEGKEEPER_REGULATOR = "0x36a04CAffc681fa179558B2Aaba30395CDdd855f"
 CRVUSD_FACTORY = "0xC9332fdCB1C491Dcc683bAe86Fe3cb70360738BC"
@@ -172,7 +178,9 @@ def discover():
         if os.path.exists(UNIVERSE_CACHE):
             with open(UNIVERSE_CACHE) as f:
                 d = json.load(f)
-            comp, wrap, source = d.get("pools", []), d.get("wrapper_pools", []), "cache"
+            fetched = datetime.datetime.fromisoformat(d["fetched_at"]) if d.get("fetched_at") else None
+            comp, wrap = d.get("pools", []), d.get("wrapper_pools", [])
+            source = f"cache fetched {fetched:%Y-%m-%dT%H:%M:%SZ}" if fetched else "cache"
         else:
             source = "pinned-only"
     have = {p["address"].lower() for p in comp}
@@ -342,10 +350,15 @@ def _h_str(h):
         return b[off + 32:off + 32 + ln].decode(errors="replace")
     except Exception:  # noqa: BLE001
         return "?"
+_PK_CALL_FAILURES = []
+
+
 def _c(to, data):
+    """call() for the PegKeeper read: a transport failure yields None but is counted, never silent."""
     try:
         return call(to, data)
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        _PK_CALL_FAILURES.append(str(e))
         return None
 
 
@@ -431,8 +444,11 @@ def pegkeeper_section(rows):
     if not rows:
         return ["## crvUSD PegKeepers (A5)", "", "_read failed_", ""]
     agg = rows[0]["agg"]
+    mode = ("PegKeeper mode unknown (aggregator read failed)" if agg is None else
+            "PegKeepers may PROVIDE (a counter-coin inflow into these pools is damped)" if agg >= 1 else
+            "PegKeepers may only WITHDRAW (a counter-coin inflow is NOT damped; the share reading is free)")
     md = ["## crvUSD PegKeepers (A5 - the contract that rebalances the crvUSD pools we read)", "",
-          f"Aggregate crvUSD price **{agg:.5f}** -> PegKeepers may {'PROVIDE (a counter-coin inflow into these pools is damped)' if agg and agg >= 1 else 'only WITHDRAW (a counter-coin inflow is NOT damped; the share reading is free)'}.", "",
+          f"Aggregate crvUSD price **{'n/a' if agg is None else f'{agg:.5f}'}** -> {mode}.", "",
           "| Pool | Counter | Counter share | TVL | PK debt | Ceiling | PK LP share | Oracle price | Gap vs other PK pools | Provide allowed | Level |",
           "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
     for r in rows:
@@ -455,7 +471,8 @@ def _insert_pegkeeper_section(md, rows):
 # ---- A6: counter-asset correction for wrapper pools --------------------------------------------
 def counter_correction(m):
     """Restate a wrapper reading in dollars through the counter-asset's own dollar price (A6)."""
-    out = {"counter_usd": None, "discount_usd_bp": None, "counter_share": None, "par_capacity_usd": None, "unreliable": False}
+    out = {"counter_usd": None, "discount_usd_bp": None, "counter_share": None, "par_capacity_usd": None, "unreliable": False,
+           "a6_failed": False}
     route = COUNTER_USD_ROUTE.get(m["counter"])
     if not route:
         return out
@@ -479,6 +496,7 @@ def counter_correction(m):
             out["par_capacity_usd"] = ((as_int(call(par["vault"], SEL["convertToAssets"] + word(sh))) or 0) / 1e18) if sh else 0.0
     except Exception as e:  # noqa: BLE001
         print(f"A6 counter correction for {m['counter']} failed: {e}", file=sys.stderr)
+        out["a6_failed"] = True
     return out
 
 
@@ -531,7 +549,8 @@ def main():
     for pool in comp_pools:
         try:
             coins, bals, amp = read_pool(pool)
-        except Exception as e:  # noqa: BLE001 - one bad pool must not kill the run
+        except Exception as e:  # noqa: BLE001 - one bad pool must not kill the run; counted in the data check
+            print(f"composition pool {pool['name']} failed: {e}", file=sys.stderr)
             pool_reports.append((pool["name"], pool["address"], None, 0.0, [], f"read failed: {e}", 0, True))
             continue
         total = sum(bals)
@@ -573,14 +592,19 @@ def main():
             overall = max(overall, lv)
             aggregates.append((coin, agg_den[coin], ex, deepest[coin][1], deepest[coin][2], lv))
 
-    uncovered = [c for c in TRACKED if agg_den[c] <= 0]   # A4: say so instead of going quiet
+    # A4 coverage gap only when no admitted pool holds the coin; a coin held by pools that failed to read is unread
+    comp_failed = [r for r in pool_reports if r[5]]
+    held = {c["symbol"] for p in comp_pools for c in (p["coins"] or [])}
+    unread = [c for c in TRACKED if agg_den[c] <= 0 and (c in held or comp_failed)]
+    uncovered = [c for c in TRACKED if agg_den[c] <= 0 and c not in unread]   # A4: say so instead of going quiet
 
-    wrappers = []
+    wrappers, wrap_failed = [], []
     for pool in wrap_pools:
         try:
             m = measure_wrapper_pool(pool)
         except Exception as e:  # noqa: BLE001
             print(f"wrapper pool {pool['name']} failed: {e}", file=sys.stderr)
+            wrap_failed.append(pool["name"])
             continue
         if not m:
             continue
@@ -606,19 +630,49 @@ def main():
     stored_pk = store_pegkeepers(ts, pegkeepers)
     stored_w6 = store_counter_correction(ts, wrappers)
 
+    n_read = len(pool_reports) - len(comp_failed)
+    need = math.ceil(MIN_READ_FRACTION * len(comp_pools))
+    failures = []
+    if not rows:
+        failures.append(f"no composition row read ({len(comp_failed)} of {len(comp_pools)} admitted pools failed)")
+    elif n_read < need:
+        failures.append(f"composition pools read {n_read} of {len(comp_pools)} admitted, below the {need} required")
+    if unread:
+        failures.append(f"no admitted pool holding {', '.join(unread)} was read")
+    if wrap_failed:
+        failures.append(f"wrapper pools failed {len(wrap_failed)} of {len(wrap_pools)} ({', '.join(wrap_failed)})")
+    if any(w["a6_failed"] for w in wrappers):
+        failures.append("A6 counter-asset correction failed")
+    if not pegkeepers or _PK_CALL_FAILURES:
+        failures.append(f"PegKeeper read: {len(pegkeepers)} rows, {len(_PK_CALL_FAILURES)} calls failed")
+    failures += [s for s in (stored, stored_w, stored_w6, stored_pk) if "FAILED" in s]
+
     verdict = {0: "NORMAL - no action",
                1: "LEVEL 1 WATCH - re-read the dossier, journal it, no position change",
                2: "LEVEL 2 DE-RISK - stop opening in that asset, move own capital off-venue",
                3: "LEVEL 3 ACT - flatten own-capital positions in that asset and withdraw"}[overall]
+    if failures:
+        headline = ["## Overall: DATA FAILURE - this run is not a clearance", "",
+                    f"**Data failure:** {'; '.join(failures)}. The level from what was read is **{overall}** "
+                    f"({verdict}); unread pools could hold a higher one, so treat it as a lower bound. "
+                    "Rerun `bash scripts/curve-monitor.sh` once RPC and the Curve API are reachable.", ""]
+    else:
+        headline = [f"## Overall: {verdict}", ""]
+        if comp_failed:
+            headline += [f"**Partial read:** {len(comp_failed)} of {len(comp_pools)} admitted pools failed (listed under "
+                         f"Pools), within the {MIN_READ_FRACTION:.0%} coverage rule; the level covers the pools read.", ""]
 
     md = ["# Curve composition monitor", "",
           "Composition and wrapper NAV read from each pool's own on-chain state; pools discovered per",
           "`CURVE_MONITOR_PREREGISTRATION.md` (A2-A6); actions in `STABLECOIN_DEPEG_DOSSIER.md`.",
           "Stored in PostgreSQL `curve_pool_composition` / `curve_wrapper_nav_discount` / `curve_pegkeeper_state`.",
           "Regenerate with `bash scripts/curve-monitor.sh`.", "",
-          f"**As of:** {now:%Y-%m-%dT%H:%M:%SZ}  ·  composition pools: {len(pool_reports)}, wrapper pools: {len(wrappers)} "
+          f"**As of:** {now:%Y-%m-%dT%H:%M:%SZ}  ·  composition pools read: {n_read} of {len(comp_pools)} admitted, "
+          f"wrapper pools: {len(wrappers)} of {len(wrap_pools)} "
           f"(discovery: {source})  ·  {stored}; {stored_w} ({stored_w6}); {stored_pk}", "",
-          f"## Overall: {verdict}", "",
+          *headline,
+          *([f"**Not read:** admitted pools hold {', '.join(unread)} but none of them was read this run.", ""]
+            if unread else []),
           *([f"**Coverage gap (A4):** no admitted composition pool holds {', '.join(uncovered)} - every pool with it "
              f"is below the ${MIN_POOL_TVL/1e6:,.0f}M admission or contains an excluded coin ({', '.join(EXCLUDED_COINS)}). "
              f"Monitored through the wrapper NAV metric and the API price band only.", ""] if uncovered else []),
@@ -668,7 +722,12 @@ def main():
     md = _insert_pegkeeper_section(md, pegkeepers)
     with open(OUT, "w") as f:
         f.write("\n".join(md) + "\n")
-    print(f"level {overall}; {len(pool_reports)} composition pools; {len(wrappers)} wrapper pools; {stored}; {stored_w}; wrote {OUT}")
+    summary = (f"level {overall}; composition pools read {n_read} of {len(comp_pools)}; wrapper pools {len(wrappers)} "
+               f"of {len(wrap_pools)}; {stored}; {stored_w}; {stored_pk}; wrote {OUT}")
+    if failures:
+        print(f"DATA FAILURE: {'; '.join(failures)} | {summary}")
+        return EXIT_DATA_FAILURE
+    print(summary)
     return 0
 
 
