@@ -15,6 +15,7 @@ Run after each Monday exit, once the journal outcome row is written. Sources, in
                                      [entry_utc, exit_utc + 1h), minus exclude_symbols. Needs the read-only key:
                                      set -a && source .env.binance && set +a. Without it, each row's stored value is kept.
 
+Page opens are counted from the bucket's access logs by scripts/fade-page-stats.py.
 The prop account has no API and is not on the page. Nothing here places an order or moves money.
 """
 import hashlib, hmac, json, os, re, subprocess, sys, time, urllib.parse, urllib.request
